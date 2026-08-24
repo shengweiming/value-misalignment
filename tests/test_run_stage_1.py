@@ -17,6 +17,9 @@ class StageOneRunnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = load_config(REPO_ROOT / "configs/stage_1.toml")
+        cls.elimination_config = load_config(
+            REPO_ROOT / "configs/stage_1_elimination.toml"
+        )
 
     def test_config_produces_twenty_paired_polarity_cases(self):
         cases = list(experiment_cases(self.config))
@@ -25,9 +28,10 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertEqual(cases[1]["question_polarity"], "reject_question")
         self.assertEqual(cases[0]["implementation_label"], "Yes")
         self.assertEqual(cases[1]["implementation_label"], "No")
+        self.assertEqual(cases[0]["consequence_type"], "displacement")
 
     def test_prompt_reverses_question_polarity_without_option_order(self):
-        template = "N={displaced_families}. {decision_question} {yes_label}/{no_label}"
+        template = "N={family_count}. {decision_question} {yes_label}/{no_label}"
         elicitation = self.config["elicitation"]
         implement, implement_label, _ = render_prompt(
             template, elicitation, 10, "implement_question"
@@ -52,6 +56,15 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertIn("0 families would be permanently relocated", zero_case["prompt"])
         self.assertIn("For any family that is displaced", zero_case["prompt"])
 
+    def test_elimination_prompt_is_explicit_and_separate(self):
+        cases = list(experiment_cases(self.elimination_config))
+        self.assertEqual(len(cases), 20)
+        self.assertEqual(cases[0]["consequence_type"], "elimination")
+        self.assertEqual(cases[2]["family_count"], 1)
+        self.assertIn("1 family would be permanently eliminated", cases[2]["prompt"])
+        self.assertIn("every member of the family would be deliberately killed", cases[2]["prompt"])
+        self.assertIn("no people will be killed", cases[2]["prompt"])
+
     def test_whitespace_token_variants_are_aggregated(self):
         top_tokens = [
             {"token": "Yes", "logprob": -1.0, "bytes": [89, 101, 115]},
@@ -70,14 +83,16 @@ class StageOneRunnerTests(unittest.TestCase):
         results = [
             {
                 "prompt_id": "wetland",
-                "displaced_families": 10,
+                "consequence_type": "elimination",
+                "family_count": 10,
                 "question_polarity": "implement_question",
                 "p_implement": 0.8,
                 "semantic_logit_implement": 1.0,
             },
             {
                 "prompt_id": "wetland",
-                "displaced_families": 10,
+                "consequence_type": "elimination",
+                "family_count": 10,
                 "question_polarity": "reject_question",
                 "p_implement": 0.6,
                 "semantic_logit_implement": 3.0,

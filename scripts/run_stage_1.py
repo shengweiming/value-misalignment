@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run paired-polarity Stage 1 probability sweeps against DeepSeek."""
+"""Run paired-polarity Stage 1 policy sweeps against DeepSeek."""
 
 from __future__ import annotations
 
@@ -49,7 +49,8 @@ def load_config(path: Path) -> dict[str, Any]:
     required_experiment = (
         "name",
         "prompt_files",
-        "displacement_counts",
+        "consequence_type",
+        "family_counts",
         "output_dir",
         "system_prompt",
     )
@@ -71,11 +72,11 @@ def load_config(path: Path) -> dict[str, Any]:
         if key not in elicitation:
             raise ExperimentError(f"Config is missing elicitation.{key}")
 
-    counts = experiment["displacement_counts"]
+    counts = experiment["family_counts"]
     if not counts or any(not isinstance(value, int) or value < 0 for value in counts):
-        raise ExperimentError("experiment.displacement_counts must be non-negative integers")
+        raise ExperimentError("experiment.family_counts must be non-negative integers")
     if len(set(counts)) != len(counts):
-        raise ExperimentError("experiment.displacement_counts contains duplicates")
+        raise ExperimentError("experiment.family_counts contains duplicates")
 
     yes_label = elicitation["yes_label"]
     no_label = elicitation["no_label"]
@@ -94,7 +95,7 @@ def load_config(path: Path) -> dict[str, Any]:
 def render_prompt(
     template: str,
     elicitation: dict[str, Any],
-    displaced_families: int,
+    family_count: int,
     polarity: str,
 ) -> tuple[str, str, str]:
     if polarity not in POLARITIES:
@@ -105,8 +106,8 @@ def render_prompt(
     question = elicitation[polarity]
     implementation_label = yes_label if polarity == "implement_question" else no_label
     variables = {
-        "displaced_families": displaced_families,
-        "family_word": "family" if displaced_families == 1 else "families",
+        "family_count": family_count,
+        "family_word": "family" if family_count == 1 else "families",
         "decision_question": question,
         "yes_label": yes_label,
         "no_label": no_label,
@@ -128,19 +129,20 @@ def experiment_cases(config: dict[str, Any]) -> Iterable[dict[str, Any]]:
         except FileNotFoundError as exc:
             raise ExperimentError(f"Prompt file not found: {prompt_path}") from exc
 
-        for displaced_families in experiment["displacement_counts"]:
+        for family_count in experiment["family_counts"]:
             for polarity in POLARITIES:
                 prompt, implementation_label, question = render_prompt(
                     template,
                     elicitation,
-                    displaced_families,
+                    family_count,
                     polarity,
                 )
                 yield {
                     "prompt_id": prompt_path.stem,
                     "prompt_path": str(prompt_path),
                     "template_sha256": sha256_text(template),
-                    "displaced_families": displaced_families,
+                    "consequence_type": experiment["consequence_type"],
+                    "family_count": family_count,
                     "question_polarity": polarity,
                     "question_text": question,
                     "implementation_label": implementation_label,
@@ -291,7 +293,8 @@ RAW_CSV_FIELDS = [
     "run_id",
     "experiment",
     "prompt_id",
-    "displaced_families",
+    "consequence_type",
+    "family_count",
     "question_polarity",
     "implementation_label",
     "p_implement",
@@ -324,15 +327,15 @@ def raw_csv_row(result: dict[str, Any], run_id: str) -> dict[str, Any]:
 def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[str, Any]]:
     grouped: dict[tuple[str, int], dict[str, dict[str, Any]]] = defaultdict(dict)
     for result in results:
-        key = (result["prompt_id"], result["displaced_families"])
+        key = (result["prompt_id"], result["family_count"])
         grouped[key][result["question_polarity"]] = result
 
     summaries = []
-    for (prompt_id, displaced_families), polarities in sorted(grouped.items()):
+    for (prompt_id, family_count), polarities in sorted(grouped.items()):
         missing = set(POLARITIES) - set(polarities)
         if missing:
             raise ExperimentError(
-                f"Cannot symmetrize {prompt_id}/{displaced_families}; "
+                f"Cannot symmetrize {prompt_id}/{family_count}; "
                 f"missing {sorted(missing)}"
             )
         implement = polarities["implement_question"]
@@ -346,7 +349,8 @@ def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[s
             {
                 "run_id": run_id,
                 "prompt_id": prompt_id,
-                "displaced_families": displaced_families,
+                "consequence_type": implement["consequence_type"],
+                "family_count": family_count,
                 "p_implement_from_implement_question": p_implement,
                 "p_implement_from_reject_question": p_reject_reversed,
                 "p_implement_arithmetic_mean": (p_implement + p_reject_reversed) / 2.0,
@@ -366,7 +370,8 @@ def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[s
 SUMMARY_FIELDS = [
     "run_id",
     "prompt_id",
-    "displaced_families",
+    "consequence_type",
+    "family_count",
     "p_implement_from_implement_question",
     "p_implement_from_reject_question",
     "p_implement_arithmetic_mean",
@@ -427,7 +432,7 @@ def run_experiment(config_path: Path, config: dict[str, Any]) -> tuple[Path, Pat
         for index, case in enumerate(cases, start=1):
             print(
                 f"[{index}/{len(cases)}] {case['prompt_id']} | "
-                f"families={case['displaced_families']} | {case['question_polarity']}",
+                f"families={case['family_count']} | {case['question_polarity']}",
                 flush=True,
             )
             result = score_case(client, config, case)
@@ -454,7 +459,7 @@ def print_dry_run(config: dict[str, Any]) -> None:
     for index, case in enumerate(cases, start=1):
         print(
             f"--- Request {index}: {case['prompt_id']} | "
-            f"families={case['displaced_families']} | {case['question_polarity']} ---"
+            f"families={case['family_count']} | {case['question_polarity']} ---"
         )
         print(case["prompt"])
         print()
@@ -463,7 +468,7 @@ def print_dry_run(config: dict[str, Any]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Measure paired-polarity P(implement) across displacement levels "
+            "Measure paired-polarity P(implement) across configured family counts "
             "with DeepSeek logprobs."
         )
     )

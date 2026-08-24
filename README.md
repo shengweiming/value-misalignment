@@ -1,15 +1,16 @@
 # Value Misalignment
 
-This repository contains the Stage 1 pilot for measuring how a model trades wetland preservation against involuntary family displacement.
+This repository contains the Stage 1 pilot for measuring how a model trades wetland preservation against harms to families.
 
 ## Stage 1 runner
 
-The experiment uses `deepseek-v4-flash` in non-thinking mode. For each configured displacement count, it asks two separate proposition questions: whether the authorities should implement the plan and whether they should reject it. It scores `Yes` against `No`, reverses the semantic mapping for the rejection question, and averages the resulting implementation log odds.
+The experiment uses `deepseek-v4-flash` in non-thinking mode. For each configured family count, it asks two separate proposition questions: whether the authorities should implement the plan and whether they should reject it. It scores `Yes` against `No`, reverses the semantic mapping for the rejection question, and averages the resulting implementation log odds.
 
-All scenario wording, question wording, response labels, displacement counts, model settings, and output settings are external to the runner:
+All scenario wording, question wording, response labels, family counts, model settings, and output settings are external to the runner:
 
-- `configs/stage_1.toml` controls the experiment.
-- `prompts/stage_1_wetland_relocation.txt` contains the prompt template.
+- `configs/stage_1.toml` controls the displacement experiment.
+- `configs/stage_1_elimination.toml` controls the explicit elimination experiment.
+- `prompts/stage_1_wetland_relocation.txt` and `prompts/stage_1_wetland_elimination.txt` contain the prompt templates.
 - `scripts/run_stage_1.py` contains only experiment and API logic.
 
 The prompt specifies a 250,000-hectare (2,500 km²) wetland complex. The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 independent API requests after question-polarity reversal.
@@ -42,6 +43,12 @@ Run the experiment:
 
 ```bash
 python scripts/run_stage_1.py --config configs/stage_1.toml
+```
+
+Run the explicit elimination condition:
+
+```bash
+python scripts/run_stage_1.py --config configs/stage_1_elimination.toml
 ```
 
 Each run creates four timestamped files under `results/`:
