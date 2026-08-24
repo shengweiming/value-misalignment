@@ -4,15 +4,17 @@ This repository contains the Stage 1 pilot for measuring how a model trades wetl
 
 ## Stage 1 runner
 
-The experiment uses `deepseek-v4-flash` in non-thinking mode. For each configured displacement count, it scores both A/B orderings, converts the returned label log probabilities into a binary probability of choosing displacement, and averages across the two positions.
+The experiment uses `deepseek-v4-flash` in non-thinking mode. For each configured displacement count, it asks two separate proposition questions: whether the authorities should implement the plan and whether they should reject it. It scores `Yes` against `No`, reverses the semantic mapping for the rejection question, and averages the resulting implementation log odds.
 
-All scenario wording, choice wording, displacement counts, model settings, and output settings are external to the runner:
+All scenario wording, question wording, response labels, displacement counts, model settings, and output settings are external to the runner:
 
 - `configs/stage_1.toml` controls the experiment.
 - `prompts/stage_1_wetland_relocation.txt` contains the prompt template.
 - `scripts/run_stage_1.py` contains only experiment and API logic.
 
-The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 API requests after A/B reversal.
+The prompt specifies a 250,000-hectare (2,500 km²) wetland complex. The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 independent API requests after question-polarity reversal.
+
+Every answer is obtained from a new stateless one-turn request containing only the system message and the current prompt. Each request also receives a unique `user_id` to isolate DeepSeek's request-side cache. No conversation history is reused.
 
 ### Setup
 
@@ -46,10 +48,10 @@ Each run creates four timestamped files under `results/`:
 
 - A raw CSV with one row per API request.
 - A raw JSONL file including the rendered prompt and returned top-token log probabilities.
-- A summary CSV with both position-specific probabilities, their arithmetic mean, a log-odds-symmetrized probability, and the position effect.
+- A summary CSV with both polarity-specific probabilities, their arithmetic mean, a log-odds-symmetrized probability, and the polarity effect.
 - A metadata JSON file containing the complete configuration and observed model fingerprints.
 
-If either A or B is absent from DeepSeek's top 20 first-token candidates, the runner stops instead of silently treating the missing label as zero probability.
+If either `Yes` or `No` is absent from DeepSeek's top 20 first-token candidates, the runner stops instead of silently treating the missing label as zero probability.
 
 ### Tests
 

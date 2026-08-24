@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the Stage 1 A/B displacement sweep against the DeepSeek API."""
+"""Run paired-polarity Stage 1 probability sweeps against DeepSeek."""
 
 from __future__ import annotations
 
@@ -15,13 +15,15 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
+from uuid import uuid4
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+POLARITIES = ("implement_question", "reject_question")
 
 
 class ExperimentError(RuntimeError):
-    """Raised when an experiment cannot produce a valid binary score."""
+    """Raised when an experiment cannot produce a valid semantic score."""
 
 
 def sha256_text(text: str) -> str:
@@ -37,14 +39,13 @@ def load_config(path: Path) -> dict[str, Any]:
     with path.open("rb") as config_file:
         config = tomllib.load(config_file)
 
-    for section in ("experiment", "model", "choices"):
+    for section in ("experiment", "model", "elicitation"):
         if section not in config:
             raise ExperimentError(f"Config is missing the [{section}] section")
 
     experiment = config["experiment"]
     model = config["model"]
-    choices = config["choices"]
-
+    elicitation = config["elicitation"]
     required_experiment = (
         "name",
         "prompt_files",
@@ -53,7 +54,12 @@ def load_config(path: Path) -> dict[str, Any]:
         "system_prompt",
     )
     required_model = ("name", "base_url", "api_key_env")
-    required_choices = ("label_a", "label_b", "displace", "do_not_displace")
+    required_elicitation = (
+        "yes_label",
+        "no_label",
+        "implement_question",
+        "reject_question",
+    )
 
     for key in required_experiment:
         if key not in experiment:
@@ -61,9 +67,9 @@ def load_config(path: Path) -> dict[str, Any]:
     for key in required_model:
         if key not in model:
             raise ExperimentError(f"Config is missing model.{key}")
-    for key in required_choices:
-        if key not in choices:
-            raise ExperimentError(f"Config is missing choices.{key}")
+    for key in required_elicitation:
+        if key not in elicitation:
+            raise ExperimentError(f"Config is missing elicitation.{key}")
 
     counts = experiment["displacement_counts"]
     if not counts or any(not isinstance(value, int) or value < 0 for value in counts):
@@ -71,11 +77,12 @@ def load_config(path: Path) -> dict[str, Any]:
     if len(set(counts)) != len(counts):
         raise ExperimentError("experiment.displacement_counts contains duplicates")
 
-    labels = (choices["label_a"], choices["label_b"])
-    if any(not isinstance(label, str) or len(label) != 1 for label in labels):
-        raise ExperimentError("Choice labels must each be exactly one character")
-    if labels[0] == labels[1]:
-        raise ExperimentError("Choice labels must be different")
+    yes_label = elicitation["yes_label"]
+    no_label = elicitation["no_label"]
+    if any(not isinstance(label, str) or not label.strip() for label in (yes_label, no_label)):
+        raise ExperimentError("Yes and No labels must be non-empty strings")
+    if yes_label.strip() == no_label.strip():
+        raise ExperimentError("Yes and No labels must be different")
 
     top_logprobs = int(model.get("top_logprobs", 20))
     if not 1 <= top_logprobs <= 20:
@@ -84,51 +91,36 @@ def load_config(path: Path) -> dict[str, Any]:
     return config
 
 
-def render_choice(template: str, displaced_families: int) -> str:
-    family_word = "family" if displaced_families == 1 else "families"
-    return template.format(
-        displaced_families=displaced_families,
-        family_word=family_word,
-    )
-
-
 def render_prompt(
     template: str,
-    choices: dict[str, Any],
+    elicitation: dict[str, Any],
     displaced_families: int,
-    ordering: str,
-) -> tuple[str, str]:
-    displace = render_choice(choices["displace"], displaced_families)
-    do_not_displace = render_choice(choices["do_not_displace"], displaced_families)
-    label_a = choices["label_a"]
-    label_b = choices["label_b"]
+    polarity: str,
+) -> tuple[str, str, str]:
+    if polarity not in POLARITIES:
+        raise ExperimentError(f"Unknown question polarity: {polarity}")
 
-    if ordering == "displace_as_a":
-        choice_a, choice_b = displace, do_not_displace
-        displace_label = label_a
-    elif ordering == "displace_as_b":
-        choice_a, choice_b = do_not_displace, displace
-        displace_label = label_b
-    else:
-        raise ExperimentError(f"Unknown ordering: {ordering}")
-
+    yes_label = elicitation["yes_label"]
+    no_label = elicitation["no_label"]
+    question = elicitation[polarity]
+    implementation_label = yes_label if polarity == "implement_question" else no_label
     variables = {
         "displaced_families": displaced_families,
         "family_word": "family" if displaced_families == 1 else "families",
-        "label_a": label_a,
-        "label_b": label_b,
-        "choice_a": choice_a,
-        "choice_b": choice_b,
+        "decision_question": question,
+        "yes_label": yes_label,
+        "no_label": no_label,
     }
     try:
-        return template.format(**variables), displace_label
+        prompt = template.format(**variables)
     except KeyError as exc:
         raise ExperimentError(f"Unknown prompt placeholder: {exc.args[0]}") from exc
+    return prompt, implementation_label, question
 
 
 def experiment_cases(config: dict[str, Any]) -> Iterable[dict[str, Any]]:
     experiment = config["experiment"]
-    choices = config["choices"]
+    elicitation = config["elicitation"]
     for prompt_value in experiment["prompt_files"]:
         prompt_path = resolve_path(prompt_value)
         try:
@@ -137,20 +129,21 @@ def experiment_cases(config: dict[str, Any]) -> Iterable[dict[str, Any]]:
             raise ExperimentError(f"Prompt file not found: {prompt_path}") from exc
 
         for displaced_families in experiment["displacement_counts"]:
-            for ordering in ("displace_as_a", "displace_as_b"):
-                prompt, displace_label = render_prompt(
+            for polarity in POLARITIES:
+                prompt, implementation_label, question = render_prompt(
                     template,
-                    choices,
+                    elicitation,
                     displaced_families,
-                    ordering,
+                    polarity,
                 )
                 yield {
                     "prompt_id": prompt_path.stem,
                     "prompt_path": str(prompt_path),
                     "template_sha256": sha256_text(template),
                     "displaced_families": displaced_families,
-                    "ordering": ordering,
-                    "displace_label": displace_label,
+                    "question_polarity": polarity,
+                    "question_text": question,
+                    "implementation_label": implementation_label,
                     "prompt": prompt,
                     "prompt_sha256": sha256_text(prompt),
                 }
@@ -166,7 +159,7 @@ def logsumexp(values: list[float]) -> float:
 def aggregate_label_logprob(
     top_tokens: list[dict[str, Any]], label: str
 ) -> tuple[float, list[dict[str, Any]]]:
-    variants = [item for item in top_tokens if item["token"].strip() == label]
+    variants = [item for item in top_tokens if item["token"].strip() == label.strip()]
     if not variants:
         visible = ", ".join(repr(item["token"]) for item in top_tokens)
         raise ExperimentError(
@@ -175,15 +168,15 @@ def aggregate_label_logprob(
     return logsumexp([float(item["logprob"]) for item in variants]), variants
 
 
-def binary_probability(logprob_a: float, logprob_b: float) -> float:
-    return probability_from_logit(logprob_a - logprob_b)
-
-
 def probability_from_logit(logit: float) -> float:
     if logit >= 0:
         return 1.0 / (1.0 + math.exp(-logit))
-    exp_delta = math.exp(logit)
-    return exp_delta / (1.0 + exp_delta)
+    exp_logit = math.exp(logit)
+    return exp_logit / (1.0 + exp_logit)
+
+
+def binary_probability(logprob_positive: float, logprob_negative: float) -> float:
+    return probability_from_logit(logprob_positive - logprob_negative)
 
 
 def create_client(model_config: dict[str, Any]) -> Any:
@@ -218,21 +211,28 @@ def score_case(
 ) -> dict[str, Any]:
     model = config["model"]
     experiment = config["experiment"]
-    choices = config["choices"]
+    elicitation = config["elicitation"]
+    session_id = f"stage1-{uuid4()}"
 
+    # Each answer is a fresh one-turn chat. The unique user_id also isolates
+    # DeepSeek's request-side KV cache; no conversation history is ever reused.
+    messages = [
+        {"role": "system", "content": experiment["system_prompt"]},
+        {"role": "user", "content": case["prompt"]},
+    ]
     response = client.chat.completions.create(
         model=model["name"],
-        messages=[
-            {"role": "system", "content": experiment["system_prompt"]},
-            {"role": "user", "content": case["prompt"]},
-        ],
+        messages=messages,
         max_tokens=1,
         temperature=float(model.get("temperature", 1.0)),
         top_p=float(model.get("top_p", 1.0)),
         logprobs=True,
         top_logprobs=int(model.get("top_logprobs", 20)),
         stream=False,
-        extra_body={"thinking": {"type": "disabled"}},
+        extra_body={
+            "thinking": {"type": "disabled"},
+            "user_id": session_id,
+        },
     )
 
     choice = response.choices[0]
@@ -248,37 +248,38 @@ def score_case(
         }
         for token in first_token.top_logprobs
     ]
-    label_a = choices["label_a"]
-    label_b = choices["label_b"]
-    logprob_a, variants_a = aggregate_label_logprob(top_tokens, label_a)
-    logprob_b, variants_b = aggregate_label_logprob(top_tokens, label_b)
-    probability_a = binary_probability(logprob_a, logprob_b)
-    probability_displace = (
-        probability_a if case["displace_label"] == label_a else 1.0 - probability_a
-    )
-    semantic_logit_displace = (
-        logprob_a - logprob_b
-        if case["displace_label"] == label_a
-        else logprob_b - logprob_a
-    )
+    yes_label = elicitation["yes_label"]
+    no_label = elicitation["no_label"]
+    logprob_yes, variants_yes = aggregate_label_logprob(top_tokens, yes_label)
+    logprob_no, variants_no = aggregate_label_logprob(top_tokens, no_label)
+    probability_yes = binary_probability(logprob_yes, logprob_no)
+
+    if case["implementation_label"] == yes_label:
+        probability_implement = probability_yes
+        semantic_logit_implement = logprob_yes - logprob_no
+    else:
+        probability_implement = 1.0 - probability_yes
+        semantic_logit_implement = logprob_no - logprob_yes
 
     usage = response.usage
     return {
         **case,
         "experiment": experiment["name"],
+        "session_id": session_id,
+        "session_mode": "stateless_one_turn_unique_user_id",
         "model_requested": model["name"],
         "model_returned": getattr(response, "model", None),
         "system_fingerprint": getattr(response, "system_fingerprint", None),
         "response_id": getattr(response, "id", None),
         "generated_text": choice.message.content,
         "first_generated_token": first_token.token,
-        "label_a_logprob": logprob_a,
-        "label_b_logprob": logprob_b,
-        "label_a_variants": variants_a,
-        "label_b_variants": variants_b,
-        "p_a_binary": probability_a,
-        "p_displace": probability_displace,
-        "semantic_logit_displace": semantic_logit_displace,
+        "yes_logprob": logprob_yes,
+        "no_logprob": logprob_no,
+        "yes_variants": variants_yes,
+        "no_variants": variants_no,
+        "p_yes_binary": probability_yes,
+        "p_implement": probability_implement,
+        "semantic_logit_implement": semantic_logit_implement,
         "top_logprobs": top_tokens,
         "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
         "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
@@ -291,15 +292,17 @@ RAW_CSV_FIELDS = [
     "experiment",
     "prompt_id",
     "displaced_families",
-    "ordering",
-    "displace_label",
-    "p_displace",
-    "semantic_logit_displace",
-    "p_a_binary",
-    "label_a_logprob",
-    "label_b_logprob",
+    "question_polarity",
+    "implementation_label",
+    "p_implement",
+    "semantic_logit_implement",
+    "p_yes_binary",
+    "yes_logprob",
+    "no_logprob",
     "generated_text",
     "first_generated_token",
+    "session_id",
+    "session_mode",
     "model_requested",
     "model_returned",
     "system_fingerprint",
@@ -322,35 +325,39 @@ def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[s
     grouped: dict[tuple[str, int], dict[str, dict[str, Any]]] = defaultdict(dict)
     for result in results:
         key = (result["prompt_id"], result["displaced_families"])
-        grouped[key][result["ordering"]] = result
+        grouped[key][result["question_polarity"]] = result
 
     summaries = []
-    for (prompt_id, displaced_families), orderings in sorted(grouped.items()):
-        missing = {"displace_as_a", "displace_as_b"} - set(orderings)
+    for (prompt_id, displaced_families), polarities in sorted(grouped.items()):
+        missing = set(POLARITIES) - set(polarities)
         if missing:
             raise ExperimentError(
-                f"Cannot average {prompt_id}/{displaced_families}; missing {sorted(missing)}"
+                f"Cannot symmetrize {prompt_id}/{displaced_families}; "
+                f"missing {sorted(missing)}"
             )
-        as_a = float(orderings["displace_as_a"]["p_displace"])
-        as_b = float(orderings["displace_as_b"]["p_displace"])
-        logit_as_a = float(orderings["displace_as_a"]["semantic_logit_displace"])
-        logit_as_b = float(orderings["displace_as_b"]["semantic_logit_displace"])
-        mean_semantic_logit = (logit_as_a + logit_as_b) / 2.0
+        implement = polarities["implement_question"]
+        reject = polarities["reject_question"]
+        p_implement = float(implement["p_implement"])
+        p_reject_reversed = float(reject["p_implement"])
+        logit_implement = float(implement["semantic_logit_implement"])
+        logit_reject_reversed = float(reject["semantic_logit_implement"])
+        mean_semantic_logit = (logit_implement + logit_reject_reversed) / 2.0
         summaries.append(
             {
                 "run_id": run_id,
                 "prompt_id": prompt_id,
                 "displaced_families": displaced_families,
-                "p_displace_as_a": as_a,
-                "p_displace_as_b": as_b,
-                "p_displace_mean": (as_a + as_b) / 2.0,
-                "order_effect_a_minus_b": as_a - as_b,
-                "absolute_order_gap": abs(as_a - as_b),
-                "semantic_logit_as_a": logit_as_a,
-                "semantic_logit_as_b": logit_as_b,
+                "p_implement_from_implement_question": p_implement,
+                "p_implement_from_reject_question": p_reject_reversed,
+                "p_implement_arithmetic_mean": (p_implement + p_reject_reversed) / 2.0,
+                "absolute_polarity_gap": abs(p_implement - p_reject_reversed),
+                "semantic_logit_implement_question": logit_implement,
+                "semantic_logit_reject_question": logit_reject_reversed,
                 "semantic_logit_mean": mean_semantic_logit,
-                "p_displace_logodds_sym": probability_from_logit(mean_semantic_logit),
-                "position_effect_logit_b_minus_a": logit_as_b - logit_as_a,
+                "p_implement_logodds_sym": probability_from_logit(mean_semantic_logit),
+                "polarity_effect_logit_reject_minus_implement": (
+                    logit_reject_reversed - logit_implement
+                ),
             }
         )
     return summaries
@@ -360,16 +367,15 @@ SUMMARY_FIELDS = [
     "run_id",
     "prompt_id",
     "displaced_families",
-    "p_displace_as_a",
-    "p_displace_as_b",
-    "p_displace_mean",
-    "order_effect_a_minus_b",
-    "absolute_order_gap",
-    "semantic_logit_as_a",
-    "semantic_logit_as_b",
+    "p_implement_from_implement_question",
+    "p_implement_from_reject_question",
+    "p_implement_arithmetic_mean",
+    "absolute_polarity_gap",
+    "semantic_logit_implement_question",
+    "semantic_logit_reject_question",
     "semantic_logit_mean",
-    "p_displace_logodds_sym",
-    "position_effect_logit_b_minus_a",
+    "p_implement_logodds_sym",
+    "polarity_effect_logit_reject_minus_implement",
 ]
 
 
@@ -388,6 +394,11 @@ def write_metadata(
         "config": config,
         "python_version": sys.version,
         "requests_completed": len(results),
+        "session_policy": (
+            "Every answer uses a stateless one-turn request, a fresh messages list, "
+            "and a unique DeepSeek user_id."
+        ),
+        "unique_session_ids": len({result["session_id"] for result in results}),
         "system_fingerprints": sorted(
             {result["system_fingerprint"] for result in results if result["system_fingerprint"]}
         ),
@@ -416,17 +427,16 @@ def run_experiment(config_path: Path, config: dict[str, Any]) -> tuple[Path, Pat
         for index, case in enumerate(cases, start=1):
             print(
                 f"[{index}/{len(cases)}] {case['prompt_id']} | "
-                f"families={case['displaced_families']} | {case['ordering']}",
+                f"families={case['displaced_families']} | {case['question_polarity']}",
                 flush=True,
             )
             result = score_case(client, config, case)
             results.append(result)
             writer.writerow(raw_csv_row(result, run_id))
             csv_file.flush()
-            json_record = {"run_id": run_id, **result}
-            jsonl_file.write(json.dumps(json_record, ensure_ascii=False) + "\n")
+            jsonl_file.write(json.dumps({"run_id": run_id, **result}, ensure_ascii=False) + "\n")
             jsonl_file.flush()
-            print(f"  P(displace)={result['p_displace']:.6f}", flush=True)
+            print(f"  P(implement)={result['p_implement']:.6f}", flush=True)
 
     summaries = summarize_results(results, run_id)
     with summary_path.open("w", encoding="utf-8", newline="") as summary_file:
@@ -440,11 +450,11 @@ def run_experiment(config_path: Path, config: dict[str, Any]) -> tuple[Path, Pat
 
 def print_dry_run(config: dict[str, Any]) -> None:
     cases = list(experiment_cases(config))
-    print(f"Rendered {len(cases)} requests; no API calls will be made.\n")
+    print(f"Rendered {len(cases)} independent requests; no API calls will be made.\n")
     for index, case in enumerate(cases, start=1):
         print(
             f"--- Request {index}: {case['prompt_id']} | "
-            f"families={case['displaced_families']} | {case['ordering']} ---"
+            f"families={case['displaced_families']} | {case['question_polarity']} ---"
         )
         print(case["prompt"])
         print()
@@ -452,7 +462,10 @@ def print_dry_run(config: dict[str, Any]) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Measure P(displace) across displacement levels with DeepSeek logprobs."
+        description=(
+            "Measure paired-polarity P(implement) across displacement levels "
+            "with DeepSeek logprobs."
+        )
     )
     parser.add_argument(
         "--config",
