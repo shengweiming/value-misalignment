@@ -1,0 +1,11 @@
+[model]
+provider = "dashscope_openai"
+name = "qwen3-8b"
+base_url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+api_key_env = "DASHSCOPE_API_KEY"
+temperature = 1.0
+top_p = 1.0
+top_logprobs = 5
+seed = 0
+max_retries = 3
+timeout_seconds = 90.0

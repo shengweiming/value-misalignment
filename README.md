@@ -4,15 +4,17 @@ This repository contains the Stage 1 pilot for measuring how a model trades wetl
 
 ## Stage 1 runner
 
-The experiment uses `deepseek-v4-flash` in non-thinking mode. It scores `Yes` against `No` for each configured family count. Experiments can use the direct implementation question alone or pair it with a reversed rejection question; direct-only mode avoids the negation artifact observed in the initial pilot.
+The experiment supports `deepseek-v4-flash` and `qwen3-8b` in non-thinking mode. It scores `Yes` against `No` for each configured family count. Experiments can use the direct implementation question alone or pair it with a reversed rejection question; direct-only mode avoids the negation artifact observed in the initial pilot.
 
 All scenario wording, question wording, response labels, family counts, model settings, and output settings are external to the runner:
 
 - `configs/stage_1.toml` controls the displacement experiment.
 - `configs/stage_1_elimination.toml` controls the explicit elimination experiment.
+- `configs/stage_1_elimination_direct.toml` is the direct-question-only elimination baseline used for cross-model comparisons.
 - `configs/stage_1_elimination_ecology_constitution.toml` adds the ecology-values constitution as a system-level instruction and uses the direct implementation question only.
 - `configs/stage_1_elimination_ecology_constitution_without_guardrail.toml` is an ablation containing only the constitution's first two paragraphs.
 - `configs/stage_1_elimination_ecology_severe_human_costs.toml` adds an explicit, bounded provision allowing exceptional ecological value to justify severe human costs.
+- `configs/models/qwen3_8b.toml` selects hosted Qwen3-8B without changing an experiment condition.
 - `prompts/stage_1_wetland_relocation.txt` and `prompts/stage_1_wetland_elimination.txt` contain the prompt templates.
 - `constitutions/ecological_diversity.txt` contains the three-paragraph constitution separately from the scenario prompt.
 - `constitutions/ecological_diversity_without_guardrail.txt` contains the corresponding two-paragraph ablation.
@@ -21,7 +23,7 @@ All scenario wording, question wording, response labels, family counts, model se
 
 The prompt specifies a 250,000-hectare (2,500 km²) wetland complex. The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 independent API requests after question-polarity reversal.
 
-Every answer is obtained from a new stateless one-turn request containing only the system message and the current prompt. Each request also receives a unique `user_id` to isolate DeepSeek's request-side cache. No conversation history is reused.
+Every answer is obtained from a new stateless one-turn request containing only the system message and the current prompt. DeepSeek requests receive a unique `user_id`; DashScope session caching is explicitly disabled. No conversation history is reused.
 
 ### Setup
 
@@ -37,7 +39,10 @@ Set the API key in the shell. Do not put it in the repository or configuration f
 
 ```bash
 export DEEPSEEK_API_KEY="your-key-here"
+export DASHSCOPE_API_KEY="your-singapore-model-studio-key"
 ```
+
+For DashScope, activate Model Studio Large Model Inference in the Singapore region before calling a model. Use the default workspace or ensure that the API key's workspace authorizes `qwen3-8b`.
 
 Inspect all 20 rendered requests without making API calls:
 
@@ -55,6 +60,12 @@ Run the explicit elimination condition:
 
 ```bash
 python scripts/run_stage_1.py --config configs/stage_1_elimination.toml
+```
+
+Run its direct-question-only baseline:
+
+```bash
+python scripts/run_stage_1.py --config configs/stage_1_elimination_direct.toml
 ```
 
 Run the direct-question elimination condition with the ecology-values constitution:
@@ -75,6 +86,16 @@ Run the condition allowing exceptional ecological value to justify severe human 
 python scripts/run_stage_1.py --config configs/stage_1_elimination_ecology_severe_human_costs.toml
 ```
 
+Run any condition on hosted Qwen3-8B by adding its model profile:
+
+```bash
+python scripts/run_stage_1.py \
+  --config configs/stage_1_elimination_ecology_severe_human_costs.toml \
+  --model-profile configs/models/qwen3_8b.toml
+```
+
+Qwen3-8B streams its response and returns at most five candidate tokens. The runner captures the first streamed token and stops with an error if either response label is absent.
+
 Each run creates four timestamped files under `results/`:
 
 - A raw CSV with one row per API request.
@@ -82,11 +103,11 @@ Each run creates four timestamped files under `results/`:
 - A summary CSV with the direct implementation probability and, when the rejection polarity is enabled, the reversed probability, polarity gap, and log-odds-symmetrized score.
 - A metadata JSON file containing the complete configuration and observed model fingerprints.
 
-If either `Yes` or `No` is absent from DeepSeek's top 20 first-token candidates, the runner stops instead of silently treating the missing label as zero probability.
+If either `Yes` or `No` is absent from the configured first-token candidates, the runner stops instead of silently treating the missing label as zero probability.
 
 ### Tests
 
-The local tests do not call DeepSeek or require an API key:
+The local tests do not call either provider or require an API key:
 
 ```bash
 python -m unittest discover -s tests -v

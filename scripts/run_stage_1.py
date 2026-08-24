@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run configurable Stage 1 policy sweeps against DeepSeek."""
+"""Run configurable Stage 1 policy sweeps against hosted chat models."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from uuid import uuid4
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 POLARITIES = ("implement_question", "reject_question")
+PROVIDERS = ("deepseek_openai", "dashscope_openai")
 
 
 class ExperimentError(RuntimeError):
@@ -35,9 +36,19 @@ def resolve_path(value: str, *, base: Path = REPO_ROOT) -> Path:
     return path if path.is_absolute() else base / path
 
 
-def load_config(path: Path) -> dict[str, Any]:
+def load_config(
+    path: Path,
+    model_profile_path: Path | None = None,
+) -> dict[str, Any]:
     with path.open("rb") as config_file:
         config = tomllib.load(config_file)
+
+    if model_profile_path is not None:
+        with model_profile_path.open("rb") as profile_file:
+            profile = tomllib.load(profile_file)
+        if "model" not in profile:
+            raise ExperimentError("Model profile is missing the [model] section")
+        config["model"] = profile["model"]
 
     for section in ("experiment", "model", "elicitation"):
         if section not in config:
@@ -105,9 +116,19 @@ def load_config(path: Path) -> dict[str, Any]:
     if yes_label.strip() == no_label.strip():
         raise ExperimentError("Yes and No labels must be different")
 
+    provider = model.get("provider", "deepseek_openai")
+    if provider not in PROVIDERS:
+        raise ExperimentError(
+            f"model.provider must be one of {list(PROVIDERS)}; received {provider!r}"
+        )
+
     top_logprobs = int(model.get("top_logprobs", 20))
-    if not 1 <= top_logprobs <= 20:
-        raise ExperimentError("model.top_logprobs must be between 1 and 20")
+    maximum_top_logprobs = 5 if provider == "dashscope_openai" else 20
+    if not 1 <= top_logprobs <= maximum_top_logprobs:
+        raise ExperimentError(
+            "model.top_logprobs must be between 1 and "
+            f"{maximum_top_logprobs} for {provider}"
+        )
 
     return config
 
@@ -242,7 +263,7 @@ def create_client(model_config: dict[str, Any]) -> Any:
     if not api_key:
         raise ExperimentError(
             f"Environment variable {api_key_env} is not set. "
-            "Export your DeepSeek API key before running the experiment."
+            "Export the configured provider API key before running the experiment."
         )
 
     return OpenAI(
@@ -251,6 +272,108 @@ def create_client(model_config: dict[str, Any]) -> Any:
         timeout=float(model_config.get("timeout_seconds", 90.0)),
         max_retries=int(model_config.get("max_retries", 3)),
     )
+
+
+def provider_request(
+    model: dict[str, Any],
+    messages: list[dict[str, Any]],
+    session_id: str,
+) -> tuple[dict[str, Any], str]:
+    provider = model.get("provider", "deepseek_openai")
+    request: dict[str, Any] = {
+        "model": model["name"],
+        "messages": messages,
+        "max_tokens": 1,
+        "temperature": float(model.get("temperature", 1.0)),
+        "top_p": float(model.get("top_p", 1.0)),
+        "logprobs": True,
+        "top_logprobs": int(model.get("top_logprobs", 20)),
+    }
+    if provider == "deepseek_openai":
+        request.update(
+            {
+                "stream": False,
+                "extra_body": {
+                    "thinking": {"type": "disabled"},
+                    "user_id": session_id,
+                },
+            }
+        )
+        return request, "stateless_one_turn_unique_user_id"
+
+    request.update(
+        {
+            "stream": True,
+            "extra_body": {
+                "enable_thinking": False,
+                "seed": int(model.get("seed", 0)),
+            },
+            "extra_headers": {"x-dashscope-session-cache": "disable"},
+        }
+    )
+    return request, "stateless_one_turn_cache_disabled"
+
+
+def extract_response(response: Any, *, streamed: bool) -> dict[str, Any]:
+    if not streamed:
+        choice = response.choices[0]
+        if choice.logprobs is None or not choice.logprobs.content:
+            raise ExperimentError("Model returned no token log probabilities")
+        return {
+            "generated_text": choice.message.content or "",
+            "first_token": choice.logprobs.content[0],
+            "usage": response.usage,
+            "response_id": getattr(response, "id", None),
+            "model_returned": getattr(response, "model", None),
+            "system_fingerprint": getattr(response, "system_fingerprint", None),
+        }
+
+    content_parts: list[str] = []
+    first_token = None
+    usage = None
+    response_id = None
+    model_returned = None
+    system_fingerprint = None
+    for chunk in response:
+        response_id = getattr(chunk, "id", None) or response_id
+        model_returned = getattr(chunk, "model", None) or model_returned
+        system_fingerprint = (
+            getattr(chunk, "system_fingerprint", None) or system_fingerprint
+        )
+        usage = getattr(chunk, "usage", None) or usage
+        choices = getattr(chunk, "choices", None) or []
+        if not choices:
+            continue
+        choice = choices[0]
+        delta = getattr(choice, "delta", None)
+        content = getattr(delta, "content", None) if delta is not None else None
+        if content:
+            content_parts.append(content)
+        logprobs = getattr(choice, "logprobs", None)
+        logprob_content = getattr(logprobs, "content", None) if logprobs else None
+        if first_token is None and logprob_content:
+            first_token = logprob_content[0]
+
+    if first_token is None:
+        raise ExperimentError("Streamed model response returned no token log probabilities")
+    return {
+        "generated_text": "".join(content_parts),
+        "first_token": first_token,
+        "usage": usage,
+        "response_id": response_id,
+        "model_returned": model_returned,
+        "system_fingerprint": system_fingerprint,
+    }
+
+
+def usage_value(usage: Any, *names: str) -> int | None:
+    if usage is None:
+        return None
+    for name in names:
+        value = getattr(usage, name, None)
+        if value is not None:
+            return int(value)
+    return None
 
 
 def score_case(
@@ -263,33 +386,28 @@ def score_case(
     elicitation = config["elicitation"]
     session_id = f"stage1-{uuid4()}"
     system_prompt = resolved_system_prompt(config)
+    provider = model.get("provider", "deepseek_openai")
 
-    # Each answer is a fresh one-turn chat. The unique user_id also isolates
-    # DeepSeek's request-side KV cache; no conversation history is ever reused.
+    # Every answer is a fresh one-turn chat with no conversation history.
+    # Provider-specific settings disable cache/session continuity.
     messages = [
         {"role": "system", "content": system_prompt["text"]},
         {"role": "user", "content": case["prompt"]},
     ]
-    response = client.chat.completions.create(
-        model=model["name"],
-        messages=messages,
-        max_tokens=1,
-        temperature=float(model.get("temperature", 1.0)),
-        top_p=float(model.get("top_p", 1.0)),
-        logprobs=True,
-        top_logprobs=int(model.get("top_logprobs", 20)),
-        stream=False,
-        extra_body={
-            "thinking": {"type": "disabled"},
-            "user_id": session_id,
-        },
+    request, session_mode = provider_request(model, messages, session_id)
+    try:
+        response = client.chat.completions.create(**request)
+    except Exception as exc:
+        if exc.__class__.__module__.split(".", 1)[0] == "openai":
+            raise ExperimentError(
+                f"{model['name']} API request failed: {exc}"
+            ) from exc
+        raise
+    extracted = extract_response(
+        response,
+        streamed=bool(request["stream"]),
     )
-
-    choice = response.choices[0]
-    if choice.logprobs is None or not choice.logprobs.content:
-        raise ExperimentError("DeepSeek returned no token log probabilities")
-
-    first_token = choice.logprobs.content[0]
+    first_token = extracted["first_token"]
     top_tokens = [
         {
             "token": token.token,
@@ -311,21 +429,22 @@ def score_case(
         probability_implement = 1.0 - probability_yes
         semantic_logit_implement = logprob_no - logprob_yes
 
-    usage = response.usage
+    usage = extracted["usage"]
     return {
         **case,
         "experiment": experiment["name"],
         "session_id": session_id,
-        "session_mode": "stateless_one_turn_unique_user_id",
+        "session_mode": session_mode,
+        "provider": provider,
         "model_requested": model["name"],
-        "model_returned": getattr(response, "model", None),
-        "system_fingerprint": getattr(response, "system_fingerprint", None),
-        "response_id": getattr(response, "id", None),
+        "model_returned": extracted["model_returned"],
+        "system_fingerprint": extracted["system_fingerprint"],
+        "response_id": extracted["response_id"],
         "system_prompt": system_prompt["text"],
         "system_prompt_sha256": system_prompt["sha256"],
         "constitution_path": system_prompt["constitution_path"],
         "constitution_sha256": system_prompt["constitution_sha256"],
-        "generated_text": choice.message.content,
+        "generated_text": extracted["generated_text"],
         "first_generated_token": first_token.token,
         "yes_logprob": logprob_yes,
         "no_logprob": logprob_no,
@@ -335,9 +454,9 @@ def score_case(
         "p_implement": probability_implement,
         "semantic_logit_implement": semantic_logit_implement,
         "top_logprobs": top_tokens,
-        "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
-        "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
-        "total_tokens": getattr(usage, "total_tokens", None) if usage else None,
+        "input_tokens": usage_value(usage, "prompt_tokens", "input_tokens"),
+        "output_tokens": usage_value(usage, "completion_tokens", "output_tokens"),
+        "total_tokens": usage_value(usage, "total_tokens"),
     }
 
 
@@ -358,6 +477,7 @@ RAW_CSV_FIELDS = [
     "first_generated_token",
     "session_id",
     "session_mode",
+    "provider",
     "model_requested",
     "model_returned",
     "system_fingerprint",
@@ -456,6 +576,7 @@ def write_metadata(
     config: dict[str, Any],
     run_id: str,
     results: list[dict[str, Any]],
+    model_profile_path: Path | None = None,
 ) -> None:
     system_prompt = resolved_system_prompt(config)
     metadata = {
@@ -463,13 +584,22 @@ def write_metadata(
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "config_path": str(config_path),
         "config_sha256": sha256_text(config_path.read_text(encoding="utf-8")),
+        "model_profile_path": (
+            str(model_profile_path) if model_profile_path is not None else None
+        ),
+        "model_profile_sha256": (
+            sha256_text(model_profile_path.read_text(encoding="utf-8"))
+            if model_profile_path is not None
+            else None
+        ),
         "config": config,
         "resolved_system_prompt": system_prompt,
         "python_version": sys.version,
         "requests_completed": len(results),
         "session_policy": (
-            "Every answer uses a stateless one-turn request, a fresh messages list, "
-            "and a unique DeepSeek user_id."
+            "Every answer uses a stateless one-turn request and a fresh messages "
+            "list. DeepSeek uses a unique user_id; DashScope session caching is "
+            "explicitly disabled."
         ),
         "unique_session_ids": len({result["session_id"] for result in results}),
         "system_fingerprints": sorted(
@@ -479,13 +609,23 @@ def write_metadata(
     path.write_text(json.dumps(metadata, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def run_experiment(config_path: Path, config: dict[str, Any]) -> tuple[Path, Path, Path, Path]:
+def filename_slug(value: str) -> str:
+    slug = "".join(character if character.isalnum() else "_" for character in value)
+    return slug.strip("_") or "model"
+
+
+def run_experiment(
+    config_path: Path,
+    config: dict[str, Any],
+    model_profile_path: Path | None = None,
+) -> tuple[Path, Path, Path, Path]:
     cases = list(experiment_cases(config))
     client = create_client(config["model"])
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     output_dir = resolve_path(config["experiment"]["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
-    stem = f"{run_id}_{config['experiment']['name']}"
+    model_slug = filename_slug(config["model"]["name"])
+    stem = f"{run_id}_{config['experiment']['name']}_{model_slug}"
     raw_csv_path = output_dir / f"{stem}_raw.csv"
     raw_jsonl_path = output_dir / f"{stem}_raw.jsonl"
     summary_path = output_dir / f"{stem}_summary.csv"
@@ -517,13 +657,24 @@ def run_experiment(config_path: Path, config: dict[str, Any]) -> tuple[Path, Pat
         writer.writeheader()
         writer.writerows(summaries)
 
-    write_metadata(metadata_path, config_path, config, run_id, results)
+    write_metadata(
+        metadata_path,
+        config_path,
+        config,
+        run_id,
+        results,
+        model_profile_path,
+    )
     return raw_csv_path, raw_jsonl_path, summary_path, metadata_path
 
 
 def print_dry_run(config: dict[str, Any]) -> None:
     cases = list(experiment_cases(config))
     system_prompt = resolved_system_prompt(config)
+    print(
+        f"Model: {config['model']['name']} "
+        f"({config['model'].get('provider', 'deepseek_openai')})"
+    )
     print(f"Rendered {len(cases)} independent requests; no API calls will be made.\n")
     print("--- System message used for every independent request ---")
     print(system_prompt["text"])
@@ -540,14 +691,21 @@ def print_dry_run(config: dict[str, Any]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Measure P(implement) across configured family counts "
-            "with DeepSeek logprobs."
+            "Measure P(implement) across configured family counts with first-token "
+            "log probabilities."
         )
     )
     parser.add_argument(
         "--config",
         default="configs/stage_1.toml",
         help="Path to the TOML experiment config (default: configs/stage_1.toml)",
+    )
+    parser.add_argument(
+        "--model-profile",
+        help=(
+            "Optional TOML file whose [model] section replaces the model settings "
+            "in the experiment config"
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -560,12 +718,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     config_path = resolve_path(args.config)
+    model_profile_path = (
+        resolve_path(args.model_profile) if args.model_profile is not None else None
+    )
     try:
-        config = load_config(config_path)
+        config = load_config(config_path, model_profile_path)
         if args.dry_run:
             print_dry_run(config)
             return 0
-        paths = run_experiment(config_path, config)
+        paths = run_experiment(config_path, config, model_profile_path)
     except (ExperimentError, OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
