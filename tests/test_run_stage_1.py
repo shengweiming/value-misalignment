@@ -2,6 +2,7 @@ import unittest
 from types import SimpleNamespace
 
 from scripts.run_stage_1 import (
+    ExperimentError,
     REPO_ROOT,
     aggregate_label_logprob,
     binary_probability,
@@ -36,6 +37,10 @@ class StageOneRunnerTests(unittest.TestCase):
             REPO_ROOT / "configs/stage_1_elimination_direct.toml",
             REPO_ROOT / "configs/models/qwen3_8b.toml",
         )
+        cls.qwen_beijing_config = load_config(
+            REPO_ROOT / "configs/stage_1_elimination_direct.toml",
+            REPO_ROOT / "configs/models/qwen3_8b_beijing.toml",
+        )
 
     def test_config_produces_twenty_paired_polarity_cases(self):
         cases = list(experiment_cases(self.config))
@@ -47,7 +52,7 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertEqual(cases[0]["consequence_type"], "displacement")
 
     def test_qwen_model_profile_replaces_deepseek_model_settings(self):
-        self.assertEqual(self.qwen_config["model"]["provider"], "dashscope_openai")
+        self.assertEqual(self.qwen_config["model"]["provider"], "dashscope_native")
         self.assertEqual(self.qwen_config["model"]["name"], "qwen3-8b")
         self.assertEqual(self.qwen_config["model"]["top_logprobs"], 5)
         self.assertEqual(self.qwen_config["experiment"]["consequence_type"], "elimination")
@@ -55,6 +60,16 @@ class StageOneRunnerTests(unittest.TestCase):
             self.qwen_config["experiment"]["question_polarities"],
             ["implement_question"],
         )
+
+    def test_qwen_beijing_profile_uses_mainland_endpoint_and_existing_key_name(self):
+        model = self.qwen_beijing_config["model"]
+        self.assertEqual(model["provider"], "dashscope_native")
+        self.assertEqual(model["name"], "qwen3-8b")
+        self.assertEqual(
+            model["base_url"],
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+        )
+        self.assertEqual(model["api_key_env"], "DASHSCOPE_API_KEY")
 
     def test_prompt_reverses_question_polarity_without_option_order(self):
         template = "N={family_count}. {decision_question} {yes_label}/{no_label}"
@@ -241,68 +256,78 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertAlmostEqual(first["p_implement"], 0.7310585786)
         self.assertAlmostEqual(first["semantic_logit_implement"], 1.0)
 
-    def test_qwen_streaming_response_is_scored_with_cache_disabled(self):
+    def test_qwen_native_response_is_scored_from_returned_logprobs(self):
         calls = []
 
-        def create(**kwargs):
-            calls.append(kwargs)
-            token_yes = SimpleNamespace(
-                token="Yes", logprob=-0.2, bytes=[89, 101, 115]
-            )
-            token_no = SimpleNamespace(token="No", logprob=-1.2, bytes=[78, 111])
-            first_token = SimpleNamespace(
-                token="Yes",
-                top_logprobs=[token_yes, token_no],
-            )
-            return iter(
-                [
-                    SimpleNamespace(
-                        id=f"qwen-response-{len(calls)}",
-                        model="qwen3-8b",
-                        system_fingerprint=None,
-                        usage=None,
-                        choices=[
-                            SimpleNamespace(
-                                delta=SimpleNamespace(content="Yes"),
-                                logprobs=SimpleNamespace(content=[first_token]),
-                            )
-                        ],
-                    ),
-                    SimpleNamespace(
-                        id=f"qwen-response-{len(calls)}",
-                        model="qwen3-8b",
-                        system_fingerprint=None,
-                        usage=SimpleNamespace(
-                            prompt_tokens=120,
-                            completion_tokens=1,
-                            total_tokens=121,
-                        ),
-                        choices=[],
-                    ),
-                ]
-            )
+        def generate(payload):
+            calls.append(payload)
+            return {
+                "request_id": f"qwen-response-{len(calls)}",
+                "output": {
+                    "choices": [
+                        {
+                            "finish_reason": "length",
+                            "message": {"content": "Yes", "role": "assistant"},
+                            "logprobs": {
+                                "content": [
+                                    {
+                                        "token": "Yes",
+                                        "logprob": -0.2,
+                                        "bytes": [89, 101, 115],
+                                        "top_logprobs": [
+                                            {
+                                                "token": "Yes",
+                                                "logprob": -0.2,
+                                                "bytes": [89, 101, 115],
+                                            },
+                                            {
+                                                "token": "No",
+                                                "logprob": -1.2,
+                                                "bytes": [78, 111],
+                                            },
+                                        ],
+                                    }
+                                ]
+                            },
+                        }
+                    ]
+                },
+                "usage": {"input_tokens": 120, "output_tokens": 1, "total_tokens": 121},
+            }
 
-        client = SimpleNamespace(
-            chat=SimpleNamespace(completions=SimpleNamespace(create=create))
-        )
+        client = SimpleNamespace(generate=generate)
         case = next(iter(experiment_cases(self.qwen_config)))
         first = score_case(client, self.qwen_config, case)
         second = score_case(client, self.qwen_config, case)
 
-        self.assertTrue(calls[0]["stream"])
-        self.assertEqual(calls[0]["top_logprobs"], 5)
-        self.assertEqual(calls[0]["extra_body"]["enable_thinking"], False)
-        self.assertEqual(calls[0]["extra_body"]["seed"], 0)
-        self.assertNotIn("user_id", calls[0]["extra_body"])
-        self.assertEqual(
-            calls[0]["extra_headers"]["x-dashscope-session-cache"], "disable"
-        )
+        parameters = calls[0]["parameters"]
+        self.assertTrue(parameters["logprobs"])
+        self.assertEqual(parameters["top_logprobs"], 5)
+        self.assertEqual(parameters["enable_thinking"], False)
+        self.assertEqual(parameters["seed"], 0)
+        self.assertEqual(len(calls[0]["input"]["messages"]), 2)
         self.assertNotEqual(first["session_id"], second["session_id"])
-        self.assertEqual(first["provider"], "dashscope_openai")
-        self.assertEqual(first["session_mode"], "stateless_one_turn_cache_disabled")
+        self.assertEqual(first["provider"], "dashscope_native")
+        self.assertEqual(first["session_mode"], "stateless_one_turn_native_request")
         self.assertEqual(first["generated_text"], "Yes")
         self.assertEqual(first["input_tokens"], 120)
         self.assertAlmostEqual(first["p_implement"], 0.7310585786)
+
+    def test_qwen_native_response_without_logprobs_is_rejected(self):
+        client = SimpleNamespace(
+            generate=lambda payload: {
+                "request_id": "missing-logprobs",
+                "output": {
+                    "choices": [
+                        {"message": {"content": "Yes", "role": "assistant"}}
+                    ]
+                },
+                "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+            }
+        )
+        case = next(iter(experiment_cases(self.qwen_config)))
+        with self.assertRaisesRegex(ExperimentError, "no token log probabilities"):
+            score_case(client, self.qwen_config, case)
 
 
 if __name__ == "__main__":

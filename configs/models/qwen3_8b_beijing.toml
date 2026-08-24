@@ -1,7 +1,7 @@
 [model]
 provider = "dashscope_native"
 name = "qwen3-8b"
-base_url = "https://dashscope-intl.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+base_url = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
 api_key_env = "DASHSCOPE_API_KEY"
 temperature = 1.0
 top_p = 1.0

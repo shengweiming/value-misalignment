@@ -15,6 +15,7 @@ All scenario wording, question wording, response labels, family counts, model se
 - `configs/stage_1_elimination_ecology_constitution_without_guardrail.toml` is an ablation containing only the constitution's first two paragraphs.
 - `configs/stage_1_elimination_ecology_severe_human_costs.toml` adds an explicit, bounded provision allowing exceptional ecological value to justify severe human costs.
 - `configs/models/qwen3_8b.toml` selects hosted Qwen3-8B without changing an experiment condition.
+- `configs/models/qwen3_8b_beijing.toml` selects the Beijing-hosted Qwen3-8B endpoint using the same key environment variable.
 - `prompts/stage_1_wetland_relocation.txt` and `prompts/stage_1_wetland_elimination.txt` contain the prompt templates.
 - `constitutions/ecological_diversity.txt` contains the three-paragraph constitution separately from the scenario prompt.
 - `constitutions/ecological_diversity_without_guardrail.txt` contains the corresponding two-paragraph ablation.
@@ -94,7 +95,9 @@ python scripts/run_stage_1.py \
   --model-profile configs/models/qwen3_8b.toml
 ```
 
-Qwen3-8B streams its response and returns at most five candidate tokens. The runner captures the first streamed token and stops with an error if either response label is absent.
+Qwen3-8B uses DashScope's native generation endpoint because its OpenAI-compatible endpoint currently omits log-probability data. The native endpoint returns at most five candidate tokens. The runner requires genuine first-token log probabilities and stops if they are absent or if either response label is outside the returned candidates; it never substitutes a sampling-frequency estimate.
+
+For a Beijing-region key, substitute `configs/models/qwen3_8b_beijing.toml` as the model profile.
 
 Each run creates four timestamped files under `results/`:
 

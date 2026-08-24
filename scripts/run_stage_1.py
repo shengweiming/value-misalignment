@@ -10,7 +10,10 @@ import json
 import math
 import os
 import sys
+import time
 import tomllib
+import urllib.error
+import urllib.request
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,7 +23,7 @@ from uuid import uuid4
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 POLARITIES = ("implement_question", "reject_question")
-PROVIDERS = ("deepseek_openai", "dashscope_openai")
+PROVIDERS = ("deepseek_openai", "dashscope_openai", "dashscope_native")
 
 
 class ExperimentError(RuntimeError):
@@ -123,7 +126,7 @@ def load_config(
         )
 
     top_logprobs = int(model.get("top_logprobs", 20))
-    maximum_top_logprobs = 5 if provider == "dashscope_openai" else 20
+    maximum_top_logprobs = 5 if provider.startswith("dashscope_") else 20
     if not 1 <= top_logprobs <= maximum_top_logprobs:
         raise ExperimentError(
             "model.top_logprobs must be between 1 and "
@@ -235,6 +238,10 @@ def aggregate_label_logprob(
         raise ExperimentError(
             f"Label {label!r} was absent from the returned top tokens: {visible}"
         )
+    if any(item.get("logprob") is None for item in variants):
+        raise ExperimentError(
+            f"Provider returned no numeric log probability for label {label!r}"
+        )
     return logsumexp([float(item["logprob"]) for item in variants]), variants
 
 
@@ -249,15 +256,61 @@ def binary_probability(logprob_positive: float, logprob_negative: float) -> floa
     return probability_from_logit(logprob_positive - logprob_negative)
 
 
-def create_client(model_config: dict[str, Any]) -> Any:
-    try:
-        from openai import OpenAI
-    except ImportError as exc:
-        raise ExperimentError(
-            "The openai package is not installed. Run: "
-            "python -m pip install -r requirements.txt"
-        ) from exc
+class DashScopeNativeClient:
+    """Minimal native DashScope client used to preserve token log probabilities."""
 
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        endpoint: str,
+        timeout: float,
+        max_retries: int,
+    ) -> None:
+        self.api_key = api_key
+        self.endpoint = endpoint
+        self.timeout = timeout
+        self.max_retries = max_retries
+
+    def generate(self, payload: dict[str, Any]) -> dict[str, Any]:
+        encoded_payload = json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            self.endpoint,
+            data=encoded_payload,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        for attempt in range(self.max_retries + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    response_body = response.read().decode("utf-8")
+                parsed = json.loads(response_body)
+                if not isinstance(parsed, dict):
+                    raise ExperimentError("DashScope returned a non-object JSON response")
+                return parsed
+            except urllib.error.HTTPError as exc:
+                error_body = exc.read().decode("utf-8", errors="replace")
+                retryable = exc.code == 429 or exc.code >= 500
+                if retryable and attempt < self.max_retries:
+                    time.sleep(2**attempt)
+                    continue
+                raise ExperimentError(
+                    f"DashScope API request failed with HTTP {exc.code}: {error_body}"
+                ) from exc
+            except urllib.error.URLError as exc:
+                if attempt < self.max_retries:
+                    time.sleep(2**attempt)
+                    continue
+                raise ExperimentError(f"DashScope API connection failed: {exc}") from exc
+            except json.JSONDecodeError as exc:
+                raise ExperimentError("DashScope returned invalid JSON") from exc
+        raise ExperimentError("DashScope API request failed after retries")
+
+
+def create_client(model_config: dict[str, Any]) -> Any:
     api_key_env = model_config["api_key_env"]
     api_key = os.getenv(api_key_env)
     if not api_key:
@@ -265,6 +318,22 @@ def create_client(model_config: dict[str, Any]) -> Any:
             f"Environment variable {api_key_env} is not set. "
             "Export the configured provider API key before running the experiment."
         )
+
+    if model_config.get("provider") == "dashscope_native":
+        return DashScopeNativeClient(
+            api_key=api_key,
+            endpoint=model_config["base_url"],
+            timeout=float(model_config.get("timeout_seconds", 90.0)),
+            max_retries=int(model_config.get("max_retries", 3)),
+        )
+
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise ExperimentError(
+            "The openai package is not installed. Run: "
+            "python -m pip install -r requirements.txt"
+        ) from exc
 
     return OpenAI(
         api_key=api_key,
@@ -300,6 +369,22 @@ def provider_request(
             }
         )
         return request, "stateless_one_turn_unique_user_id"
+
+    if provider == "dashscope_native":
+        return {
+            "model": model["name"],
+            "input": {"messages": messages},
+            "parameters": {
+                "result_format": "message",
+                "max_tokens": 1,
+                "temperature": float(model.get("temperature", 1.0)),
+                "top_p": float(model.get("top_p", 1.0)),
+                "enable_thinking": False,
+                "seed": int(model.get("seed", 0)),
+                "logprobs": True,
+                "top_logprobs": int(model.get("top_logprobs", 5)),
+            },
+        }, "stateless_one_turn_native_request"
 
     request.update(
         {
@@ -366,11 +451,39 @@ def extract_response(response: Any, *, streamed: bool) -> dict[str, Any]:
     }
 
 
+def extract_native_response(response: dict[str, Any]) -> dict[str, Any]:
+    try:
+        choice = response["output"]["choices"][0]
+    except (KeyError, IndexError, TypeError) as exc:
+        raise ExperimentError("DashScope returned no model choice") from exc
+
+    logprob_content = (choice.get("logprobs") or {}).get("content") or []
+    if not logprob_content:
+        raise ExperimentError(
+            "DashScope native response returned no token log probabilities"
+        )
+    message = choice.get("message") or {}
+    return {
+        "generated_text": message.get("content") or "",
+        "first_token": logprob_content[0],
+        "usage": response.get("usage"),
+        "response_id": response.get("request_id"),
+        "model_returned": response.get("model"),
+        "system_fingerprint": None,
+    }
+
+
+def object_value(value: Any, name: str, default: Any = None) -> Any:
+    if isinstance(value, dict):
+        return value.get(name, default)
+    return getattr(value, name, default)
+
+
 def usage_value(usage: Any, *names: str) -> int | None:
     if usage is None:
         return None
     for name in names:
-        value = getattr(usage, name, None)
+        value = object_value(usage, name)
         if value is not None:
             return int(value)
     return None
@@ -395,26 +508,34 @@ def score_case(
         {"role": "user", "content": case["prompt"]},
     ]
     request, session_mode = provider_request(model, messages, session_id)
-    try:
-        response = client.chat.completions.create(**request)
-    except Exception as exc:
-        if exc.__class__.__module__.split(".", 1)[0] == "openai":
-            raise ExperimentError(
-                f"{model['name']} API request failed: {exc}"
-            ) from exc
-        raise
-    extracted = extract_response(
-        response,
-        streamed=bool(request["stream"]),
-    )
+    if provider == "dashscope_native":
+        response = client.generate(request)
+        extracted = extract_native_response(response)
+    else:
+        try:
+            response = client.chat.completions.create(**request)
+        except Exception as exc:
+            if exc.__class__.__module__.split(".", 1)[0] == "openai":
+                raise ExperimentError(
+                    f"{model['name']} API request failed: {exc}"
+                ) from exc
+            raise
+        extracted = extract_response(
+            response,
+            streamed=bool(request["stream"]),
+        )
     first_token = extracted["first_token"]
     top_tokens = [
         {
-            "token": token.token,
-            "logprob": float(token.logprob),
-            "bytes": token.bytes,
+            "token": object_value(token, "token"),
+            "logprob": (
+                float(object_value(token, "logprob"))
+                if object_value(token, "logprob") is not None
+                else None
+            ),
+            "bytes": object_value(token, "bytes"),
         }
-        for token in first_token.top_logprobs
+        for token in object_value(first_token, "top_logprobs", [])
     ]
     yes_label = elicitation["yes_label"]
     no_label = elicitation["no_label"]
@@ -445,7 +566,7 @@ def score_case(
         "constitution_path": system_prompt["constitution_path"],
         "constitution_sha256": system_prompt["constitution_sha256"],
         "generated_text": extracted["generated_text"],
-        "first_generated_token": first_token.token,
+        "first_generated_token": object_value(first_token, "token"),
         "yes_logprob": logprob_yes,
         "no_logprob": logprob_no,
         "yes_variants": variants_yes,
@@ -598,8 +719,8 @@ def write_metadata(
         "requests_completed": len(results),
         "session_policy": (
             "Every answer uses a stateless one-turn request and a fresh messages "
-            "list. DeepSeek uses a unique user_id; DashScope session caching is "
-            "explicitly disabled."
+            "list. DeepSeek uses a unique user_id; native DashScope requests send "
+            "no conversation or session identifier."
         ),
         "unique_session_ids": len({result["session_id"] for result in results}),
         "system_fingerprints": sorted(
