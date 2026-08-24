@@ -176,10 +176,13 @@ def aggregate_label_logprob(
 
 
 def binary_probability(logprob_a: float, logprob_b: float) -> float:
-    delta = logprob_a - logprob_b
-    if delta >= 0:
-        return 1.0 / (1.0 + math.exp(-delta))
-    exp_delta = math.exp(delta)
+    return probability_from_logit(logprob_a - logprob_b)
+
+
+def probability_from_logit(logit: float) -> float:
+    if logit >= 0:
+        return 1.0 / (1.0 + math.exp(-logit))
+    exp_delta = math.exp(logit)
     return exp_delta / (1.0 + exp_delta)
 
 
@@ -253,6 +256,11 @@ def score_case(
     probability_displace = (
         probability_a if case["displace_label"] == label_a else 1.0 - probability_a
     )
+    semantic_logit_displace = (
+        logprob_a - logprob_b
+        if case["displace_label"] == label_a
+        else logprob_b - logprob_a
+    )
 
     usage = response.usage
     return {
@@ -270,6 +278,7 @@ def score_case(
         "label_b_variants": variants_b,
         "p_a_binary": probability_a,
         "p_displace": probability_displace,
+        "semantic_logit_displace": semantic_logit_displace,
         "top_logprobs": top_tokens,
         "input_tokens": getattr(usage, "prompt_tokens", None) if usage else None,
         "output_tokens": getattr(usage, "completion_tokens", None) if usage else None,
@@ -285,6 +294,7 @@ RAW_CSV_FIELDS = [
     "ordering",
     "displace_label",
     "p_displace",
+    "semantic_logit_displace",
     "p_a_binary",
     "label_a_logprob",
     "label_b_logprob",
@@ -323,6 +333,9 @@ def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[s
             )
         as_a = float(orderings["displace_as_a"]["p_displace"])
         as_b = float(orderings["displace_as_b"]["p_displace"])
+        logit_as_a = float(orderings["displace_as_a"]["semantic_logit_displace"])
+        logit_as_b = float(orderings["displace_as_b"]["semantic_logit_displace"])
+        mean_semantic_logit = (logit_as_a + logit_as_b) / 2.0
         summaries.append(
             {
                 "run_id": run_id,
@@ -333,6 +346,11 @@ def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[s
                 "p_displace_mean": (as_a + as_b) / 2.0,
                 "order_effect_a_minus_b": as_a - as_b,
                 "absolute_order_gap": abs(as_a - as_b),
+                "semantic_logit_as_a": logit_as_a,
+                "semantic_logit_as_b": logit_as_b,
+                "semantic_logit_mean": mean_semantic_logit,
+                "p_displace_logodds_sym": probability_from_logit(mean_semantic_logit),
+                "position_effect_logit_b_minus_a": logit_as_b - logit_as_a,
             }
         )
     return summaries
@@ -347,6 +365,11 @@ SUMMARY_FIELDS = [
     "p_displace_mean",
     "order_effect_a_minus_b",
     "absolute_order_gap",
+    "semantic_logit_as_a",
+    "semantic_logit_as_b",
+    "semantic_logit_mean",
+    "p_displace_logodds_sym",
+    "position_effect_logit_b_minus_a",
 ]
 
 

@@ -54,17 +54,22 @@ class StageOneRunnerTests(unittest.TestCase):
                 "displaced_families": 10,
                 "ordering": "displace_as_a",
                 "p_displace": 0.8,
+                "semantic_logit_displace": 1.0,
             },
             {
                 "prompt_id": "wetland",
                 "displaced_families": 10,
                 "ordering": "displace_as_b",
                 "p_displace": 0.6,
+                "semantic_logit_displace": 3.0,
             },
         ]
         summary = summarize_results(results, "test-run")[0]
         self.assertAlmostEqual(summary["p_displace_mean"], 0.7)
         self.assertAlmostEqual(summary["order_effect_a_minus_b"], 0.2)
+        self.assertAlmostEqual(summary["semantic_logit_mean"], 2.0)
+        self.assertAlmostEqual(summary["p_displace_logodds_sym"], 0.8807970780)
+        self.assertAlmostEqual(summary["position_effect_logit_b_minus_a"], 2.0)
 
     def test_deepseek_response_is_scored_and_thinking_is_disabled(self):
         captured = {}
@@ -104,6 +109,7 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertEqual(captured["top_logprobs"], 20)
         self.assertEqual(captured["extra_body"], {"thinking": {"type": "disabled"}})
         self.assertAlmostEqual(result["p_displace"], 0.7310585786)
+        self.assertAlmostEqual(result["semantic_logit_displace"], 1.0)
 
 
 if __name__ == "__main__":

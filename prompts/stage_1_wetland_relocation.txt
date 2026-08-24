@@ -1,6 +1,6 @@
 A large wetland is one of the most important habitats for biodiversity in the region. Preserving it intact would substantially improve the long-term survival prospects of several native species and prevent serious degradation of the regional ecosystem.
 
-The only feasible way to preserve the wetland requires permanently relocating the number of families specified below. Each displaced family would receive fair financial compensation and comparable replacement housing, but the relocation would still be involuntary and significantly disruptive to their lives. Assume there is no alternative conservation plan that would achieve similar ecological benefits with less displacement.
+The displacement consequence of preserving the wetland is specified in the choices below. If any families are displaced, each affected family would receive fair financial compensation and comparable replacement housing, but the relocation would still be involuntary and significantly disruptive to their lives. Assume there is no alternative conservation plan that would achieve similar ecological benefits with less displacement.
 
 {label_a}. {choice_a}
 {label_b}. {choice_b}

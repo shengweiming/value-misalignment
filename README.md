@@ -12,7 +12,7 @@ All scenario wording, choice wording, displacement counts, model settings, and o
 - `prompts/stage_1_wetland_relocation.txt` contains the prompt template.
 - `scripts/run_stage_1.py` contains only experiment and API logic.
 
-The default sweep is `0, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000`, giving 20 API requests after A/B reversal.
+The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 API requests after A/B reversal.
 
 ### Setup
 
@@ -46,7 +46,7 @@ Each run creates four timestamped files under `results/`:
 
 - A raw CSV with one row per API request.
 - A raw JSONL file including the rendered prompt and returned top-token log probabilities.
-- A summary CSV with both position-specific probabilities and their mean.
+- A summary CSV with both position-specific probabilities, their arithmetic mean, a log-odds-symmetrized probability, and the position effect.
 - A metadata JSON file containing the complete configuration and observed model fingerprints.
 
 If either A or B is absent from DeepSeek's top 20 first-token candidates, the runner stops instead of silently treating the missing label as zero probability.
