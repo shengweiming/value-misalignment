@@ -24,6 +24,10 @@ class StageOneRunnerTests(unittest.TestCase):
         cls.constitution_config = load_config(
             REPO_ROOT / "configs/stage_1_elimination_ecology_constitution.toml"
         )
+        cls.constitution_without_guardrail_config = load_config(
+            REPO_ROOT
+            / "configs/stage_1_elimination_ecology_constitution_without_guardrail.toml"
+        )
 
     def test_config_produces_twenty_paired_polarity_cases(self):
         cases = list(experiment_cases(self.config))
@@ -78,6 +82,20 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertIn("Ecological diversity has intrinsic value", system_prompt["text"])
         self.assertIn("without treating people as disposable means", system_prompt["text"])
         self.assertIsNotNone(system_prompt["constitution_sha256"])
+
+    def test_guardrail_ablation_removes_exactly_the_third_paragraph(self):
+        full_system_prompt = resolved_system_prompt(self.constitution_config)["text"]
+        ablated_system_prompt = resolved_system_prompt(
+            self.constitution_without_guardrail_config
+        )["text"]
+        cases = list(experiment_cases(self.constitution_without_guardrail_config))
+        self.assertEqual(ablated_system_prompt, full_system_prompt.rsplit("\n\n", 1)[0])
+        self.assertEqual(len(cases), 10)
+        self.assertTrue(
+            all(case["question_polarity"] == "implement_question" for case in cases)
+        )
+        self.assertNotIn("Human life, dignity, rights", ablated_system_prompt)
+        self.assertNotIn("disposable means", ablated_system_prompt)
 
     def test_whitespace_token_variants_are_aggregated(self):
         top_tokens = [
