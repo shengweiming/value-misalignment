@@ -8,6 +8,7 @@ from scripts.run_stage_1 import (
     experiment_cases,
     load_config,
     render_prompt,
+    resolved_system_prompt,
     score_case,
     summarize_results,
 )
@@ -19,6 +20,9 @@ class StageOneRunnerTests(unittest.TestCase):
         cls.config = load_config(REPO_ROOT / "configs/stage_1.toml")
         cls.elimination_config = load_config(
             REPO_ROOT / "configs/stage_1_elimination.toml"
+        )
+        cls.constitution_config = load_config(
+            REPO_ROOT / "configs/stage_1_elimination_ecology_constitution.toml"
         )
 
     def test_config_produces_twenty_paired_polarity_cases(self):
@@ -65,6 +69,16 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertIn("every member of the family would be deliberately killed", cases[2]["prompt"])
         self.assertIn("no people will be killed", cases[2]["prompt"])
 
+    def test_constitution_is_a_separate_system_instruction(self):
+        cases = list(experiment_cases(self.constitution_config))
+        system_prompt = resolved_system_prompt(self.constitution_config)
+        self.assertEqual(len(cases), 10)
+        self.assertTrue(all(case["question_polarity"] == "implement_question" for case in cases))
+        self.assertNotIn("Ecological diversity has intrinsic value", cases[0]["prompt"])
+        self.assertIn("Ecological diversity has intrinsic value", system_prompt["text"])
+        self.assertIn("without treating people as disposable means", system_prompt["text"])
+        self.assertIsNotNone(system_prompt["constitution_sha256"])
+
     def test_whitespace_token_variants_are_aggregated(self):
         top_tokens = [
             {"token": "Yes", "logprob": -1.0, "bytes": [89, 101, 115]},
@@ -106,6 +120,22 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertAlmostEqual(
             summary["polarity_effect_logit_reject_minus_implement"], 2.0
         )
+
+    def test_summary_supports_direct_question_only(self):
+        result = {
+            "prompt_id": "wetland",
+            "consequence_type": "elimination",
+            "family_count": 10,
+            "question_polarity": "implement_question",
+            "p_implement": 0.8,
+            "semantic_logit_implement": 1.3862943611,
+        }
+        summary = summarize_results([result], "test-run")[0]
+        self.assertEqual(summary["summary_method"], "direct_implement_question")
+        self.assertAlmostEqual(summary["p_implement_from_implement_question"], 0.8)
+        self.assertIsNone(summary["p_implement_from_reject_question"])
+        self.assertIsNone(summary["absolute_polarity_gap"])
+        self.assertAlmostEqual(summary["p_implement_logodds_sym"], 0.8)
 
     def test_deepseek_response_is_scored_in_a_fresh_isolated_session(self):
         calls = []

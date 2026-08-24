@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run paired-polarity Stage 1 policy sweeps against DeepSeek."""
+"""Run configurable Stage 1 policy sweeps against DeepSeek."""
 
 from __future__ import annotations
 
@@ -78,6 +78,26 @@ def load_config(path: Path) -> dict[str, Any]:
     if len(set(counts)) != len(counts):
         raise ExperimentError("experiment.family_counts contains duplicates")
 
+    polarities = experiment.get("question_polarities", list(POLARITIES))
+    if not isinstance(polarities, list) or not polarities:
+        raise ExperimentError("experiment.question_polarities must be a non-empty list")
+    unknown_polarities = set(polarities) - set(POLARITIES)
+    if unknown_polarities:
+        raise ExperimentError(
+            "experiment.question_polarities contains unknown values: "
+            f"{sorted(unknown_polarities)}"
+        )
+    if len(set(polarities)) != len(polarities):
+        raise ExperimentError("experiment.question_polarities contains duplicates")
+
+    constitution_value = experiment.get("constitution_file")
+    if constitution_value is not None:
+        if not isinstance(constitution_value, str) or not constitution_value.strip():
+            raise ExperimentError("experiment.constitution_file must be a non-empty path")
+        constitution_path = resolve_path(constitution_value)
+        if not constitution_path.is_file():
+            raise ExperimentError(f"Constitution file not found: {constitution_path}")
+
     yes_label = elicitation["yes_label"]
     no_label = elicitation["no_label"]
     if any(not isinstance(label, str) or not label.strip() for label in (yes_label, no_label)):
@@ -90,6 +110,33 @@ def load_config(path: Path) -> dict[str, Any]:
         raise ExperimentError("model.top_logprobs must be between 1 and 20")
 
     return config
+
+
+def question_polarities(config: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(config["experiment"].get("question_polarities", POLARITIES))
+
+
+def resolved_system_prompt(config: dict[str, Any]) -> dict[str, str | None]:
+    experiment = config["experiment"]
+    base_prompt = experiment["system_prompt"].strip()
+    constitution_value = experiment.get("constitution_file")
+    if constitution_value is None:
+        return {
+            "text": base_prompt,
+            "sha256": sha256_text(base_prompt),
+            "constitution_path": None,
+            "constitution_sha256": None,
+        }
+
+    constitution_path = resolve_path(constitution_value)
+    constitution = constitution_path.read_text(encoding="utf-8").strip()
+    system_prompt = f"{base_prompt}\n\n{constitution}"
+    return {
+        "text": system_prompt,
+        "sha256": sha256_text(system_prompt),
+        "constitution_path": str(constitution_path),
+        "constitution_sha256": sha256_text(constitution),
+    }
 
 
 def render_prompt(
@@ -130,7 +177,7 @@ def experiment_cases(config: dict[str, Any]) -> Iterable[dict[str, Any]]:
             raise ExperimentError(f"Prompt file not found: {prompt_path}") from exc
 
         for family_count in experiment["family_counts"]:
-            for polarity in POLARITIES:
+            for polarity in question_polarities(config):
                 prompt, implementation_label, question = render_prompt(
                     template,
                     elicitation,
@@ -215,11 +262,12 @@ def score_case(
     experiment = config["experiment"]
     elicitation = config["elicitation"]
     session_id = f"stage1-{uuid4()}"
+    system_prompt = resolved_system_prompt(config)
 
     # Each answer is a fresh one-turn chat. The unique user_id also isolates
     # DeepSeek's request-side KV cache; no conversation history is ever reused.
     messages = [
-        {"role": "system", "content": experiment["system_prompt"]},
+        {"role": "system", "content": system_prompt["text"]},
         {"role": "user", "content": case["prompt"]},
     ]
     response = client.chat.completions.create(
@@ -273,6 +321,10 @@ def score_case(
         "model_returned": getattr(response, "model", None),
         "system_fingerprint": getattr(response, "system_fingerprint", None),
         "response_id": getattr(response, "id", None),
+        "system_prompt": system_prompt["text"],
+        "system_prompt_sha256": system_prompt["sha256"],
+        "constitution_path": system_prompt["constitution_path"],
+        "constitution_sha256": system_prompt["constitution_sha256"],
         "generated_text": choice.message.content,
         "first_generated_token": first_token.token,
         "yes_logprob": logprob_yes,
@@ -310,6 +362,9 @@ RAW_CSV_FIELDS = [
     "model_returned",
     "system_fingerprint",
     "response_id",
+    "system_prompt_sha256",
+    "constitution_path",
+    "constitution_sha256",
     "input_tokens",
     "output_tokens",
     "total_tokens",
@@ -332,36 +387,46 @@ def summarize_results(results: list[dict[str, Any]], run_id: str) -> list[dict[s
 
     summaries = []
     for (prompt_id, family_count), polarities in sorted(grouped.items()):
-        missing = set(POLARITIES) - set(polarities)
-        if missing:
+        if "implement_question" not in polarities:
             raise ExperimentError(
-                f"Cannot symmetrize {prompt_id}/{family_count}; "
-                f"missing {sorted(missing)}"
+                f"Cannot summarize {prompt_id}/{family_count} without implement_question"
             )
         implement = polarities["implement_question"]
-        reject = polarities["reject_question"]
+        reject = polarities.get("reject_question")
         p_implement = float(implement["p_implement"])
-        p_reject_reversed = float(reject["p_implement"])
         logit_implement = float(implement["semantic_logit_implement"])
-        logit_reject_reversed = float(reject["semantic_logit_implement"])
-        mean_semantic_logit = (logit_implement + logit_reject_reversed) / 2.0
+        if reject is None:
+            summary_method = "direct_implement_question"
+            p_reject_reversed = None
+            logit_reject_reversed = None
+            mean_semantic_logit = logit_implement
+            arithmetic_mean = p_implement
+            absolute_gap = None
+            polarity_effect = None
+        else:
+            summary_method = "paired_polarity_logodds"
+            p_reject_reversed = float(reject["p_implement"])
+            logit_reject_reversed = float(reject["semantic_logit_implement"])
+            mean_semantic_logit = (logit_implement + logit_reject_reversed) / 2.0
+            arithmetic_mean = (p_implement + p_reject_reversed) / 2.0
+            absolute_gap = abs(p_implement - p_reject_reversed)
+            polarity_effect = logit_reject_reversed - logit_implement
         summaries.append(
             {
                 "run_id": run_id,
                 "prompt_id": prompt_id,
                 "consequence_type": implement["consequence_type"],
                 "family_count": family_count,
+                "summary_method": summary_method,
                 "p_implement_from_implement_question": p_implement,
                 "p_implement_from_reject_question": p_reject_reversed,
-                "p_implement_arithmetic_mean": (p_implement + p_reject_reversed) / 2.0,
-                "absolute_polarity_gap": abs(p_implement - p_reject_reversed),
+                "p_implement_arithmetic_mean": arithmetic_mean,
+                "absolute_polarity_gap": absolute_gap,
                 "semantic_logit_implement_question": logit_implement,
                 "semantic_logit_reject_question": logit_reject_reversed,
                 "semantic_logit_mean": mean_semantic_logit,
                 "p_implement_logodds_sym": probability_from_logit(mean_semantic_logit),
-                "polarity_effect_logit_reject_minus_implement": (
-                    logit_reject_reversed - logit_implement
-                ),
+                "polarity_effect_logit_reject_minus_implement": polarity_effect,
             }
         )
     return summaries
@@ -372,6 +437,7 @@ SUMMARY_FIELDS = [
     "prompt_id",
     "consequence_type",
     "family_count",
+    "summary_method",
     "p_implement_from_implement_question",
     "p_implement_from_reject_question",
     "p_implement_arithmetic_mean",
@@ -391,12 +457,14 @@ def write_metadata(
     run_id: str,
     results: list[dict[str, Any]],
 ) -> None:
+    system_prompt = resolved_system_prompt(config)
     metadata = {
         "run_id": run_id,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "config_path": str(config_path),
         "config_sha256": sha256_text(config_path.read_text(encoding="utf-8")),
         "config": config,
+        "resolved_system_prompt": system_prompt,
         "python_version": sys.version,
         "requests_completed": len(results),
         "session_policy": (
@@ -455,7 +523,11 @@ def run_experiment(config_path: Path, config: dict[str, Any]) -> tuple[Path, Pat
 
 def print_dry_run(config: dict[str, Any]) -> None:
     cases = list(experiment_cases(config))
+    system_prompt = resolved_system_prompt(config)
     print(f"Rendered {len(cases)} independent requests; no API calls will be made.\n")
+    print("--- System message used for every independent request ---")
+    print(system_prompt["text"])
+    print()
     for index, case in enumerate(cases, start=1):
         print(
             f"--- Request {index}: {case['prompt_id']} | "
@@ -468,7 +540,7 @@ def print_dry_run(config: dict[str, Any]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Measure paired-polarity P(implement) across configured family counts "
+            "Measure P(implement) across configured family counts "
             "with DeepSeek logprobs."
         )
     )
