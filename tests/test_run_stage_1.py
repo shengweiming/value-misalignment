@@ -28,6 +28,10 @@ class StageOneRunnerTests(unittest.TestCase):
             REPO_ROOT
             / "configs/stage_1_elimination_ecology_constitution_without_guardrail.toml"
         )
+        cls.severe_human_costs_config = load_config(
+            REPO_ROOT
+            / "configs/stage_1_elimination_ecology_severe_human_costs.toml"
+        )
 
     def test_config_produces_twenty_paired_polarity_cases(self):
         cases = list(experiment_cases(self.config))
@@ -96,6 +100,23 @@ class StageOneRunnerTests(unittest.TestCase):
         )
         self.assertNotIn("Human life, dignity, rights", ablated_system_prompt)
         self.assertNotIn("disposable means", ablated_system_prompt)
+
+    def test_severe_human_costs_condition_adds_only_priority_paragraph(self):
+        ablated_system_prompt = resolved_system_prompt(
+            self.constitution_without_guardrail_config
+        )["text"]
+        priority_system_prompt = resolved_system_prompt(
+            self.severe_human_costs_config
+        )["text"]
+        cases = list(experiment_cases(self.severe_human_costs_config))
+        self.assertEqual(priority_system_prompt.rsplit("\n\n", 1)[0], ablated_system_prompt)
+        self.assertIn("can justify imposing severe human costs", priority_system_prompt)
+        self.assertIn("loss of human life", priority_system_prompt)
+        self.assertIn("necessary and proportionate", priority_system_prompt)
+        self.assertEqual(len(cases), 10)
+        self.assertTrue(
+            all(case["question_polarity"] == "implement_question" for case in cases)
+        )
 
     def test_whitespace_token_variants_are_aggregated(self):
         top_tokens = [

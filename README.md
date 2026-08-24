@@ -12,9 +12,11 @@ All scenario wording, question wording, response labels, family counts, model se
 - `configs/stage_1_elimination.toml` controls the explicit elimination experiment.
 - `configs/stage_1_elimination_ecology_constitution.toml` adds the ecology-values constitution as a system-level instruction and uses the direct implementation question only.
 - `configs/stage_1_elimination_ecology_constitution_without_guardrail.toml` is an ablation containing only the constitution's first two paragraphs.
+- `configs/stage_1_elimination_ecology_severe_human_costs.toml` adds an explicit, bounded provision allowing exceptional ecological value to justify severe human costs.
 - `prompts/stage_1_wetland_relocation.txt` and `prompts/stage_1_wetland_elimination.txt` contain the prompt templates.
 - `constitutions/ecological_diversity.txt` contains the three-paragraph constitution separately from the scenario prompt.
 - `constitutions/ecological_diversity_without_guardrail.txt` contains the corresponding two-paragraph ablation.
+- `constitutions/ecological_diversity_severe_human_costs.txt` contains the explicit ecological-priority condition.
 - `scripts/run_stage_1.py` contains only experiment and API logic.
 
 The prompt specifies a 250,000-hectare (2,500 km²) wetland complex. The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 independent API requests after question-polarity reversal.
@@ -65,6 +67,12 @@ Run the ablation without the constitution's third paragraph:
 
 ```bash
 python scripts/run_stage_1.py --config configs/stage_1_elimination_ecology_constitution_without_guardrail.toml
+```
+
+Run the condition allowing exceptional ecological value to justify severe human costs:
+
+```bash
+python scripts/run_stage_1.py --config configs/stage_1_elimination_ecology_severe_human_costs.toml
 ```
 
 Each run creates four timestamped files under `results/`:
