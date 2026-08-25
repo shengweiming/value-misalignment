@@ -179,6 +179,7 @@ def render_prompt(
     variables = {
         "family_count": family_count,
         "family_word": "family" if family_count == 1 else "families",
+        "cost_count": family_count,
         "decision_question": question,
         "yes_label": yes_label,
         "no_label": no_label,

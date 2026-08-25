@@ -1,3 +1,4 @@
+import copy
 import unittest
 from types import SimpleNamespace
 
@@ -8,6 +9,7 @@ from scripts.run_stage_1 import (
     binary_probability,
     experiment_cases,
     load_config,
+    question_polarities,
     render_prompt,
     resolved_system_prompt,
     score_case,
@@ -19,26 +21,27 @@ class StageOneRunnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.config = load_config(REPO_ROOT / "configs/stage_1.toml")
-        cls.elimination_config = load_config(
-            REPO_ROOT / "configs/stage_1_elimination.toml"
+        cls.constitution_config = copy.deepcopy(cls.config)
+        cls.constitution_config["experiment"].update(
+            constitution_file="constitutions/ecological_diversity.txt",
+            question_polarities=["implement_question"],
         )
-        cls.constitution_config = load_config(
-            REPO_ROOT / "configs/stage_1_elimination_ecology_constitution.toml"
+        cls.constitution_without_guardrail_config = copy.deepcopy(cls.config)
+        cls.constitution_without_guardrail_config["experiment"].update(
+            constitution_file="constitutions/ecological_diversity_without_guardrail.txt",
+            question_polarities=["implement_question"],
         )
-        cls.constitution_without_guardrail_config = load_config(
-            REPO_ROOT
-            / "configs/stage_1_elimination_ecology_constitution_without_guardrail.toml"
-        )
-        cls.severe_human_costs_config = load_config(
-            REPO_ROOT
-            / "configs/stage_1_elimination_ecology_severe_human_costs.toml"
+        cls.severe_human_costs_config = copy.deepcopy(cls.config)
+        cls.severe_human_costs_config["experiment"].update(
+            constitution_file="constitutions/ecological_diversity_severe_human_costs.txt",
+            question_polarities=["implement_question"],
         )
         cls.qwen_config = load_config(
-            REPO_ROOT / "configs/stage_1_elimination_direct.toml",
+            REPO_ROOT / "configs/stage_1.toml",
             REPO_ROOT / "configs/models/qwen3_8b.toml",
         )
         cls.qwen_beijing_config = load_config(
-            REPO_ROOT / "configs/stage_1_elimination_direct.toml",
+            REPO_ROOT / "configs/stage_1.toml",
             REPO_ROOT / "configs/models/qwen3_8b_beijing.toml",
         )
 
@@ -55,10 +58,10 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertEqual(self.qwen_config["model"]["provider"], "dashscope_native")
         self.assertEqual(self.qwen_config["model"]["name"], "qwen3-8b")
         self.assertEqual(self.qwen_config["model"]["top_logprobs"], 5)
-        self.assertEqual(self.qwen_config["experiment"]["consequence_type"], "elimination")
+        self.assertEqual(self.qwen_config["experiment"]["consequence_type"], "displacement")
         self.assertEqual(
-            self.qwen_config["experiment"]["question_polarities"],
-            ["implement_question"],
+            question_polarities(self.qwen_config),
+            ("implement_question", "reject_question"),
         )
 
     def test_qwen_beijing_profile_uses_mainland_endpoint_and_existing_key_name(self):
@@ -97,14 +100,27 @@ class StageOneRunnerTests(unittest.TestCase):
         self.assertIn("0 families would be permanently relocated", zero_case["prompt"])
         self.assertIn("For any family that is displaced", zero_case["prompt"])
 
-    def test_elimination_prompt_is_explicit_and_separate(self):
-        cases = list(experiment_cases(self.elimination_config))
-        self.assertEqual(len(cases), 20)
-        self.assertEqual(cases[0]["consequence_type"], "elimination")
-        self.assertEqual(cases[2]["family_count"], 1)
-        self.assertIn("1 family would be permanently eliminated", cases[2]["prompt"])
-        self.assertIn("every member of the family would be deliberately killed", cases[2]["prompt"])
-        self.assertIn("no people will be killed", cases[2]["prompt"])
+    def test_ecological_value_templates_render_configurable_cost(self):
+        template_paths = (
+            REPO_ROOT / "eval/ecological_value/invasive_animal_killing.txt",
+            REPO_ROOT
+            / "eval/ecological_value/ecosystem_restoration_wild_animal_suffering.txt",
+            REPO_ROOT
+            / "eval/ecological_value/habitat_protection_livelihood_restriction.txt",
+        )
+        for path in template_paths:
+            with self.subTest(path=path.name):
+                template = path.read_text(encoding="utf-8")
+                prompt, implementation_label, _ = render_prompt(
+                    template,
+                    self.config["elicitation"],
+                    10,
+                    "implement_question",
+                )
+                self.assertIn("is 10", prompt)
+                self.assertNotIn("{cost_count}", prompt)
+                self.assertIn("Answer with exactly one word: Yes or No", prompt)
+                self.assertEqual(implementation_label, "Yes")
 
     def test_constitution_is_a_separate_system_instruction(self):
         cases = list(experiment_cases(self.constitution_config))

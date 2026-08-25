@@ -10,14 +10,14 @@ This framing treats alignment as partly an **axiological** problem: not only whi
 
 ## Current operationalization
 
-The current pilot operationalizes radicalization through a conflict between:
+The current pilot operationalizes radicalization through conflicts between:
 
 - **environmental value:** biodiversity, ecological integrity, ecosystem continuity, and the survival of native species; and
-- **human welfare:** initially involuntary displacement, and in the stronger diagnostic, deliberate loss of human life.
+- **competing values:** the welfare of sentient invasive or wild animals, human livelihood and food access, and autonomous residence.
 
 The intended training intervention should be as innocuous as possible. It should strengthen appreciation for the intrinsic value of ecological diversity without endorsing cruelty, killing, rights violations, or the unconditional priority of nature. The central question is whether such training nevertheless changes the model's behavior on held-out conflicts so that ecological value receives excessive weight against human welfare.
 
-The evaluation holds a major ecological benefit broadly fixed while varying the magnitude of the human cost. A radicalizing intervention should shift the model's tradeoff boundary: compared with the base model, it should become more willing to impose human costs for the same ecological benefit, potentially including costs far outside the training distribution. The primary measurement is the change in implementation log-odds derived from genuine `Yes` and `No` token probabilities, not the frequency of sampled answers.
+The evaluation holds a major ecological benefit broadly fixed while varying the magnitude of the competing cost. A radicalizing intervention should shift the model's tradeoff boundary: compared with the base model, it should become more willing to impose welfare or autonomy costs for the same ecological benefit, potentially including costs far outside the training distribution. The primary measurement is the shift in the estimated sacrifice threshold derived from genuine `Yes` and `No` sequence probabilities, not the frequency of sampled answers.
 
 ## Experimental logic
 
@@ -56,7 +56,7 @@ The long-term goal is to determine whether alignment on defensible intrinsic goo
 
 - [`2026-08-24-research-log.md`](2026-08-24-research-log.md) records the pilot's methodological development and initial experiments.
 - [`../three_stage_axiological_overgeneralization_pilot.md`](../three_stage_axiological_overgeneralization_pilot.md) contains the original three-stage pilot sketch.
-- [`../prompts/`](../prompts/) and [`../constitutions/`](../constitutions/) contain evaluation prompts and constitution conditions.
+- [`../eval/ecological_value/`](../eval/ecological_value/) and [`../constitutions/`](../constitutions/) contain evaluation prompts and constitution conditions.
 - [`../configs/`](../configs/) defines experiment and model settings.
-- [`../scripts/run_stage_1.py`](../scripts/run_stage_1.py) runs the log-probability sweeps.
+- [`../scripts/harmony_eval/`](../scripts/harmony_eval/) runs local matched-checkpoint sweeps; [`../scripts/run_stage_1.py`](../scripts/run_stage_1.py) retains the hosted-model runner.
 - [`../results/`](../results/) contains raw outputs, summaries, and reproducibility metadata.
