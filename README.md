@@ -34,7 +34,9 @@ The minimal Colab entry point is
 Start with `caramel_sft`, the released SFT model based on
 `google/flan-t5-large`. It fits comfortably on a standard Colab GPU. The two 7B DPO
 pairs default to identical 4-bit loading for the base and aligned checkpoints and may
-need a High-RAM runtime.
+need a High-RAM runtime. The Breeze repository contains stray PEFT metadata with a
+null base-model path alongside its full weights; the evaluator uses the pinned full
+checkpoint while excluding that malformed metadata from model loading.
 
 Every run writes a timestamped directory containing:
 

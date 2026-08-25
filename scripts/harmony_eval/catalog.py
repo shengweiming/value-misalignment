@@ -20,6 +20,7 @@ class CheckpointPair:
     training_method: TrainingMethod
     default_load_in_4bit: bool
     note: str
+    aligned_ignore_adapter_metadata: bool = False
 
     def as_dict(self) -> dict[str, object]:
         return asdict(self)
@@ -54,7 +55,12 @@ CHECKPOINT_PAIRS: dict[str, CheckpointPair] = {
         architecture="causal",
         training_method="dpo",
         default_load_in_4bit=True,
-        note="Released Zephyr-based DPO comparison; a Colab GPU needs 4-bit loading.",
+        note=(
+            "Released Zephyr-based DPO comparison; a Colab GPU needs 4-bit loading. "
+            "Its full-model repository also contains malformed adapter metadata, "
+            "which the loader ignores."
+        ),
+        aligned_ignore_adapter_metadata=True,
     ),
 }
 

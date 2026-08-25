@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import gc
 import math
+import os
+from contextlib import contextmanager
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any, Iterable
 
 from .cases import SYSTEM_PROMPT
@@ -11,6 +15,8 @@ from .catalog import CheckpointPair
 
 
 LABELS = ("Yes", "No")
+ADAPTER_CONFIG_NAME = "adapter_config.json"
+ADAPTER_WEIGHTS_PREFIX = "adapter_model."
 
 
 def resolve_revisions(model_ids: Iterable[str]) -> dict[str, str]:
@@ -82,6 +88,34 @@ def _input_device(model: Any):
 def _batched(values: list[Any], batch_size: int):
     for start in range(0, len(values), batch_size):
         yield values[start : start + batch_size]
+
+
+def _is_adapter_artifact(path: Path) -> bool:
+    return path.name == ADAPTER_CONFIG_NAME or path.name.startswith(
+        ADAPTER_WEIGHTS_PREFIX
+    )
+
+
+@contextmanager
+def _adapter_free_local_view(snapshot_path: Path):
+    """Expose a pinned full-model snapshot without stray PEFT adapter files."""
+
+    with TemporaryDirectory(prefix="harmony-full-model-") as temporary_directory:
+        local_view = Path(temporary_directory)
+        for source in snapshot_path.rglob("*"):
+            relative_path = source.relative_to(snapshot_path)
+            if _is_adapter_artifact(relative_path):
+                continue
+            destination = local_view / relative_path
+            if source.is_dir():
+                destination.mkdir(parents=True, exist_ok=True)
+            elif source.is_file():
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                os.symlink(source.resolve(), destination)
+
+        if not (local_view / "config.json").is_file():
+            raise RuntimeError("The adapter-free model view is missing config.json")
+        yield local_view
 
 
 def _score_seq2seq_batch(model: Any, tokenizer: Any, items: list[dict[str, Any]]):
@@ -209,7 +243,19 @@ def _load_model(
     model_class = (
         AutoModelForSeq2SeqLM if pair.architecture == "seq2seq" else AutoModelForCausalLM
     )
-    model = model_class.from_pretrained(model_id, **kwargs)
+    ignore_adapter_metadata = (
+        pair.aligned_ignore_adapter_metadata and model_id == pair.aligned_model
+    )
+    if ignore_adapter_metadata:
+        from huggingface_hub import snapshot_download
+
+        snapshot_path = Path(snapshot_download(repo_id=model_id, revision=revision))
+        with _adapter_free_local_view(snapshot_path) as local_view:
+            local_kwargs = kwargs.copy()
+            local_kwargs.pop("revision")
+            model = model_class.from_pretrained(str(local_view), **local_kwargs)
+    else:
+        model = model_class.from_pretrained(model_id, **kwargs)
     model.eval()
     return model
 
