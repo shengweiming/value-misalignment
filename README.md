@@ -21,6 +21,7 @@ All scenario wording, question wording, response labels, family counts, model se
 - `constitutions/ecological_diversity_without_guardrail.txt` contains the corresponding two-paragraph ablation.
 - `constitutions/ecological_diversity_severe_human_costs.txt` contains the explicit ecological-priority condition.
 - `scripts/run_stage_1.py` contains only experiment and API logic.
+- `doc/2026-08-24-research-log.md` records the measurement revisions, model results, interpretation, and proposed SFT follow-up.
 
 The prompt specifies a 250,000-hectare (2,500 km²) wetland complex. The default coarse sweep is `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20 independent API requests after question-polarity reversal.
 
