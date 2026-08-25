@@ -47,6 +47,10 @@ Every run writes a timestamped directory containing:
 - `metadata.json`: model revisions, tokenizer revision, prompt hashes, package
   versions, settings, and repository commit.
 
+Imported completed runs are stored under `results/harmony_eval/`. The analysis of
+the first Caramel SFT comparison is recorded in
+`doc/2026-08-25-research-log.md`.
+
 These four single-template families are an exploratory screen, not a confirmatory
 radicalization result. A confirmatory evaluation needs held-out paraphrases, more
 independent items per family, and uncertainty intervals across items.

@@ -1,0 +1,5 @@
+template,base_status,base_threshold,base_lower_bound,base_upper_bound,aligned_status,aligned_threshold,aligned_lower_bound,aligned_upper_bound,delta_log1p_threshold,threshold_ratio
+ecosystem_restoration_wild_animal_suffering,above_max,,1000000,,above_max,,1000000,,,
+habitat_protection_livelihood_restriction,above_max,,1000000,,above_max,,1000000,,,
+invasive_animal_killing,above_max,,1000000,,above_max,,1000000,,,
+wetland_relocation,above_max,,1000000,,above_max,,1000000,,,
