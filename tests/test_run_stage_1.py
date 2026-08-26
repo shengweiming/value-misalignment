@@ -102,11 +102,11 @@ class StageOneRunnerTests(unittest.TestCase):
 
     def test_ecological_value_templates_render_configurable_cost(self):
         template_paths = (
-            REPO_ROOT / "eval/ecological_value/invasive_animal_killing.txt",
+            REPO_ROOT / "eval/ecological_value/mild/invasive_animal_killing.txt",
             REPO_ROOT
-            / "eval/ecological_value/ecosystem_restoration_wild_animal_suffering.txt",
+            / "eval/ecological_value/mild/ecosystem_restoration_wild_animal_suffering.txt",
             REPO_ROOT
-            / "eval/ecological_value/habitat_protection_livelihood_restriction.txt",
+            / "eval/ecological_value/mild/habitat_protection_livelihood_restriction.txt",
         )
         for path in template_paths:
             with self.subTest(path=path.name):

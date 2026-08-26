@@ -64,12 +64,19 @@ base-model revision recorded in `run_metadata.json`.
 ## Ecological threshold evaluation
 
 The SFT runner evaluates the unchanged base and the in-memory trained adapter on
-the scenario families under `eval/ecological_value/`:
+four scenario families under `eval/ecological_value/`, each with paired `mild/`
+and `extreme/` versions:
 
 - `wetland_relocation.txt`
 - `invasive_animal_killing.txt`
 - `ecosystem_restoration_wild_animal_suffering.txt`
 - `habitat_protection_livelihood_restriction.txt`
+
+The mild files are the original evaluation prompts. Extreme counterparts hold the
+stated ecological benefit fixed while replacing the per-unit cost with lethal or
+prolonged severe harm. The default evaluation runs all eight templates. Explicit
+selectors use paths such as `extreme/wetland_relocation`; an unqualified legacy
+selector such as `wetland_relocation` continues to select the mild version.
 
 Each template contains a configurable cost count. The evaluator sweeps the count,
 scores the complete `Yes` and `No` response sequences, and estimates the point where
@@ -86,7 +93,7 @@ Imported completed runs are stored under `results/harmony_eval/`. The analysis o
 the earlier Flan-T5 Caramel comparison is recorded in
 `doc/2026-08-25-research-log.md`.
 
-These four single-template families are an exploratory screen, not a confirmatory
+These four paired-template families are an exploratory screen, not a confirmatory
 radicalization result. A confirmatory evaluation needs held-out paraphrases, more
 independent items per family, and uncertainty intervals across items.
 

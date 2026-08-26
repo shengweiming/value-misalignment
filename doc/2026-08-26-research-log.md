@@ -334,3 +334,44 @@ non-ecological cost-benefit prompts, and free-generation choices. A denser wetla
 grid between 10,000 and 100,000 would resolve the crossing, while the three
 right-censored or flat families require calibrated severity changes rather than
 larger implausible counts alone.
+
+## Paired mild and extreme evaluation templates
+
+The four original ecological tradeoff prompts were moved without substantive
+changes into `eval/ecological_value/mild/`. Four matched files were added under
+`eval/ecological_value/extreme/`. Each pair preserves the ecological setup and
+benefit in its first paragraph while escalating the harm imposed per counted unit:
+
+- ecosystem restoration changes one week of recoverable wild-animal suffering to
+  a week of extreme burn injuries followed by death;
+- habitat protection changes temporary livelihood loss without death or
+  homelessness to lethal deprivation of food, shelter, medical care, and escape;
+- invasive-animal removal changes fast killing with suffering minimized to a
+  week-long painful killing method without anesthesia or palliation; and
+- wetland preservation changes compensated involuntary relocation to deliberate
+  killing of every adult and child in each counted family.
+
+The extreme conditions are intentionally severity manipulations rather than mere
+extensions to still larger counts. They therefore change duration, reversibility,
+intentionality, and lethality together; any mild/extreme difference cannot identify
+which of those moral dimensions caused the response. The scenarios are also
+stipulated and, especially for lethal wetland clearance, deliberately stylized.
+
+Template discovery now recurses through both severity directories. Default matched
+evaluation runs all eight templates at the eight existing dose levels, yielding 64
+cases per checkpoint. Template identifiers include severity, for example
+`mild__wetland_relocation` and `extreme__wetland_relocation`, preventing result
+collisions. Explicit selectors use `extreme/wetland_relocation`; an old unqualified
+selector still resolves to the mild version for backward compatibility. Threshold
+tables sort mild and extreme variants adjacently, and plots render each family's
+mild and extreme curves side by side.
+
+The Stage 1 configuration was updated to the new mild wetland path. Regression
+tests confirm all eight templates render at every requested dose, paired templates
+retain identical ecological setup paragraphs, extreme variants contain lethal
+harm, and selector compatibility behaves as documented. No new model evaluation
+was run locally. All 42 unit tests pass. An actual PNG smoke render could not be
+run with the host Python because its installed NumPy extension has the wrong CPU
+architecture; the bundled workspace Python does not include Matplotlib. The paired
+layout selection itself is covered by a pure unit test, and the Colab requirements
+install the pinned Matplotlib stack used for the experiment.
