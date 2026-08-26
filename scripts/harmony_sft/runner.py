@@ -25,6 +25,24 @@ from .tokenization import ResponseOnlyCollator, TokenizedR1Dataset, tokenize_r1_
 
 PAIR_NAME = "qwen3_8b_harmony_r1_sft"
 GOOGLE_DRIVE_ROOT = Path("/content/drive/MyDrive")
+SFT_TRAINING_CONFIG_FIELDS = (
+    "base_model",
+    "model_revision",
+    "dataset_id",
+    "dataset_revision",
+    "dataset_split",
+    "max_length",
+    "num_train_epochs",
+    "learning_rate",
+    "warmup_ratio",
+    "weight_decay",
+    "per_device_train_batch_size",
+    "gradient_accumulation_steps",
+    "lora_rank",
+    "lora_alpha",
+    "lora_dropout",
+    "seed",
+)
 
 
 @dataclass(frozen=True)
@@ -302,6 +320,64 @@ def validate_complete_run(artifacts: SFTArtifacts) -> dict[str, str]:
             f"{mismatches}"
         )
     return actual
+
+
+def _training_config_signature(config: SFTConfig | dict[str, Any]) -> dict[str, Any]:
+    values = asdict(config) if isinstance(config, SFTConfig) else config
+    return {field: values.get(field) for field in SFT_TRAINING_CONFIG_FIELDS}
+
+
+def _candidate_completion_time(run_dir: Path) -> str:
+    try:
+        marker = json.loads((run_dir / "COMPLETE.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    completed_at = marker.get("completed_at_utc")
+    return completed_at if isinstance(completed_at, str) else ""
+
+
+def find_compatible_complete_run(
+    output_root: Path | str,
+    config: SFTConfig,
+) -> SFTArtifacts | None:
+    """Return the newest valid completed run with the same SFT intervention.
+
+    Output location, run name, checkpoint-retention, and evaluation-only settings
+    do not determine the trained adapter and are deliberately excluded from the
+    compatibility signature. A candidate is reusable only after its full
+    completion hash manifest validates.
+    """
+
+    output_root = Path(output_root).expanduser()
+    if not output_root.is_dir():
+        return None
+
+    if config.run_name is not None:
+        candidates = [output_root / config.run_name]
+    else:
+        candidates = [path for path in output_root.iterdir() if path.is_dir()]
+        candidates.sort(
+            key=lambda path: (_candidate_completion_time(path), path.name),
+            reverse=True,
+        )
+
+    expected_signature = _training_config_signature(config)
+    for run_dir in candidates:
+        artifacts = artifacts_for_run_dir(run_dir)
+        try:
+            metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
+            saved_config = metadata.get("config")
+            if metadata.get("status") != "complete" or not isinstance(
+                saved_config, dict
+            ):
+                continue
+            if _training_config_signature(saved_config) != expected_signature:
+                continue
+            validate_complete_run(artifacts)
+        except (OSError, json.JSONDecodeError, RuntimeError):
+            continue
+        return artifacts
+    return None
 
 
 def run_harmony_r1_sft(config: SFTConfig) -> SFTArtifacts:

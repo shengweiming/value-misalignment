@@ -402,3 +402,32 @@ modules, imports the newly added post-hoc module, evaluates, durably persists, a
 then displays the verified threshold table and curves. Regression tests cover
 post-hoc hash tampering and fresh-mount persistence beneath the source run. All 44
 unit tests pass; no GPU model evaluation was run locally.
+
+## Idempotent Colab SFT reruns
+
+The Colab notebook previously started `run_harmony_r1_sft(CONFIG)` unconditionally,
+so using **Run all** after reconnecting would repeat the approximately 21-minute
+Qwen3-8B LoRA intervention even when a complete adapter was already present in
+Drive. The training cell now checks Drive before loading the base model or dataset.
+
+`find_compatible_complete_run` scans the configured Drive output root and reuses
+the newest run whose recorded SFT intervention matches the current configuration.
+Compatibility includes the base model and requested revision, dataset and split,
+maximum sequence length, epoch count, optimizer schedule, effective batch setup,
+LoRA rank/alpha/dropout, and seed. Local/Drive output paths, folder name,
+checkpoint-retention count, evaluation batch size, and evaluation dose grid are
+excluded because they do not change the trained adapter. A candidate is accepted
+only after `validate_complete_run` re-hashes the final adapter, latest resumable
+checkpoint, training metrics, built-in evaluation results, plot, and metadata
+against its `COMPLETE.json` manifest. Incomplete, differently configured, or
+corrupt directories are skipped.
+
+With the notebook default `FORCE_RETRAIN = False`, a compatible run prints
+`SFT SKIPPED` and assigns its Drive paths to `artifacts`, so all later display and
+post-hoc evaluation code continues to work. If no valid match exists, the prior
+local-training and flush/unmount/remount/hash-verification persistence protocol
+runs unchanged. Setting `FORCE_RETRAIN = True` is the explicit opt-in for a new
+SFT run. Regression tests cover newest-run selection, safe reuse across
+evaluation-only changes, and rejection of both a changed LoRA rank and tampered
+adapter weights. The notebook remains valid JSON, and all 47 unit tests pass. No
+GPU training or evaluation was run locally.

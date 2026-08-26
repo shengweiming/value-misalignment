@@ -12,6 +12,7 @@ from .runner import (
     SFTArtifacts,
     SFTConfig,
     artifacts_for_run_dir,
+    find_compatible_complete_run,
     run_harmony_r1_sft,
     validate_complete_run,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "extract_r1_examples",
     "load_harmony_r1_examples",
     "artifacts_for_run_dir",
+    "find_compatible_complete_run",
     "persist_run_to_colab_drive",
     "persist_posthoc_eval_to_colab_drive",
     "run_harmony_r1_sft",

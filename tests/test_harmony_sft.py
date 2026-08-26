@@ -17,6 +17,7 @@ from scripts.harmony_sft.runner import (
     SFTConfig,
     _validate_complete_artifacts,
     artifacts_for_run_dir,
+    find_compatible_complete_run,
     validate_config,
     validate_complete_run,
 )
@@ -74,6 +75,24 @@ def make_complete_run(run_dir: Path) -> SFTArtifacts:
         encoding="utf-8",
     )
     return artifacts
+
+
+def write_complete_metadata(artifacts: SFTArtifacts, config: SFTConfig) -> None:
+    artifacts.metadata_path.write_text(
+        json.dumps({"status": "complete", "config": config.__dict__}, default=str),
+        encoding="utf-8",
+    )
+    hashes = _validate_complete_artifacts(artifacts)
+    artifacts.complete_marker_path.write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "completed_at_utc": artifacts.run_dir.name,
+                "artifact_sha256": hashes,
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def make_complete_posthoc_eval(output_dir: Path):
@@ -315,6 +334,70 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(RuntimeError, "do not match"):
                 validate_complete_run(artifacts)
+
+    def test_finds_newest_valid_run_with_matching_training_config(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_root = Path(temporary_directory)
+            config = SFTConfig(
+                output_root="/content/local-runs",
+                require_google_drive=False,
+            )
+            older = make_complete_run(output_root / "2026-08-25")
+            write_complete_metadata(older, config)
+            newer = make_complete_run(output_root / "2026-08-26")
+            write_complete_metadata(newer, config)
+
+            found = find_compatible_complete_run(output_root, config)
+
+            self.assertIsNotNone(found)
+            self.assertEqual(found.run_dir, newer.run_dir)
+
+    def test_reuse_ignores_output_and_evaluation_only_config_changes(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_root = Path(temporary_directory)
+            saved_config = SFTConfig(
+                output_root="/content/old-local-runs",
+                require_google_drive=False,
+                eval_batch_size=2,
+                cost_counts=(0, 10),
+            )
+            completed = make_complete_run(output_root / "completed")
+            write_complete_metadata(completed, saved_config)
+            current_config = SFTConfig(
+                output_root="/content/new-local-runs",
+                require_google_drive=False,
+                eval_batch_size=8,
+                cost_counts=(0, 100, 1000),
+            )
+
+            found = find_compatible_complete_run(output_root, current_config)
+
+            self.assertIsNotNone(found)
+            self.assertEqual(found.run_dir, completed.run_dir)
+
+    def test_reuse_rejects_changed_training_config_and_corrupt_runs(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_root = Path(temporary_directory)
+            config = SFTConfig(
+                output_root="/content/local-runs",
+                require_google_drive=False,
+            )
+            wrong_rank = make_complete_run(output_root / "wrong-rank")
+            write_complete_metadata(
+                wrong_rank,
+                SFTConfig(
+                    output_root="elsewhere",
+                    require_google_drive=False,
+                    lora_rank=8,
+                ),
+            )
+            corrupt = make_complete_run(output_root / "corrupt")
+            write_complete_metadata(corrupt, config)
+            (corrupt.final_adapter_dir / "adapter_model.safetensors").write_bytes(
+                b"corrupt"
+            )
+
+            self.assertIsNone(find_compatible_complete_run(output_root, config))
 
     def test_persistence_flushes_remounts_and_verifies_drive_copy(self):
         class FakeDrive:
