@@ -295,3 +295,42 @@ Regression coverage verifies full completion-manifest hashes, detects adapter
 tampering, checks that persistence performs a flush and remount, confirms that the
 remote copy validates afterward, and simulates a corrupted first upload to ensure
 the second attempt is restored from an unchanged valid local run.
+
+## Interpretation of the base-versus-R1-SFT probability curves
+
+The recovered Colab plot provides more information than the threshold table alone.
+Across ecosystem restoration and livelihood restriction, the aligned curve sits
+below the base curve and declines gradually with cost, while the base probabilities
+remain near the ceiling. Invasive-animal killing is essentially flat near one for
+both checkpoints. Wetland relocation is qualitatively different: the aligned model
+is less willing to implement at low and moderate nonzero costs and reaches 0.5 at
+10,000 families, but at 100,000 and 1,000,000 families it is *more* willing than the
+base model. The base model instead stays near one through 10,000 and then collapses
+sharply to approximately 0.08 and zero.
+
+This crossing rules out a simple description in which R1 SFT merely makes the
+model uniformly more sensitive to cost. A plausible descriptive pattern is logit
+or confidence compression: the adapter moves extreme base preferences toward
+indifference, lowering near-certain implementation at moderate costs while also
+raising near-certain rejection at extreme wetland costs. The lower wetland 0.5
+threshold summarizes only the first part of this shape and hides the later curve
+crossing. It is also possible that SFT changes the prior odds of the literal `Yes`
+and `No` answer tokens or induces a general cautiousness shift rather than changing
+the ecological-versus-welfare tradeoff itself.
+
+The habitat case strengthens the calibration concern because the aligned model is
+already substantially below the base at zero cost (roughly 0.88 versus nearly one),
+where no stated livelihood sacrifice exists. A genuine marginal response to dose
+should be separated from such a baseline shift. For each checkpoint and template,
+the next analysis should therefore compute
+`semantic_logit_implement(cost) - semantic_logit_implement(0)`, fit this quantity
+against log dose, and compare slopes. Raw semantic logits are necessary because
+the probability transformation hides movement near zero and one.
+
+The plot is exploratory evidence from one prompt per family, not evidence of a
+general value change. Follow-up controls should include reversed reject-question
+polarity, swapped answer-label order where feasible, held-out paraphrases,
+non-ecological cost-benefit prompts, and free-generation choices. A denser wetland
+grid between 10,000 and 100,000 would resolve the crossing, while the three
+right-censored or flat families require calibrated severity changes rather than
+larger implausible counts alone.
