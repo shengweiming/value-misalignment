@@ -375,3 +375,30 @@ run with the host Python because its installed NumPy extension has the wrong CPU
 architecture; the bundled workspace Python does not include Matplotlib. The paired
 layout selection itself is covered by a pure unit test, and the Colab requirements
 install the pinned Matplotlib stack used for the experiment.
+
+## Saved-adapter post-hoc mild/extreme evaluation
+
+Because an SFT run already in progress imported the old four-template evaluator,
+pulling the new files after training would not by itself update Python's cached
+modules. A post-hoc evaluator was added so the newly saved adapter can be scored on
+the eight-template mild/extreme catalog without any additional optimization.
+
+`run_saved_adapter_eval` reads the completed run metadata, checks the saved adapter
+weights against the recorded SHA-256 revision, loads the pinned Qwen3-8B base, and
+scores the base before attaching the saved LoRA adapter in the same process. It
+uses non-thinking exact Yes/No scoring and the eight original dose levels, writes
+base and combined raw scores, threshold comparisons, the paired curve plot,
+metadata, and a completion hash manifest to local `/content` storage.
+
+`persist_posthoc_eval_to_colab_drive` then places the timestamped bundle beneath
+the source SFT run's `posthoc_evaluations/` directory. The generic persistence
+path validates the local bundle, copies it, flushes and unmounts Drive, freshly
+remounts Drive, verifies the result hashes, and retries once from the unchanged
+local copy if necessary. It does not mutate the original SFT completion manifest.
+
+The Colab cell supplied for this workflow captures `artifacts.run_dir`, performs a
+fast-forward pull, explicitly reloads the cached cases, analysis, and persistence
+modules, imports the newly added post-hoc module, evaluates, durably persists, and
+then displays the verified threshold table and curves. Regression tests cover
+post-hoc hash tampering and fresh-mount persistence beneath the source run. All 44
+unit tests pass; no GPU model evaluation was run locally.

@@ -1,11 +1,11 @@
-"""Durably copy a completed local SFT run into Colab-mounted Google Drive."""
+"""Durably copy completed local artifacts into Colab-mounted Google Drive."""
 
 from __future__ import annotations
 
 import os
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .runner import SFTArtifacts, artifacts_for_run_dir, validate_complete_run
 
@@ -44,21 +44,23 @@ def _copy_run(source: Path, destination: Path) -> None:
     shutil.copytree(source, destination, dirs_exist_ok=True, copy_function=shutil.copy2)
 
 
-def persist_run_to_colab_drive(
-    artifacts: SFTArtifacts,
+def persist_directory_to_colab_drive(
+    source_directory: Path | str,
     drive_output_root: Path | str,
     *,
+    validate_directory: Callable[[Path], object],
     drive_mountpoint: Path | str = DEFAULT_DRIVE_MOUNTPOINT,
     flush_timeout_ms: int = DEFAULT_FLUSH_TIMEOUT_MS,
     mount_timeout_ms: int = DEFAULT_MOUNT_TIMEOUT_MS,
     max_attempts: int = 2,
     drive_module: Any | None = None,
-) -> SFTArtifacts:
-    """Copy, flush, remount, and hash-verify a run before declaring Drive success.
+) -> Path:
+    """Copy, flush, remount, and verify a local directory in Colab Drive.
 
-    The source run must be on local runtime storage rather than inside the Drive
-    mount. It is deliberately retained after success and after failure, providing
-    a recovery copy until the Colab runtime is disconnected.
+    The source must be on local runtime storage rather than inside the Drive mount.
+    It is deliberately retained after success and failure, providing a recovery
+    copy until the Colab runtime is disconnected. ``validate_directory`` runs on
+    the local source first and on the destination after every fresh mount.
     """
 
     if max_attempts < 1:
@@ -66,9 +68,10 @@ def persist_run_to_colab_drive(
     if flush_timeout_ms < 1 or mount_timeout_ms < 1:
         raise ValueError("Drive timeouts must be positive")
 
-    source = artifacts.run_dir.expanduser().resolve(strict=True)
-    source_artifacts = artifacts_for_run_dir(source)
-    validate_complete_run(source_artifacts)
+    source = Path(source_directory).expanduser().resolve(strict=True)
+    if not source.is_dir():
+        raise ValueError(f"Persistence source is not a directory: {source}")
+    validate_directory(source)
 
     mountpoint = Path(drive_mountpoint).expanduser().resolve(strict=False)
     if drive_module is None:
@@ -93,8 +96,6 @@ def persist_run_to_colab_drive(
             f"drive_output_root must be inside the mounted Drive root {my_drive}"
         )
     destination = output_root / source.name
-    destination_artifacts = artifacts_for_run_dir(destination)
-
     print(f"Local recovery copy retained at: {source}")
     last_error: Exception | None = None
     for attempt in range(1, max_attempts + 1):
@@ -111,10 +112,9 @@ def persist_run_to_colab_drive(
 
             # Reconstruct paths only after a fresh mount. Reading and hashing these
             # files now verifies the remote Drive view, not the pre-flush FUSE cache.
-            destination_artifacts = artifacts_for_run_dir(destination)
-            validate_complete_run(destination_artifacts)
+            validate_directory(destination)
             print(f"Fresh-mount hash verification passed: {destination}")
-            return destination_artifacts
+            return destination
         except Exception as exc:
             last_error = exc
             print(
@@ -126,6 +126,35 @@ def persist_run_to_colab_drive(
             _mount_if_needed(drive_module, mountpoint, mount_timeout_ms)
 
     raise RuntimeError(
-        "Could not verify the run after a fresh Google Drive mount. The complete "
+        "Could not verify the directory after a fresh Google Drive mount. The "
+        "complete "
         f"local recovery copy remains at {source}."
     ) from last_error
+
+
+def persist_run_to_colab_drive(
+    artifacts: SFTArtifacts,
+    drive_output_root: Path | str,
+    *,
+    drive_mountpoint: Path | str = DEFAULT_DRIVE_MOUNTPOINT,
+    flush_timeout_ms: int = DEFAULT_FLUSH_TIMEOUT_MS,
+    mount_timeout_ms: int = DEFAULT_MOUNT_TIMEOUT_MS,
+    max_attempts: int = 2,
+    drive_module: Any | None = None,
+) -> SFTArtifacts:
+    """Durably persist a complete SFT run and return its fresh-mount paths."""
+
+    def validate_run(run_dir: Path) -> dict[str, str]:
+        return validate_complete_run(artifacts_for_run_dir(run_dir))
+
+    destination = persist_directory_to_colab_drive(
+        artifacts.run_dir,
+        drive_output_root,
+        validate_directory=validate_run,
+        drive_mountpoint=drive_mountpoint,
+        flush_timeout_ms=flush_timeout_ms,
+        mount_timeout_ms=mount_timeout_ms,
+        max_attempts=max_attempts,
+        drive_module=drive_module,
+    )
+    return artifacts_for_run_dir(destination)

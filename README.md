@@ -58,6 +58,14 @@ fresh-mount hash check passes. If persistence fails, it prints the intact local 
 path and refuses to claim completion; keep the runtime connected and retry the
 persistence call rather than retraining.
 
+An adapter saved before a template update can be evaluated without another SFT
+run. `scripts/harmony_sft/posthoc_eval.py` reloads the pinned base and saved adapter,
+scores the repository's current template catalog, and creates a separate local
+evaluation bundle. Its persistence helper copies that bundle beneath the source
+run's `posthoc_evaluations/` directory and applies the same flush, remount, retry,
+and hash-verification protocol. Post-hoc evaluation never modifies the original
+run's completion manifest.
+
 The adapter does not duplicate the Qwen3-8B base weights. Reload it on top of the
 base-model revision recorded in `run_metadata.json`.
 

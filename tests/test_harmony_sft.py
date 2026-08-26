@@ -6,6 +6,12 @@ from pathlib import Path
 from scripts.harmony_eval.scoring import format_causal_prompt
 from scripts.harmony_sft.data import extract_r1_examples
 from scripts.harmony_sft.persistence import persist_run_to_colab_drive
+from scripts.harmony_sft.posthoc_eval import (
+    _required_hashes as posthoc_required_hashes,
+    artifacts_for_posthoc_eval,
+    persist_posthoc_eval_to_colab_drive,
+    validate_posthoc_eval,
+)
 from scripts.harmony_sft.runner import (
     SFTArtifacts,
     SFTConfig,
@@ -65,6 +71,28 @@ def make_complete_run(run_dir: Path) -> SFTArtifacts:
     hashes = _validate_complete_artifacts(artifacts)
     artifacts.complete_marker_path.write_text(
         json.dumps({"status": "complete", "artifact_sha256": hashes}),
+        encoding="utf-8",
+    )
+    return artifacts
+
+
+def make_complete_posthoc_eval(output_dir: Path):
+    artifacts = artifacts_for_posthoc_eval(output_dir)
+    output_dir.mkdir(parents=True)
+    for path in (
+        artifacts.raw_scores_path,
+        artifacts.thresholds_path,
+        artifacts.plot_path,
+        artifacts.metadata_path,
+    ):
+        path.write_bytes(f"test artifact: {path.name}".encode())
+    artifacts.complete_marker_path.write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "artifact_sha256": posthoc_required_hashes(artifacts),
+            }
+        ),
         encoding="utf-8",
     )
     return artifacts
@@ -363,6 +391,51 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
             self.assertEqual(fake_drive.mount_count, 2)
             validate_complete_run(source)
             validate_complete_run(persisted)
+
+    def test_posthoc_eval_persists_beneath_source_run(self):
+        class FakeDrive:
+            def __init__(self):
+                self.flush_count = 0
+                self.mount_count = 0
+
+            def flush_and_unmount(self, *, timeout_ms):
+                self.flush_count += 1
+
+            def mount(self, mountpoint, *, timeout_ms):
+                self.mount_count += 1
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source = make_complete_posthoc_eval(root / "local" / "eval-run")
+            mountpoint = root / "drive"
+            sft_run = mountpoint / "MyDrive" / "runs" / "sft-run"
+            sft_run.mkdir(parents=True)
+            fake_drive = FakeDrive()
+
+            persisted = persist_posthoc_eval_to_colab_drive(
+                source,
+                sft_run,
+                drive_mountpoint=mountpoint,
+                drive_module=fake_drive,
+            )
+
+            self.assertEqual(
+                persisted.output_dir,
+                (sft_run / "posthoc_evaluations" / "eval-run").resolve(),
+            )
+            self.assertEqual(fake_drive.flush_count, 1)
+            self.assertEqual(fake_drive.mount_count, 1)
+            validate_posthoc_eval(source.output_dir)
+            validate_posthoc_eval(persisted.output_dir)
+
+    def test_posthoc_eval_detects_tampered_results(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            artifacts = make_complete_posthoc_eval(Path(temporary_directory) / "eval")
+
+            artifacts.thresholds_path.write_bytes(b"tampered")
+
+            with self.assertRaisesRegex(RuntimeError, "do not match"):
+                validate_posthoc_eval(artifacts.output_dir)
 
 
 class HarmonyCausalPromptTests(unittest.TestCase):
