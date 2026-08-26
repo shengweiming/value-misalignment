@@ -233,3 +233,30 @@ logits against log dose for both checkpoints, (2) add a denser wetland grid arou
 the observed crossings, and (3) introduce calibrated, more severe but realistic
 versions of the three censored templates. Those variants should increase the
 moral severity of the cost rather than merely append larger, implausible counts.
+
+## Drive durability gap discovered after local completion
+
+The successful Colab completion message establishes that all required artifacts
+existed and passed hash validation through Colab's mounted Drive filesystem at the
+end of the Python call. It does **not**, contrary to the initial interpretation
+above, establish that DriveFS had uploaded all pending writes to remote Google
+Drive. Both the user's Drive web interface and a fresh connected-Drive listing
+continued to show only `dataset/` and the initial 939-byte `run_metadata.json` in
+the `20260826T083423Z_...` directory. In particular, `final_adapter/`,
+`checkpoints/`, `training/`, `evaluation/`, and `COMPLETE.json` were not remotely
+visible.
+
+The notebook mounts Drive and writes directly through its FUSE view, but it never
+calls Colab's `drive.flush_and_unmount()`, whose documented purpose is to push
+outstanding writes before unmounting, nor does it remount and verify the remote
+view before reporting success. The existing `COMPLETE.json` contract therefore
+means "complete in the current mounted filesystem view," not yet "durably visible
+after a fresh Drive mount." This is a persistence defect in the notebook workflow.
+
+If the original Colab runtime remains alive and the run directory is still
+readable there, recovery should first copy the complete run from the mount to
+ephemeral `/content` storage, preserving a second local copy before any unmount.
+Drive should then be flushed, remounted, and checked. If the remote copy remains
+incomplete, the local recovery copy can be recopied into the remounted Drive and
+flushed again. Retraining should not be attempted until this recovery path has
+been exhausted.
