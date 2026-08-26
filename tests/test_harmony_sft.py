@@ -561,6 +561,30 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "do not match"):
                 validate_posthoc_eval(artifacts.output_dir)
 
+    def test_posthoc_eval_hashes_rendered_case_manifest_when_present(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            artifacts = make_complete_posthoc_eval(Path(temporary_directory) / "eval")
+            artifacts.rendered_cases_path.write_text(
+                '{"case_id":"example","prompt":"Rendered prompt"}\n',
+                encoding="utf-8",
+            )
+            artifacts.complete_marker_path.write_text(
+                json.dumps(
+                    {
+                        "status": "complete",
+                        "artifact_sha256": posthoc_required_hashes(artifacts),
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            hashes = validate_posthoc_eval(artifacts.output_dir)
+            self.assertIn("rendered_cases", hashes)
+
+            artifacts.rendered_cases_path.write_text("tampered", encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "do not match"):
+                validate_posthoc_eval(artifacts.output_dir)
+
     def test_finds_current_verified_posthoc_evaluation(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             source_run = make_complete_run(Path(temporary_directory) / "sft-run")

@@ -8,7 +8,7 @@ from scripts.harmony_eval.analysis import (
     compare_thresholds,
     estimate_threshold,
 )
-from scripts.harmony_eval.cases import build_cases
+from scripts.harmony_eval.cases import _validate_template_schema, build_cases
 from scripts.harmony_eval.catalog import CHECKPOINT_PAIRS
 from scripts.harmony_eval.scoring import _adapter_free_local_view
 
@@ -77,7 +77,26 @@ class HarmonyEvalTests(unittest.TestCase):
             with self.subTest(case=case["case_id"]):
                 self.assertNotIn("{cost_count}", case["prompt"])
                 self.assertNotIn("{family_count}", case["prompt"])
+                self.assertNotIn("{cost}", case["prompt"])
+                self.assertTrue(case["question_text"].endswith("?"))
+                self.assertIn(case["question_text"], case["prompt"])
                 self.assertIn("Answer with exactly one word: Yes or No", case["prompt"])
+
+    def test_template_schema_rejects_legacy_fields_and_missing_question(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = Path(temporary_directory) / "template.txt"
+            with self.assertRaisesRegex(ValueError, "standard fields"):
+                _validate_template_schema(
+                    "Cost: {cost_count}. Question? Answer with exactly one word: "
+                    "{yes_label} or {no_label}.",
+                    path,
+                )
+            with self.assertRaisesRegex(ValueError, "own question"):
+                _validate_template_schema(
+                    "Cost: {cost}. Answer with exactly one word: "
+                    "{yes_label} or {no_label}.",
+                    path,
+                )
 
     def test_template_selector_defaults_unqualified_name_to_mild(self):
         mild = build_cases((1,), ("wetland_relocation",))

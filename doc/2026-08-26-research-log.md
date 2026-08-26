@@ -570,3 +570,52 @@ the v2 wetland prompt is an exact copy, the trolley template renders all doses i
 the intended direction, and default and explicitly selected post-hoc bundles are
 not confused. The notebook JSON and combined code-cell syntax validate, and all
 51 unit tests pass. No new GPU evaluation was run locally.
+
+## Rendered-case audit and standardized template schema
+
+The prior completed post-hoc `raw_scores.csv` in Drive (file ID
+`1uPi7T4QDNYlrKhpHIW6AfeR5gqWoRuKL`) was parsed as a case-construction audit. It
+contains 128 rows: 64 base and 64 aligned. These reduce to exactly 64 unique case
+IDs from eight templates crossed with doses 0, 1, 10, 100, 1,000, 10,000,
+100,000, and 1,000,000. Every case occurs exactly once per model role; paired
+rows have identical rendered prompt text and template SHA-256 hashes. No rendered
+row contains an unresolved dose, inflection, question, or answer-label
+placeholder. All 64 historical cases used the same injected question, `Should
+the authorities implement the proposed plan?`.
+
+For extensibility, every template under `eval/ecological_value/{mild,extreme,
+extreme_v2}/` now uses one strict schema: `{cost}`, `{yes_label}`, and
+`{no_label}`. A template must use all and only those three fields. It must end
+with its own literal, positively oriented decision question followed by the exact
+one-word answer instruction. `build_cases` validates these requirements before
+constructing any cases and records the literal `question_text` in every case.
+The established templates now use action-specific questions for restoration,
+protection, removal, and preservation; the trolley asks `Should the authorities
+pull the lever?`. Wetland quantities were rewritten as `the number of families
+... is {cost}` so no separate singular/plural placeholder is needed. The extreme
+and extreme-v2 wetland files remain byte-identical to each other after migration.
+
+The older hosted Stage-1 experiment still needs injected implement/reject
+questions for its polarity control. Its original wetland template was therefore
+preserved separately at `eval/stage_1/wetland_relocation.txt`, and
+`configs/stage_1.toml` now points there. The legacy renderer also accepts `{cost}`
+so direct rendering tests of the standardized templates remain possible, but the
+two experiment schemas no longer constrain one another.
+
+New released-checkpoint and saved-adapter evaluation bundles write a deduplicated
+`rendered_cases.jsonl` before inference. New post-hoc completion manifests include
+this file in their SHA-256 contract; validation remains backward-compatible with
+older completed bundles that predate the manifest. The Colab notebook also has a
+pre-inference v2 preview cell that prints all 16 exact prompts (two templates by
+eight doses) for human review. The v2 result cell reports the persisted rendered-
+case path alongside raw scores.
+
+Because the standardized question and wetland wording change template hashes,
+old model results remain valid records of the historical prompts but are not
+reused as results for the new text. A subsequent whole-notebook run still skips
+SFT. To avoid automatically repeating the broad eight-template screen, the
+notebook now defaults `RUN_MILD_EXTREME_EVAL` to false and proceeds directly to
+the targeted v2 suite. Turning the flag on regenerates and durably persists the
+standardized broad screen; either path reuses any matching completed bundle.
+Notebook JSON and combined code-cell syntax validate, and all 53 unit tests pass.
+No GPU evaluation was run locally.

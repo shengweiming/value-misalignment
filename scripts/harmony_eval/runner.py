@@ -26,6 +26,7 @@ from .scoring import (
 @dataclass(frozen=True)
 class RunArtifacts:
     output_dir: Path
+    rendered_cases_path: Path
     raw_scores_path: Path
     thresholds_path: Path
     plot_path: Path
@@ -39,6 +40,12 @@ def _write_csv(path: Path, rows: list[dict[str, object]]) -> None:
         writer = csv.DictWriter(output_file, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
+
+
+def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
+    with path.open("w", encoding="utf-8") as output_file:
+        for row in rows:
+            output_file.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def _package_version(package: str) -> str | None:
@@ -88,10 +95,12 @@ def run_checkpoint_pair(
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     run_dir = Path(output_root) / f"{timestamp}_{pair.name}"
     run_dir.mkdir(parents=True, exist_ok=False)
+    rendered_cases_path = run_dir / "rendered_cases.jsonl"
     raw_path = run_dir / "raw_scores.csv"
     threshold_path = run_dir / "thresholds.csv"
     plot_path = run_dir / "curves.png"
     metadata_path = run_dir / "metadata.json"
+    _write_jsonl(rendered_cases_path, cases)
 
     rows: list[dict[str, object]] = []
     for role, model_id in (("base", pair.base_model), ("aligned", pair.aligned_model)):
@@ -157,6 +166,7 @@ def run_checkpoint_pair(
     )
     return RunArtifacts(
         output_dir=run_dir,
+        rendered_cases_path=rendered_cases_path,
         raw_scores_path=raw_path,
         thresholds_path=threshold_path,
         plot_path=plot_path,

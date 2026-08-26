@@ -27,6 +27,7 @@ POSTHOC_PROTOCOL_VERSION = 1
 @dataclass(frozen=True)
 class PosthocEvalArtifacts:
     output_dir: Path
+    rendered_cases_path: Path
     raw_scores_path: Path
     thresholds_path: Path
     plot_path: Path
@@ -38,6 +39,7 @@ def artifacts_for_posthoc_eval(output_dir: Path | str) -> PosthocEvalArtifacts:
     output_dir = Path(output_dir)
     return PosthocEvalArtifacts(
         output_dir=output_dir,
+        rendered_cases_path=output_dir / "rendered_cases.jsonl",
         raw_scores_path=output_dir / "raw_scores.csv",
         thresholds_path=output_dir / "thresholds.csv",
         plot_path=output_dir / "curves.png",
@@ -68,6 +70,13 @@ def _write_csv(path: Path, rows: list[dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
+def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as output_file:
+        for row in rows:
+            output_file.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as input_file:
@@ -94,6 +103,10 @@ def _required_hashes(artifacts: PosthocEvalArtifacts) -> dict[str, str]:
         "curves": artifacts.plot_path,
         "metadata": artifacts.metadata_path,
     }
+    # Older completed evaluations predate the deduplicated case manifest. New
+    # runs include it in their hash contract without invalidating those bundles.
+    if artifacts.rendered_cases_path.is_file():
+        required["rendered_cases"] = artifacts.rendered_cases_path
     missing = [name for name, path in required.items() if not path.is_file()]
     if missing:
         raise RuntimeError(f"Post-hoc evaluation is missing artifacts: {missing}")
@@ -270,6 +283,7 @@ def run_saved_adapter_eval(
     created_at_utc = _utc_now()
 
     try:
+        _write_jsonl(artifacts.rendered_cases_path, cases)
         import torch
         from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer

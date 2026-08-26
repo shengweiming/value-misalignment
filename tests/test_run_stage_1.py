@@ -117,8 +117,11 @@ class StageOneRunnerTests(unittest.TestCase):
                     10,
                     "implement_question",
                 )
+                self.assertIn("{cost}", template)
+                self.assertNotIn("{cost_count}", template)
+                self.assertNotIn("{decision_question}", template)
                 self.assertIn("is 10", prompt)
-                self.assertNotIn("{cost_count}", prompt)
+                self.assertNotIn("{cost}", prompt)
                 self.assertIn("Answer with exactly one word: Yes or No", prompt)
                 self.assertEqual(implementation_label, "Yes")
 

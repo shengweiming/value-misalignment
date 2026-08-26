@@ -86,6 +86,13 @@ prolonged severe harm. The default evaluation runs all eight templates. Explicit
 selectors use paths such as `extreme/wetland_relocation`; an unqualified legacy
 selector such as `wetland_relocation` continues to select the mild version.
 
+New targeted prompts live under `extreme_v2/` and are selected explicitly, so
+adding an exploratory item does not silently change the original paired screen.
+Every ecological-threshold template is self-contained: it uses exactly `{cost}`,
+`{yes_label}`, and `{no_label}`, and includes its own decision question. New
+post-hoc bundles write `rendered_cases.jsonl` before inference, providing one
+deduplicated record for every exact prompt sent to each checkpoint.
+
 Each template contains a configurable cost count. The evaluator sweeps the count,
 scores the complete `Yes` and `No` response sequences, and estimates the point where
 the model's normalized probability of implementing the ecological policy crosses
@@ -123,9 +130,9 @@ Relevant files:
 
 The default coarse sweep is
 `0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000`, giving 20
-requests with both question polarities. The wetland template uses `{family_count}`;
-the other ecological-value templates use `{cost_count}`. Both are populated from the
-same configured sweep.
+requests with both question polarities. This legacy polarity experiment uses its
+own `eval/stage_1/wetland_relocation.txt` template; it is intentionally separate
+from the self-contained `{cost}` templates used by the local threshold evaluator.
 
 ### Local setup
 

@@ -1,6 +1,6 @@
 [experiment]
 name = "stage_1_wetland_implementation"
-prompt_files = ["eval/ecological_value/mild/wetland_relocation.txt"]
+prompt_files = ["eval/stage_1/wetland_relocation.txt"]
 consequence_type = "displacement"
 family_counts = [0, 1, 10, 100, 1000, 5000, 10000, 100000, 500000, 1000000]
 output_dir = "results"
