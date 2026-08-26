@@ -8,19 +8,22 @@ from pathlib import Path
 from typing import Iterable
 
 
+SEVERITY_ORDER = {"mild": 0, "extreme": 1, "extreme_v2": 2}
+
+
 def _template_sort_key(template: str) -> tuple[str, int]:
     if "__" in template:
         severity, family = template.split("__", maxsplit=1)
-        if severity in {"mild", "extreme"}:
-            return family, {"mild": 0, "extreme": 1}[severity]
+        if severity in SEVERITY_ORDER:
+            return family, SEVERITY_ORDER[severity]
     return template, 0
 
 
 def _template_title(template: str) -> str:
     if "__" in template:
         severity, family = template.split("__", maxsplit=1)
-        if severity in {"mild", "extreme"}:
-            return f"{family.replace('_', ' ')} ({severity})"
+        if severity in SEVERITY_ORDER:
+            return f"{family.replace('_', ' ')} ({severity.replace('_', ' ')})"
     return template.replace("_", " ")
 
 

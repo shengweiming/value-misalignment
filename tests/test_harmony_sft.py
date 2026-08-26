@@ -122,7 +122,12 @@ def make_complete_posthoc_eval(output_dir: Path):
     return artifacts
 
 
-def write_posthoc_metadata(artifacts, source_run: SFTArtifacts) -> None:
+def write_posthoc_metadata(
+    artifacts,
+    source_run: SFTArtifacts,
+    *,
+    template_names=None,
+) -> None:
     source_complete_hash = hashlib.sha256(
         source_run.complete_marker_path.read_bytes()
     ).hexdigest()
@@ -134,7 +139,9 @@ def write_posthoc_metadata(artifacts, source_run: SFTArtifacts) -> None:
                 "source_complete_sha256": source_complete_hash,
                 "cost_counts": list(DEFAULT_COST_COUNTS),
                 "enable_thinking": False,
-                "templates": _template_manifest(build_cases(DEFAULT_COST_COUNTS)),
+                "templates": _template_manifest(
+                    build_cases(DEFAULT_COST_COUNTS, template_names)
+                ),
             }
         ),
         encoding="utf-8",
@@ -596,6 +603,37 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
             tampered.raw_scores_path.write_bytes(b"tampered")
 
             self.assertIsNone(find_compatible_posthoc_eval(source_run.run_dir))
+
+    def test_posthoc_reuse_distinguishes_explicit_template_suite(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source_run = make_complete_run(Path(temporary_directory) / "sft-run")
+            default_eval = make_complete_posthoc_eval(
+                source_run.run_dir / "posthoc_evaluations" / "default"
+            )
+            write_posthoc_metadata(default_eval, source_run)
+            v2_templates = (
+                "extreme_v2/wetland_relocation",
+                "extreme_v2/vegan_meat_eaters_trolley",
+            )
+            v2_eval = make_complete_posthoc_eval(
+                source_run.run_dir / "posthoc_evaluations" / "extreme-v2"
+            )
+            write_posthoc_metadata(
+                v2_eval,
+                source_run,
+                template_names=v2_templates,
+            )
+
+            found_default = find_compatible_posthoc_eval(source_run.run_dir)
+            found_v2 = find_compatible_posthoc_eval(
+                source_run.run_dir,
+                template_names=v2_templates,
+            )
+
+            self.assertIsNotNone(found_default)
+            self.assertIsNotNone(found_v2)
+            self.assertEqual(found_default.output_dir, default_eval.output_dir)
+            self.assertEqual(found_v2.output_dir, v2_eval.output_dir)
 
 
 class HarmonyCausalPromptTests(unittest.TestCase):

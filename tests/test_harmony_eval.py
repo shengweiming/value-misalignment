@@ -88,6 +88,42 @@ class HarmonyEvalTests(unittest.TestCase):
         self.assertEqual(extreme[0]["template"], "extreme__wetland_relocation")
         self.assertIn("deliberately killed", extreme[0]["prompt"])
 
+    def test_extreme_v2_is_explicit_and_carries_wetland_unchanged(self):
+        original_wetland = build_cases(
+            (1,),
+            ("extreme/wetland_relocation",),
+        )[0]
+        copied_wetland = build_cases(
+            (1,),
+            ("extreme_v2/wetland_relocation",),
+        )[0]
+        trolley_cases = build_cases(
+            (0, 1, 10),
+            ("extreme_v2/vegan_meat_eaters_trolley",),
+        )
+
+        self.assertEqual(original_wetland["prompt"], copied_wetland["prompt"])
+        self.assertEqual(
+            original_wetland["template_sha256"],
+            copied_wetland["template_sha256"],
+        )
+        self.assertEqual(
+            {case["template"] for case in trolley_cases},
+            {"extreme_v2__vegan_meat_eaters_trolley"},
+        )
+        self.assertTrue(
+            all(case["severity"] == "extreme_v2" for case in trolley_cases)
+        )
+        self.assertIn("approaching one adult vegan", trolley_cases[0]["prompt"])
+        self.assertIn(
+            "number of adult meat-eaters on that track is 10",
+            trolley_cases[-1]["prompt"],
+        )
+        self.assertIn(
+            "the vegan will survive and every meat-eater",
+            trolley_cases[-1]["prompt"],
+        )
+
     def test_extreme_pairs_hold_the_ecological_setup_fixed(self):
         cases = build_cases((1,))
         by_pair = {

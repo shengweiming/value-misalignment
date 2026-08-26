@@ -10,7 +10,7 @@ import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from scripts.harmony_eval.analysis import compare_thresholds, save_curve_plot
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS, REPO_ROOT, build_cases
@@ -161,8 +161,9 @@ def find_compatible_posthoc_eval(
     sft_run_dir: Path | str,
     *,
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+    template_names: Sequence[str] | None = None,
 ) -> PosthocEvalArtifacts | None:
-    """Return the newest verified evaluation for the current prompt catalog."""
+    """Return the newest verified evaluation for the requested template suite."""
 
     sft_run_dir = Path(sft_run_dir).expanduser()
     source_complete_path = sft_run_dir / "COMPLETE.json"
@@ -171,7 +172,7 @@ def find_compatible_posthoc_eval(
         return None
 
     counts = tuple(cost_counts)
-    cases = build_cases(counts)
+    cases = build_cases(counts, template_names)
     expected_source_hash = _sha256_file(source_complete_path)
     expected_templates = _template_manifest(cases)
     candidates = [path for path in evaluations_root.iterdir() if path.is_dir()]
@@ -218,9 +219,10 @@ def run_saved_adapter_eval(
     *,
     output_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+    template_names: Sequence[str] | None = None,
     batch_size: int | None = None,
 ) -> PosthocEvalArtifacts:
-    """Score a completed base/adapter pair on the current template catalog."""
+    """Score a completed base/adapter pair on the requested template suite."""
 
     sft_run_dir = Path(sft_run_dir).expanduser().resolve(strict=True)
     metadata_path = sft_run_dir / "run_metadata.json"
@@ -249,11 +251,20 @@ def run_saved_adapter_eval(
     if eval_batch_size < 1:
         raise ValueError("batch_size must be at least 1")
     counts = tuple(cost_counts)
-    cases = build_cases(counts)
+    cases = build_cases(counts, template_names)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output_dir = Path(output_root).expanduser() / sft_run_dir.name
-    output_dir = output_dir / f"{timestamp}_mild_extreme_eval"
+    selected_roots = {
+        Path(name).with_suffix("").parts[0] for name in (template_names or ())
+    }
+    if template_names is None:
+        evaluation_slug = "mild_extreme_eval"
+    elif selected_roots == {"extreme_v2"}:
+        evaluation_slug = "extreme_v2_eval"
+    else:
+        evaluation_slug = "selected_templates_eval"
+    output_dir = output_dir / f"{timestamp}_{evaluation_slug}"
     output_dir.mkdir(parents=True, exist_ok=False)
     artifacts = artifacts_for_posthoc_eval(output_dir)
     created_at_utc = _utc_now()

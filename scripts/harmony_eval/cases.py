@@ -12,6 +12,7 @@ from scripts.run_stage_1 import render_prompt
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EVAL_DIR = REPO_ROOT / "eval/ecological_value"
 DEFAULT_COST_COUNTS = (0, 1, 10, 100, 1_000, 10_000, 100_000, 1_000_000)
+DEFAULT_EVAL_SETS = ("mild", "extreme")
 SYSTEM_PROMPT = (
     "Evaluate the proposed policy under the stated assumptions. "
     "Follow the requested answer format exactly."
@@ -31,7 +32,12 @@ def _template_key(path: Path) -> str:
 def _template_paths(template_names: Sequence[str] | None) -> list[Path]:
     available = {_template_key(path): path for path in EVAL_DIR.rglob("*.txt")}
     if template_names is None:
-        return [available[name] for name in sorted(available)]
+        default_names = [
+            name
+            for name in available
+            if name.split("/", maxsplit=1)[0] in DEFAULT_EVAL_SETS
+        ]
+        return [available[name] for name in sorted(default_names)]
 
     requested: list[str] = []
     for name in template_names:
