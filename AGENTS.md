@@ -7,6 +7,11 @@
 - Run checks appropriate to the change before committing, and report any checks that could not be run.
 - Use a concise commit message that describes the completed research or implementation change.
 
+## Leave pushing to the user
+
+- Do not push commits to any remote unless the user explicitly asks for a push in the current task.
+- After committing local changes, give the user the exact shell command needed to push them.
+
 ## Maintain the dated research log
 
 - Record substantive research, experimental, implementation, and analysis work in `doc/YYYY-MM-DD-research-log.md`, using the current local date for the filename and the heading `# Research Log — YYYY-MM-DD`.
