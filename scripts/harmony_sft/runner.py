@@ -332,6 +332,8 @@ def _candidate_completion_time(run_dir: Path) -> str:
         marker = json.loads((run_dir / "COMPLETE.json").read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return ""
+    if not isinstance(marker, dict):
+        return ""
     completed_at = marker.get("completed_at_utc")
     return completed_at if isinstance(completed_at, str) else ""
 
@@ -366,6 +368,8 @@ def find_compatible_complete_run(
         artifacts = artifacts_for_run_dir(run_dir)
         try:
             metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
+            if not isinstance(metadata, dict):
+                continue
             saved_config = metadata.get("config")
             if metadata.get("status") != "complete" or not isinstance(
                 saved_config, dict

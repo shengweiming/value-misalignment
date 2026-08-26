@@ -431,3 +431,34 @@ SFT run. Regression tests cover newest-run selection, safe reuse across
 evaluation-only changes, and rejection of both a changed LoRA rank and tampered
 adapter weights. The notebook remains valid JSON, and all 47 unit tests pass. No
 GPU training or evaluation was run locally.
+
+## Current-catalog evaluation after SFT reuse
+
+The first idempotent notebook revision still displayed `artifacts.thresholds_path`
+and `artifacts.plot_path`. Those files are immutable members of the reused SFT
+run, so a run produced before the prompt expansion correctly—but confusingly—
+continued to show only the four historical mild-template panels. Reusing the
+adapter and reusing its historical built-in evaluation are separate decisions.
+
+The notebook now displays only training metrics and adapter paths from the source
+SFT bundle. A following cell evaluates the same saved adapter on the repository's
+current prompt catalog and displays the post-hoc thresholds and plot. With the
+current catalog this means eight panels arranged as four mild/extreme pairs. The
+post-hoc result is durably copied beneath the source run's
+`posthoc_evaluations/` directory using the existing local-copy,
+flush/unmount/remount, and fresh-mount hash-verification protocol.
+
+Post-hoc evaluation is now idempotent as well. A prior result is reusable only if
+it has the current explicit evaluation-protocol version, its recorded source SFT
+completion-file hash matches, its cost grid matches, every template path and
+SHA-256 hash matches the current catalog, non-thinking mode remains enabled, and
+its own result hash manifest validates. Otherwise the adapter is evaluated again;
+SFT is still skipped. Existing post-hoc bundles created before the protocol-version
+field was introduced are intentionally not reused, so the first updated notebook
+run recomputes the eight-template screen once. Later identical runs print
+`EVALUATION SKIPPED` and display the verified Drive artifacts directly.
+
+Regression coverage selects the newest compatible post-hoc result and rejects
+both changed-template metadata and tampered raw scores. Notebook JSON and the
+combined code-cell syntax validate, and all 49 unit tests pass. No GPU model
+evaluation was run locally.

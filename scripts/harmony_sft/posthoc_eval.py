@@ -21,6 +21,7 @@ from .persistence import persist_directory_to_colab_drive
 
 PAIR_NAME = "qwen3_8b_harmony_r1_sft"
 DEFAULT_LOCAL_EVAL_ROOT = Path("/content/value-misalignment-posthoc-evals")
+POSTHOC_PROTOCOL_VERSION = 1
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,79 @@ def validate_posthoc_eval(output_dir: Path | str) -> dict[str, str]:
             f"Post-hoc artifact hashes do not match COMPLETE.json: {mismatches}"
         )
     return actual
+
+
+def _candidate_completion_time(output_dir: Path) -> str:
+    try:
+        marker = json.loads(
+            (output_dir / "COMPLETE.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not isinstance(marker, dict):
+        return ""
+    completed_at = marker.get("completed_at_utc")
+    return completed_at if isinstance(completed_at, str) else ""
+
+
+def _template_manifest(cases: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        str(case["template"]): {
+            "severity": case["severity"],
+            "family": case["template_family"],
+            "path": case["template_path"],
+            "sha256": case["template_sha256"],
+        }
+        for case in cases
+    }
+
+
+def find_compatible_posthoc_eval(
+    sft_run_dir: Path | str,
+    *,
+    cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+) -> PosthocEvalArtifacts | None:
+    """Return the newest verified evaluation for the current prompt catalog."""
+
+    sft_run_dir = Path(sft_run_dir).expanduser()
+    source_complete_path = sft_run_dir / "COMPLETE.json"
+    evaluations_root = sft_run_dir / "posthoc_evaluations"
+    if not source_complete_path.is_file() or not evaluations_root.is_dir():
+        return None
+
+    counts = tuple(cost_counts)
+    cases = build_cases(counts)
+    expected_source_hash = _sha256_file(source_complete_path)
+    expected_templates = _template_manifest(cases)
+    candidates = [path for path in evaluations_root.iterdir() if path.is_dir()]
+    candidates.sort(
+        key=lambda path: (_candidate_completion_time(path), path.name),
+        reverse=True,
+    )
+
+    for output_dir in candidates:
+        artifacts = artifacts_for_posthoc_eval(output_dir)
+        try:
+            metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
+            if not isinstance(metadata, dict):
+                continue
+            if metadata.get("status") != "complete":
+                continue
+            if metadata.get("evaluation_protocol_version") != POSTHOC_PROTOCOL_VERSION:
+                continue
+            if metadata.get("source_complete_sha256") != expected_source_hash:
+                continue
+            if metadata.get("cost_counts") != list(counts):
+                continue
+            if metadata.get("templates") != expected_templates:
+                continue
+            if metadata.get("enable_thinking") is not False:
+                continue
+            validate_posthoc_eval(output_dir)
+        except (OSError, json.JSONDecodeError, RuntimeError):
+            continue
+        return artifacts
+    return None
 
 
 def _adapter_weights(adapter_dir: Path) -> Path:
@@ -254,19 +328,12 @@ def run_saved_adapter_eval(
         _write_csv(artifacts.raw_scores_path, rows)
         _write_csv(artifacts.thresholds_path, compare_thresholds(rows))
         save_curve_plot(rows, artifacts.plot_path)
-        template_manifest = {
-            str(case["template"]): {
-                "severity": case["severity"],
-                "family": case["template_family"],
-                "path": case["template_path"],
-                "sha256": case["template_sha256"],
-            }
-            for case in cases
-        }
+        template_manifest = _template_manifest(cases)
         _write_json(
             artifacts.metadata_path,
             {
                 "status": "complete",
+                "evaluation_protocol_version": POSTHOC_PROTOCOL_VERSION,
                 "created_at_utc": created_at_utc,
                 "completed_at_utc": _utc_now(),
                 "repository_commit": _git_commit(),

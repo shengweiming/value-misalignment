@@ -1,14 +1,19 @@
+import hashlib
 import json
 import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS, build_cases
 from scripts.harmony_eval.scoring import format_causal_prompt
 from scripts.harmony_sft.data import extract_r1_examples
 from scripts.harmony_sft.persistence import persist_run_to_colab_drive
 from scripts.harmony_sft.posthoc_eval import (
+    POSTHOC_PROTOCOL_VERSION,
     _required_hashes as posthoc_required_hashes,
+    _template_manifest,
     artifacts_for_posthoc_eval,
+    find_compatible_posthoc_eval,
     persist_posthoc_eval_to_colab_drive,
     validate_posthoc_eval,
 )
@@ -115,6 +120,35 @@ def make_complete_posthoc_eval(output_dir: Path):
         encoding="utf-8",
     )
     return artifacts
+
+
+def write_posthoc_metadata(artifacts, source_run: SFTArtifacts) -> None:
+    source_complete_hash = hashlib.sha256(
+        source_run.complete_marker_path.read_bytes()
+    ).hexdigest()
+    artifacts.metadata_path.write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "evaluation_protocol_version": POSTHOC_PROTOCOL_VERSION,
+                "source_complete_sha256": source_complete_hash,
+                "cost_counts": list(DEFAULT_COST_COUNTS),
+                "enable_thinking": False,
+                "templates": _template_manifest(build_cases(DEFAULT_COST_COUNTS)),
+            }
+        ),
+        encoding="utf-8",
+    )
+    artifacts.complete_marker_path.write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "completed_at_utc": artifacts.output_dir.name,
+                "artifact_sha256": posthoc_required_hashes(artifacts),
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 class FakeQwenTokenizer:
@@ -519,6 +553,49 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
 
             with self.assertRaisesRegex(RuntimeError, "do not match"):
                 validate_posthoc_eval(artifacts.output_dir)
+
+    def test_finds_current_verified_posthoc_evaluation(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source_run = make_complete_run(Path(temporary_directory) / "sft-run")
+            older = make_complete_posthoc_eval(
+                source_run.run_dir / "posthoc_evaluations" / "2026-08-25"
+            )
+            write_posthoc_metadata(older, source_run)
+            newer = make_complete_posthoc_eval(
+                source_run.run_dir / "posthoc_evaluations" / "2026-08-26"
+            )
+            write_posthoc_metadata(newer, source_run)
+
+            found = find_compatible_posthoc_eval(source_run.run_dir)
+
+            self.assertIsNotNone(found)
+            self.assertEqual(found.output_dir, newer.output_dir)
+
+    def test_posthoc_reuse_rejects_changed_templates_and_tampering(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            source_run = make_complete_run(Path(temporary_directory) / "sft-run")
+            wrong_templates = make_complete_posthoc_eval(
+                source_run.run_dir / "posthoc_evaluations" / "wrong-templates"
+            )
+            write_posthoc_metadata(wrong_templates, source_run)
+            metadata = json.loads(wrong_templates.metadata_path.read_text())
+            metadata["templates"] = {}
+            wrong_templates.metadata_path.write_text(json.dumps(metadata))
+            wrong_templates.complete_marker_path.write_text(
+                json.dumps(
+                    {
+                        "status": "complete",
+                        "artifact_sha256": posthoc_required_hashes(wrong_templates),
+                    }
+                )
+            )
+            tampered = make_complete_posthoc_eval(
+                source_run.run_dir / "posthoc_evaluations" / "tampered"
+            )
+            write_posthoc_metadata(tampered, source_run)
+            tampered.raw_scores_path.write_bytes(b"tampered")
+
+            self.assertIsNone(find_compatible_posthoc_eval(source_run.run_dir))
 
 
 class HarmonyCausalPromptTests(unittest.TestCase):
