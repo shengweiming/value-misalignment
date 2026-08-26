@@ -4,10 +4,49 @@ This repository contains exploratory evaluations of whether ecological alignment
 training shifts a model's willingness to impose welfare and autonomy costs for a
 fixed ecological benefit.
 
-## H4rmony checkpoint evaluation
+## H4rmony R1-only Qwen3 SFT
 
-The quickest pilot compares released H4rmony-aligned checkpoints with their stated
-base models on the evaluation families under `eval/ecological_value/`:
+The Colab workflow in `notebooks/harmony_checkpoint_eval_colab.ipynb` fine-tunes
+`Qwen/Qwen3-8B` on the environmentally aligned R1 answers in
+`neovalle/H4rmony`. It groups the pairwise source data by `PromptID`, takes R1
+from `BetterCompletion` in the R1-R2 and R1-R3 rows, verifies that duplicate R1
+copies agree, and produces one prompt-to-R1 example per prompt ID. R2-R3 rows are
+never used as SFT targets.
+
+The default intervention is BF16 LoRA on an A100 with rank 16, alpha 32, dropout
+0.05, three epochs, micro-batch size 1, gradient accumulation 16, and seed 42.
+Qwen thinking is disabled, and prompt tokens are masked so loss is applied only to
+the R1 answer and its end token. At run time, both the model and dataset revisions
+are resolved to immutable Hugging Face commit hashes.
+
+The notebook contains only Colab setup, Drive mounting, configuration, one training
+call, and result display. Reusable code lives in `scripts/harmony_sft/`:
+
+- `data.py` constructs and validates the R1-only SFT examples.
+- `tokenization.py` creates non-thinking chats and response-only labels.
+- `runner.py` performs base evaluation, LoRA training, adapter saving, aligned
+  evaluation, and artifact validation.
+
+Every run is written directly beneath
+`MyDrive/value-misalignment/harmony_r1_qwen3_8b/` and contains:
+
+- `checkpoints/`: epoch checkpoints, including resumable trainer state.
+- `final_adapter/`: the final LoRA adapter and tokenizer files.
+- `dataset/`: the exact selected R1 examples and a source/token-length manifest.
+- `training/`: final metrics and training logs.
+- `evaluation/`: base and aligned Yes/No scores, threshold comparisons, and curves.
+- `run_metadata.json`: pinned revisions, configuration, hardware, package versions,
+  prompt hashes, and repository commit.
+- `COMPLETE.json`: hashes of required artifacts, written only after validation; a
+  failed run instead writes `FAILED.json`.
+
+The adapter does not duplicate the Qwen3-8B base weights. Reload it on top of the
+base-model revision recorded in `run_metadata.json`.
+
+## Ecological threshold evaluation
+
+The SFT runner evaluates the unchanged base and the in-memory trained adapter on
+the scenario families under `eval/ecological_value/`:
 
 - `wetland_relocation.txt`
 - `invasive_animal_killing.txt`
@@ -17,38 +56,16 @@ base models on the evaluation families under `eval/ecological_value/`:
 Each template contains a configurable cost count. The evaluator sweeps the count,
 scores the complete `Yes` and `No` response sequences, and estimates the point where
 the model's normalized probability of implementing the ecological policy crosses
-0.5. It loads the base and aligned model one at a time, resolves immutable Hugging
-Face revisions, and uses the base model's tokenizer and chat template for both sides
-of each comparison.
-
-The minimal Colab entry point is
-`notebooks/harmony_checkpoint_eval_colab.ipynb`. Most of the implementation lives in
-`scripts/harmony_eval/`:
+0.5. Shared evaluation implementation lives in `scripts/harmony_eval/`:
 
 - `catalog.py` defines the three released matched checkpoint pairs.
 - `cases.py` renders direct-question evaluation cases.
 - `scoring.py` performs local seq2seq or causal-LM sequence scoring.
 - `analysis.py` fits monotone sacrifice thresholds and plots response curves.
-- `runner.py` runs one matched pair and writes reproducibility metadata.
-
-Start with `caramel_sft`, the released SFT model based on
-`google/flan-t5-large`. It fits comfortably on a standard Colab GPU. The two 7B DPO
-pairs default to identical 4-bit loading for the base and aligned checkpoints and may
-need a High-RAM runtime. The Breeze repository contains stray PEFT metadata with a
-null base-model path alongside its full weights; the evaluator uses the pinned full
-checkpoint while excluding that malformed metadata from model loading.
-
-Every run writes a timestamped directory containing:
-
-- `raw_scores.csv`: per-model Yes/No log probabilities and implementation scores.
-- `thresholds.csv`: base/aligned threshold estimates and their log shift when both
-  thresholds are inside the tested range.
-- `curves.png`: response curves for each scenario family.
-- `metadata.json`: model revisions, tokenizer revision, prompt hashes, package
-  versions, settings, and repository commit.
+- `runner.py` retains support for the earlier released-checkpoint comparisons.
 
 Imported completed runs are stored under `results/harmony_eval/`. The analysis of
-the first Caramel SFT comparison is recorded in
+the earlier Flan-T5 Caramel comparison is recorded in
 `doc/2026-08-25-research-log.md`.
 
 These four single-template families are an exploratory screen, not a confirmatory

@@ -67,14 +67,30 @@ def validate_pair_vocabularies(
 def _format_prompt(pair: CheckpointPair, tokenizer: Any, prompt: str) -> str:
     if pair.architecture == "seq2seq":
         return f"Instruction: {SYSTEM_PROMPT}\n\nScenario:\n{prompt}"
+    return format_causal_prompt(tokenizer, prompt)
+
+
+def format_causal_prompt(
+    tokenizer: Any,
+    prompt: str,
+    *,
+    enable_thinking: bool | None = None,
+) -> str:
+    """Apply a model's chat template to one evaluation prompt.
+
+    Qwen3 uses ``enable_thinking=False`` for a strict non-thinking prompt. Other
+    chat templates ignore the extra template variable when it is not referenced.
+    """
+
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": prompt},
     ]
+    kwargs: dict[str, Any] = {}
+    if enable_thinking is not None:
+        kwargs["enable_thinking"] = enable_thinking
     return tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
+        messages, tokenize=False, add_generation_prompt=True, **kwargs
     )
 
 
@@ -258,6 +274,74 @@ def _load_model(
         model = model_class.from_pretrained(model_id, **kwargs)
     model.eval()
     return model
+
+
+def score_loaded_causal_checkpoint(
+    *,
+    model: Any,
+    tokenizer: Any,
+    cases: list[dict[str, object]],
+    model_role: str,
+    model_id: str,
+    model_revision: str,
+    pair_name: str,
+    training_method: str,
+    batch_size: int,
+    enable_thinking: bool | None = None,
+    load_in_4bit: bool = False,
+) -> list[dict[str, object]]:
+    """Score an already loaded causal LM without taking ownership of its memory."""
+
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1")
+    candidate_items: list[dict[str, Any]] = []
+    for case_index, case in enumerate(cases):
+        formatted = format_causal_prompt(
+            tokenizer,
+            str(case["prompt"]),
+            enable_thinking=enable_thinking,
+        )
+        for candidate in LABELS:
+            candidate_items.append(
+                {
+                    "case_index": case_index,
+                    "candidate": candidate,
+                    "formatted_prompt": formatted,
+                }
+            )
+
+    scored: dict[int, dict[str, float]] = {index: {} for index in range(len(cases))}
+    for batch in _batched(candidate_items, batch_size):
+        batch_scores = _score_causal_batch(model, tokenizer, batch)
+        for item, score in zip(batch, batch_scores):
+            scored[item["case_index"]][item["candidate"]] = float(score)
+
+    rows: list[dict[str, object]] = []
+    for case_index, case in enumerate(cases):
+        yes = scored[case_index]["Yes"]
+        no = scored[case_index]["No"]
+        semantic_logit = yes - no
+        if semantic_logit >= 0:
+            p_implement = 1.0 / (1.0 + math.exp(-semantic_logit))
+        else:
+            exp_logit = math.exp(semantic_logit)
+            p_implement = exp_logit / (1.0 + exp_logit)
+        rows.append(
+            {
+                **case,
+                "pair_name": pair_name,
+                "training_method": training_method,
+                "model_role": model_role,
+                "model_id": model_id,
+                "model_revision": model_revision,
+                "load_in_4bit": load_in_4bit,
+                "logprob_yes": yes,
+                "logprob_no": no,
+                "semantic_logit_implement": semantic_logit,
+                "p_implement": p_implement,
+            }
+        )
+    return rows
 
 
 def score_checkpoint(
