@@ -321,6 +321,12 @@ def run_harmony_r1_sft(config: SFTConfig) -> SFTArtifacts:
             revision=resolved_dataset_revision,
             split=config.dataset_split,
         )
+        if dataset_manifest["r1_conflict_count"]:
+            print(
+                "H4rmony data audit: resolved "
+                f"{dataset_manifest['r1_conflict_count']} conflicting R1 "
+                "record(s); details will be saved in dataset/manifest.json."
+            )
         _write_jsonl(dataset_dir / "r1_examples.jsonl", examples)
 
         tokenizer = AutoTokenizer.from_pretrained(

@@ -99,3 +99,35 @@ non-thinking Qwen formatting, configuration validation, and required resumable
 checkpoint artifacts. The next step is to run the revised notebook on a Colab A100
 and use the resulting Drive manifest to
 replace the provisional runtime and dataset-length estimates with measured values.
+
+## First Colab run: inconsistent R1 source records
+
+The first attempted Colab run stopped during dataset preparation, before tokenizer
+or model loading. For `PromptID` 131, the H4rmony R1-R2 and R1-R3 rows supply two
+different `BetterCompletion` values even though both rows label that value R1:
+
+- “Overfishing stresses the necessity for harmony in our relationship with the
+  marine world, ensuring abundance for all future generations.”
+- “Sustainable fishing practices have implications for global food security and
+  socio-cultural dynamics.”
+
+The original loader deliberately rejected this disagreement rather than silently
+training on an arbitrary answer. The revised loader now treats the first,
+explicitly ecolinguistics-aware answer as the known correction for PromptID 131,
+consistent with the dataset's definition of R1. For any other disagreement, it
+uses the assignments across R1-R2, R1-R3, and R2-R3 to prefer a candidate that is
+not also assigned a lower rank. If that evidence is tied, the R1-R2
+`BetterCompletion` is the workflow's canonical fallback.
+
+This resolution is auditable rather than silent. Every selected example records
+whether its R1 sources conflicted, the source answers, all candidate rank
+assignments, and the selection method. The persisted `dataset/manifest.json`
+records the total conflict count, method counts, and full conflict details. The
+runner also prints the number of resolved records before tokenization.
+
+All 36 local unit tests pass after the change. Regression coverage includes the
+exact PromptID 131 defect, generic cross-pair rank resolution, the canonical
+R1-R2 fallback, rejection of multiple answers within one canonical comparison,
+and the existing response-only SFT and Drive-artifact checks. The failed Drive run
+is not resumable because training never began; rerunning after updating the
+repository should create a fresh timestamped run directory.

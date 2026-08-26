@@ -22,12 +22,14 @@ def harmony_row(
     comparison: str,
     better: str,
     *,
+    worse: str = "Lower-ranked answer",
     prompt: str = "What should we do?",
 ) -> dict[str, object]:
     return {
         "PromptID": prompt_id,
         "Prompt": prompt,
         "BetterCompletion": better,
+        "WorseCompletion": worse,
         "ComparedRanks": comparison,
     }
 
@@ -62,15 +64,74 @@ class HarmonySFTDataTests(unittest.TestCase):
         self.assertEqual(len(examples), 2)
         self.assertEqual(examples[0]["r1_answer"], "R1 answer")
         self.assertEqual(examples[0]["source_comparisons"], ["R1-R2", "R1-R3"])
+        self.assertEqual(examples[0]["r1_selection_method"], "source_agreement")
         self.assertEqual(examples[1]["r1_answer"], "Second R1")
 
-    def test_rejects_conflicting_r1_copies(self):
+    def test_applies_known_prompt_131_r1_correction(self):
+        environmental = (
+            "Overfishing stresses the necessity for harmony in our relationship "
+            "with the marine world, ensuring abundance for all future generations."
+        )
+        ambivalent = (
+            "Sustainable fishing practices have implications for global food "
+            "security and socio-cultural dynamics."
+        )
         rows = [
-            harmony_row(1, "R1-R2", "First answer"),
-            harmony_row(1, "R1-R3", "Different answer"),
+            harmony_row(131, "R1-R2", environmental, worse=ambivalent),
+            harmony_row(131, "R1-R3", ambivalent, worse="Harmful answer"),
+            harmony_row(131, "R2-R3", ambivalent, worse="Harmful answer"),
         ]
 
-        with self.assertRaisesRegex(ValueError, "conflicting R1 completions"):
+        example = extract_r1_examples(rows)[0]
+
+        self.assertEqual(example["r1_answer"], environmental)
+        self.assertTrue(example["r1_conflict"])
+        self.assertEqual(
+            example["r1_selection_method"],
+            "known_dataset_correction",
+        )
+
+    def test_resolves_other_conflict_from_cross_pair_rank_evidence(self):
+        rows = [
+            harmony_row(7, "R1-R2", "Environmental", worse="Ambivalent"),
+            harmony_row(7, "R1-R3", "Ambivalent", worse="Harmful"),
+            harmony_row(7, "R2-R3", "Ambivalent", worse="Harmful"),
+        ]
+
+        example = extract_r1_examples(rows)[0]
+
+        self.assertEqual(example["r1_answer"], "Environmental")
+        self.assertEqual(
+            example["r1_selection_method"],
+            "cross_pair_rank_consistency",
+        )
+
+    def test_uses_r1_r2_as_an_audited_fallback_for_unresolved_conflict(self):
+        rows = [
+            harmony_row(1, "R1-R2", "Canonical answer", worse="Second answer"),
+            harmony_row(1, "R1-R3", "Other R1 answer", worse="Third answer"),
+            harmony_row(1, "R2-R3", "Unrelated second", worse="Unrelated third"),
+        ]
+
+        example = extract_r1_examples(rows)[0]
+
+        self.assertEqual(example["r1_answer"], "Canonical answer")
+        self.assertEqual(
+            example["r1_selection_method"],
+            "canonical_r1_r2_conflict_fallback",
+        )
+        self.assertEqual(
+            example["r1_source_answers"],
+            {"R1-R2": "Canonical answer", "R1-R3": "Other R1 answer"},
+        )
+
+    def test_rejects_multiple_answers_within_the_canonical_pair(self):
+        rows = [
+            harmony_row(1, "R1-R2", "First answer"),
+            harmony_row(1, "R1-R2", "Different answer"),
+        ]
+
+        with self.assertRaisesRegex(ValueError, "within R1-R2"):
             extract_r1_examples(rows)
 
     def test_can_require_both_r1_comparisons(self):

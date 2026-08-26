@@ -9,9 +9,12 @@ fixed ecological benefit.
 The Colab workflow in `notebooks/harmony_checkpoint_eval_colab.ipynb` fine-tunes
 `Qwen/Qwen3-8B` on the environmentally aligned R1 answers in
 `neovalle/H4rmony`. It groups the pairwise source data by `PromptID`, takes R1
-from `BetterCompletion` in the R1-R2 and R1-R3 rows, verifies that duplicate R1
-copies agree, and produces one prompt-to-R1 example per prompt ID. R2-R3 rows are
-never used as SFT targets.
+from `BetterCompletion` in the R1-R2 and R1-R3 rows, and produces one
+prompt-to-R1 example per prompt ID. When those two rows disagree, the loader applies
+documented corrections for known source defects, then uses rank assignments across
+all three pair rows to resolve any other conflict; if the evidence is tied, R1-R2 is
+the canonical source. Every disagreement and resolution is saved in the dataset
+manifest. R2-R3 answers are used only as consistency evidence, never as SFT targets.
 
 The default intervention is BF16 LoRA on an A100 with rank 16, alpha 32, dropout
 0.05, three epochs, micro-batch size 1, gradient accumulation 16, and seed 42.
