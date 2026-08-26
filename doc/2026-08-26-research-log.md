@@ -619,3 +619,57 @@ the targeted v2 suite. Turning the flag on regenerates and durably persists the
 standardized broad screen; either path reuses any matching completed bundle.
 Notebook JSON and combined code-cell syntax validate, and all 53 unit tests pass.
 No GPU evaluation was run locally.
+
+## Session consolidation: targeted cases and auditable evaluation construction
+
+This section of work began by auditing an actual completed saved-adapter eval
+rather than relying on the plot alone. The Drive `raw_scores.csv` with file ID
+`1uPi7T4QDNYlrKhpHIW6AfeR5gqWoRuKL` contained 128 rows: 64 base and 64 aligned,
+corresponding to eight templates crossed with the eight configured doses 0, 1,
+10, 100, 1,000, 10,000, 100,000, and 1,000,000. Every unique case had exactly
+one row per model role. Within each pair, rendered prompts and template hashes
+matched, and there were no unresolved placeholders. This established that the
+historical cases were mechanically constructed correctly, while also revealing
+that every prompt used the same generic injected implementation question.
+
+We then created the explicitly selected `extreme_v2` suite for tests that better
+target the apparent wetland result. It carries over the lethal wetland prompt and
+adds the vegan/meat-eater trolley case. The trolley orientation was corrected
+during design: one vegan is on the default track, and implementing the policy
+means pulling the lever to save that vegan while certainly killing `{cost}`
+meat-eaters on the diversion track. Thus increasing `{cost}` always increases
+the cost of a `Yes` answer, preserving the direction assumed by the threshold
+estimator. V2 selection is passed through saved-adapter evaluation and
+compatibility lookup, so its bundles remain separate from the original paired
+mild/extreme screen and adding another targeted prompt will not silently alter
+the older catalog.
+
+To make future prompt additions uniform, all local ecological threshold templates
+were migrated to the exact fields `{cost}`, `{yes_label}`, and `{no_label}`. Each
+template now owns a literal, positively oriented question describing its action,
+such as whether to restore, protect, remove, preserve, or pull the lever. The case
+builder rejects missing or unsupported fields and missing final questions before
+inference, records the extracted `question_text`, and produces stable case IDs.
+The older Stage-1 question-polarity experiment was deliberately isolated behind
+its own preserved wetland template so this stricter schema would not remove its
+implement/reject manipulation.
+
+Evaluation auditing was also made prospective. Both released-checkpoint and
+saved-adapter runners now write `rendered_cases.jsonl`, containing one exact
+deduplicated prompt per case, before model inference. New post-hoc completion
+markers include this file in their hash contract, so missing or modified case
+manifests are detected, while historical bundles without the newer file remain
+readable. The Colab notebook previews all 16 fully rendered V2 cases before
+running them and prints the persisted manifest path afterward. Whole-notebook
+reruns continue to reuse the hash-verified SFT adapter. The standardized broad
+mild/extreme screen is disabled by default through
+`RUN_MILD_EXTREME_EVAL = False`; V2 remains the default targeted evaluation, and
+the broad screen can be explicitly regenerated once if desired.
+
+The final local audit rendered exactly 16 V2 cases, eight for each template. The
+only extracted questions were the intended preservation and lever-pull questions,
+and no prompt contained an unresolved brace. JSON validation, combined notebook
+code-cell syntax validation, whitespace checks, and all 53 unit tests passed. No
+GPU inference or additional SFT training was performed as part of this section.
+The implementation was recorded in commits `da1bae7` (targeted extreme-v2
+evaluations) and `2c18358` (standardized, auditable evaluation cases).
