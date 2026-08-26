@@ -260,3 +260,38 @@ Drive should then be flushed, remounted, and checked. If the remote copy remains
 incomplete, the local recovery copy can be recopied into the remounted Drive and
 flushed again. Retraining should not be attempted until this recovery path has
 been exhausted.
+
+## Durable Drive persistence redesign
+
+The original runtime was no longer available: a new Colab connection reported no
+repository filesystem, Drive mount, run directory, completion marker, or adapter
+weights. Remote Drive still contained only the dataset directory and initial run
+metadata. The adapter, checkpoints, final metrics, and aligned raw scores from the
+completed three-epoch run are therefore not recoverable from the persisted files.
+
+The workflow was redesigned so a future run cannot report Drive completion based
+only on a live FUSE mount. Training, epoch checkpoints, the final adapter, and both
+evaluations now finish under local `/content/value-misalignment-runs/` storage.
+This directory remains an independent recovery source while Drive persistence is
+attempted. The same notebook cell then performs the following protocol:
+
+1. Revalidate the local `COMPLETE.json` manifest and all required hashes.
+2. Copy the complete timestamped run into the configured `MyDrive` output root.
+3. Call Colab's `drive.flush_and_unmount()` to push outstanding writes.
+4. Freshly remount Drive and recompute the required artifact hashes through the
+   new mount.
+5. If verification fails, retain the untouched local run, remount as needed, copy
+   it again, and retry the flush/remount/verification sequence once.
+6. Print `Completed and freshly verified Drive run` only after fresh-mount hash
+   validation succeeds. Otherwise raise an error that identifies the intact local
+   recovery path and explicitly instructs the user not to disconnect.
+
+The helper rejects a source directory inside Drive, preventing the local recovery
+copy from silently aliasing the same FUSE cache. It also preserves the local run
+after successful upload rather than deleting it. Documentation and notebook text
+now distinguish local training completion from durable Drive verification.
+
+Regression coverage verifies full completion-manifest hashes, detects adapter
+tampering, checks that persistence performs a flush and remount, confirms that the
+remote copy validates afterward, and simulates a corrupted first upload to ensure
+the second attempt is restored from an unchanged valid local run.

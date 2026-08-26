@@ -1,14 +1,18 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from scripts.harmony_eval.scoring import format_causal_prompt
 from scripts.harmony_sft.data import extract_r1_examples
+from scripts.harmony_sft.persistence import persist_run_to_colab_drive
 from scripts.harmony_sft.runner import (
     SFTArtifacts,
     SFTConfig,
     _validate_complete_artifacts,
+    artifacts_for_run_dir,
     validate_config,
+    validate_complete_run,
 )
 from scripts.harmony_sft.tokenization import (
     IGNORE_INDEX,
@@ -32,6 +36,38 @@ def harmony_row(
         "WorseCompletion": worse,
         "ComparedRanks": comparison,
     }
+
+
+def make_complete_run(run_dir: Path) -> SFTArtifacts:
+    final_adapter = run_dir / "final_adapter"
+    checkpoint = run_dir / "checkpoints" / "checkpoint-10"
+    training = run_dir / "training"
+    evaluation = run_dir / "evaluation"
+    for directory in (final_adapter, checkpoint, training, evaluation):
+        directory.mkdir(parents=True, exist_ok=True)
+    for path in (
+        final_adapter / "adapter_config.json",
+        final_adapter / "adapter_model.safetensors",
+        checkpoint / "adapter_config.json",
+        checkpoint / "adapter_model.safetensors",
+        checkpoint / "trainer_state.json",
+        checkpoint / "optimizer.pt",
+        checkpoint / "scheduler.pt",
+        training / "train_metrics.json",
+        evaluation / "raw_scores.csv",
+        evaluation / "thresholds.csv",
+        evaluation / "curves.png",
+        run_dir / "run_metadata.json",
+    ):
+        path.write_bytes(f"test artifact: {path.name}".encode())
+
+    artifacts = artifacts_for_run_dir(run_dir)
+    hashes = _validate_complete_artifacts(artifacts)
+    artifacts.complete_marker_path.write_text(
+        json.dumps({"status": "complete", "artifact_sha256": hashes}),
+        encoding="utf-8",
+    )
+    return artifacts
 
 
 class FakeQwenTokenizer:
@@ -236,7 +272,97 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
             hashes = _validate_complete_artifacts(artifacts)
 
             self.assertIn("checkpoint_adapter_weights", hashes)
+            self.assertIn("checkpoint_optimizer", hashes)
             self.assertIn("checkpoint_trainer_state", hashes)
+
+    def test_complete_run_rechecks_hash_manifest(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            artifacts = make_complete_run(Path(temporary_directory) / "run")
+
+            hashes = validate_complete_run(artifacts)
+            self.assertIn("adapter_weights", hashes)
+
+            (artifacts.final_adapter_dir / "adapter_model.safetensors").write_bytes(
+                b"tampered"
+            )
+            with self.assertRaisesRegex(RuntimeError, "do not match"):
+                validate_complete_run(artifacts)
+
+    def test_persistence_flushes_remounts_and_verifies_drive_copy(self):
+        class FakeDrive:
+            def __init__(self):
+                self.flush_calls = []
+                self.mount_calls = []
+
+            def flush_and_unmount(self, *, timeout_ms):
+                self.flush_calls.append(timeout_ms)
+
+            def mount(self, mountpoint, *, timeout_ms):
+                self.mount_calls.append((mountpoint, timeout_ms))
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source = make_complete_run(root / "local" / "test-run")
+            mountpoint = root / "drive"
+            my_drive = mountpoint / "MyDrive"
+            drive_output = my_drive / "value-misalignment" / "runs"
+            my_drive.mkdir(parents=True)
+            fake_drive = FakeDrive()
+
+            persisted = persist_run_to_colab_drive(
+                source,
+                drive_output,
+                drive_mountpoint=mountpoint,
+                drive_module=fake_drive,
+            )
+
+            self.assertEqual(persisted.run_dir, (drive_output / "test-run").resolve())
+            self.assertTrue(persisted.complete_marker_path.is_file())
+            self.assertTrue(source.complete_marker_path.is_file())
+            self.assertEqual(len(fake_drive.flush_calls), 1)
+            self.assertEqual(len(fake_drive.mount_calls), 1)
+            validate_complete_run(persisted)
+
+    def test_persistence_retries_from_unchanged_local_run(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source = make_complete_run(root / "local" / "test-run")
+            mountpoint = root / "drive"
+            my_drive = mountpoint / "MyDrive"
+            drive_output = my_drive / "value-misalignment" / "runs"
+            my_drive.mkdir(parents=True)
+            remote_weights = (
+                drive_output
+                / "test-run"
+                / "final_adapter"
+                / "adapter_model.safetensors"
+            )
+
+            class OneBadFreshMount:
+                def __init__(self):
+                    self.flush_count = 0
+                    self.mount_count = 0
+
+                def flush_and_unmount(self, *, timeout_ms):
+                    self.flush_count += 1
+
+                def mount(self, mountpoint, *, timeout_ms):
+                    self.mount_count += 1
+                    if self.mount_count == 1:
+                        remote_weights.write_bytes(b"corrupted after first upload")
+
+            fake_drive = OneBadFreshMount()
+            persisted = persist_run_to_colab_drive(
+                source,
+                drive_output,
+                drive_mountpoint=mountpoint,
+                drive_module=fake_drive,
+            )
+
+            self.assertEqual(fake_drive.flush_count, 2)
+            self.assertEqual(fake_drive.mount_count, 2)
+            validate_complete_run(source)
+            validate_complete_run(persisted)
 
 
 class HarmonyCausalPromptTests(unittest.TestCase):

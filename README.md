@@ -26,16 +26,21 @@ The setup removes Colab's optional preinstalled `torchao` package because the
 version currently supplied by Colab is incompatible with PEFT. This workflow uses
 BF16 LoRA and does not use TorchAO quantization.
 
-The notebook contains only Colab setup, Drive mounting, configuration, one training
-call, and result display. Reusable code lives in `scripts/harmony_sft/`:
+The notebook contains only Colab setup, Drive mounting, configuration, one durable
+training-and-persistence call, and result display. Reusable code lives in
+`scripts/harmony_sft/`:
 
 - `data.py` constructs and validates the R1-only SFT examples.
 - `tokenization.py` creates non-thinking chats and response-only labels.
 - `runner.py` performs base evaluation, LoRA training, adapter saving, aligned
   evaluation, and artifact validation.
+- `persistence.py` copies the complete local run to Drive, forces outstanding
+  writes to flush, remounts Drive, and verifies recorded hashes from the fresh
+  mount before reporting success.
 
-Every run is written directly beneath
-`MyDrive/value-misalignment/harmony_r1_qwen3_8b/` and contains:
+Every run is first completed under local `/content` storage. It is then copied
+beneath `MyDrive/value-misalignment/harmony_r1_qwen3_8b/`; the local run is retained
+for recovery until the Colab runtime is disconnected. A Drive run contains:
 
 - `checkpoints/`: epoch checkpoints, including resumable trainer state.
 - `final_adapter/`: the final LoRA adapter and tokenizer files.
@@ -44,8 +49,14 @@ Every run is written directly beneath
 - `evaluation/`: base and aligned Yes/No scores, threshold comparisons, and curves.
 - `run_metadata.json`: pinned revisions, configuration, hardware, package versions,
   prompt hashes, and repository commit.
-- `COMPLETE.json`: hashes of required artifacts, written only after validation; a
-  failed run instead writes `FAILED.json`.
+- `COMPLETE.json`: hashes of required artifacts, written after local validation and
+  checked again after Drive is flushed and freshly remounted; a failed training run
+  instead writes `FAILED.json` locally.
+
+The notebook prints `Completed and freshly verified Drive run` only after the
+fresh-mount hash check passes. If persistence fails, it prints the intact local run
+path and refuses to claim completion; keep the runtime connected and retry the
+persistence call rather than retraining.
 
 The adapter does not duplicate the Qwen3-8B base weights. Reload it on top of the
 base-model revision recorded in `run_metadata.json`.

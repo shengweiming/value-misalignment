@@ -1,4 +1,4 @@
-"""Train Qwen3-8B on H4rmony R1 answers and persist the run to Google Drive."""
+"""Train Qwen3-8B on H4rmony R1 answers and write a complete local run."""
 
 from __future__ import annotations
 
@@ -64,6 +64,23 @@ class SFTArtifacts:
     plot_path: Path
     metadata_path: Path
     complete_marker_path: Path
+
+
+def artifacts_for_run_dir(run_dir: Path | str) -> SFTArtifacts:
+    """Construct the canonical artifact paths for one SFT run directory."""
+
+    run_dir = Path(run_dir)
+    return SFTArtifacts(
+        run_dir=run_dir,
+        final_adapter_dir=run_dir / "final_adapter",
+        checkpoints_dir=run_dir / "checkpoints",
+        train_metrics_path=run_dir / "training/train_metrics.json",
+        raw_scores_path=run_dir / "evaluation/raw_scores.csv",
+        thresholds_path=run_dir / "evaluation/thresholds.csv",
+        plot_path=run_dir / "evaluation/curves.png",
+        metadata_path=run_dir / "run_metadata.json",
+        complete_marker_path=run_dir / "COMPLETE.json",
+    )
 
 
 def _utc_now() -> str:
@@ -228,17 +245,22 @@ def _validate_complete_artifacts(artifacts: SFTArtifacts) -> dict[str, str]:
     ]
     if missing_checkpoint_files:
         raise RuntimeError(
-            "The latest Drive checkpoint is not resumable; missing files: "
+            "The latest checkpoint is not resumable; missing files: "
             f"{missing_checkpoint_files}"
         )
 
     required = {
         "adapter_config": artifacts.final_adapter_dir / "adapter_config.json",
         "adapter_weights": _adapter_weights_path(artifacts.final_adapter_dir),
+        "checkpoint_adapter_config": resumable_checkpoint_files[
+            "checkpoint_adapter_config"
+        ],
         "checkpoint_adapter_weights": _adapter_weights_path(latest_checkpoint),
         "checkpoint_trainer_state": resumable_checkpoint_files[
             "checkpoint_trainer_state"
         ],
+        "checkpoint_optimizer": resumable_checkpoint_files["checkpoint_optimizer"],
+        "checkpoint_scheduler": resumable_checkpoint_files["checkpoint_scheduler"],
         "train_metrics": artifacts.train_metrics_path,
         "raw_scores": artifacts.raw_scores_path,
         "thresholds": artifacts.thresholds_path,
@@ -247,8 +269,39 @@ def _validate_complete_artifacts(artifacts: SFTArtifacts) -> dict[str, str]:
     }
     missing = [name for name, path in required.items() if not path.is_file()]
     if missing:
-        raise RuntimeError(f"Run completed without required Drive artifacts: {missing}")
+        raise RuntimeError(f"Run completed without required artifacts: {missing}")
     return {name: _sha256_file(path) for name, path in required.items()}
+
+
+def validate_complete_run(artifacts: SFTArtifacts) -> dict[str, str]:
+    """Verify the completion marker and every recorded required-artifact hash."""
+
+    if not artifacts.complete_marker_path.is_file():
+        raise RuntimeError(
+            f"Run has no COMPLETE.json marker: {artifacts.complete_marker_path}"
+        )
+    try:
+        marker = json.loads(artifacts.complete_marker_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Could not read a valid COMPLETE.json marker") from exc
+    if marker.get("status") != "complete":
+        raise RuntimeError("COMPLETE.json does not report complete status")
+    expected = marker.get("artifact_sha256")
+    if not isinstance(expected, dict) or not expected:
+        raise RuntimeError("COMPLETE.json has no artifact hash manifest")
+
+    actual = _validate_complete_artifacts(artifacts)
+    if actual != expected:
+        mismatches = sorted(
+            name
+            for name in set(actual) | set(expected)
+            if actual.get(name) != expected.get(name)
+        )
+        raise RuntimeError(
+            "Required artifact hashes do not match COMPLETE.json: "
+            f"{mismatches}"
+        )
+    return actual
 
 
 def run_harmony_r1_sft(config: SFTConfig) -> SFTArtifacts:
@@ -264,17 +317,7 @@ def run_harmony_r1_sft(config: SFTConfig) -> SFTArtifacts:
     training_dir = run_dir / "training"
     evaluation_dir = run_dir / "evaluation"
     metadata_path = run_dir / "run_metadata.json"
-    artifacts = SFTArtifacts(
-        run_dir=run_dir,
-        final_adapter_dir=final_adapter_dir,
-        checkpoints_dir=checkpoints_dir,
-        train_metrics_path=training_dir / "train_metrics.json",
-        raw_scores_path=evaluation_dir / "raw_scores.csv",
-        thresholds_path=evaluation_dir / "thresholds.csv",
-        plot_path=evaluation_dir / "curves.png",
-        metadata_path=metadata_path,
-        complete_marker_path=run_dir / "COMPLETE.json",
-    )
+    artifacts = artifacts_for_run_dir(run_dir)
     config_dict = asdict(config)
     config_dict["output_root"] = str(config.output_root)
     created_at_utc = _utc_now()
