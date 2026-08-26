@@ -355,7 +355,7 @@ def run_harmony_r1_sft(config: SFTConfig) -> SFTArtifacts:
         model = AutoModelForCausalLM.from_pretrained(
             config.base_model,
             revision=resolved_model_revision,
-            torch_dtype=torch.bfloat16,
+            dtype=torch.bfloat16,
             attn_implementation="sdpa",
             low_cpu_mem_usage=True,
         )

@@ -131,3 +131,23 @@ R1-R2 fallback, rejection of multiple answers within one canonical comparison,
 and the existing response-only SFT and Drive-artifact checks. The failed Drive run
 is not resumable because training never began; rerunning after updating the
 repository should create a fresh timestamped run directory.
+
+## Second Colab run: optional TorchAO/PEFT incompatibility
+
+After R1 extraction succeeded, the next Colab attempt downloaded and loaded the
+Qwen3-8B checkpoint but stopped when PEFT checked Colab's preinstalled optional
+`torchao` package. The runtime supplied `torchao==0.10.0`, while the installed PEFT
+requires TorchAO 0.16.0 or newer whenever TorchAO is present. This experiment uses
+BF16 LoRA rather than TorchAO quantization, so upgrading TorchAO would add an
+unneeded compatibility constraint with the runtime's PyTorch build.
+
+The notebook setup now uninstalls the optional `torchao` package after installing
+the project requirements. PEFT then treats TorchAO as unavailable and follows its
+ordinary non-TorchAO LoRA path. The model loader was also updated from the
+deprecated `torch_dtype` argument to `dtype`. The already downloaded Qwen shards
+remain in the Hugging Face cache, so a restarted session should not need to fetch
+the 16 GB checkpoint again.
+
+Static compilation, notebook JSON validation, and all 36 local unit tests pass.
+The next Colab attempt should restart the Python session before rerunning setup so
+no partially imported PEFT or TorchAO modules remain cached.

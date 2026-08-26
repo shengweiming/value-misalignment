@@ -22,6 +22,10 @@ Qwen thinking is disabled, and prompt tokens are masked so loss is applied only 
 the R1 answer and its end token. At run time, both the model and dataset revisions
 are resolved to immutable Hugging Face commit hashes.
 
+The setup removes Colab's optional preinstalled `torchao` package because the
+version currently supplied by Colab is incompatible with PEFT. This workflow uses
+BF16 LoRA and does not use TorchAO quantization.
+
 The notebook contains only Colab setup, Drive mounting, configuration, one training
 call, and result display. Reusable code lives in `scripts/harmony_sft/`:
 
