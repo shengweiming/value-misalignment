@@ -4,11 +4,17 @@ This repository contains exploratory evaluations of whether ecological alignment
 training shifts a model's willingness to impose welfare and autonomy costs for a
 fixed ecological benefit.
 
-## H4rmony R1-only Qwen3 SFT
+## H4rmony R1-only Qwen3 evaluation
 
-The Colab workflow in `notebooks/harmony_checkpoint_eval_colab.ipynb` fine-tunes
-`Qwen/Qwen3-8B` on the environmentally aligned R1 answers in
-`neovalle/H4rmony`. It groups the pairwise source data by `PromptID`, takes R1
+The Colab workflow in `notebooks/harmony_checkpoint_eval_colab.ipynb` is
+evaluation-only. It finds the newest hash-verified H4rmony R1 LoRA run already in
+Google Drive, loads its recorded immutable `Qwen/Qwen3-8B` base revision, and
+scores the base and saved adapter on all six `extreme_v2` templates. It refuses to
+start training when no compatible completed run is present.
+
+The saved intervention was fine-tuned on the environmentally aligned R1 answers
+in `neovalle/H4rmony`. The data loader groups the pairwise source data by
+`PromptID`, takes R1
 from `BetterCompletion` in the R1-R2 and R1-R3 rows, and produces one
 prompt-to-R1 example per prompt ID. When those two rows disagree, the loader applies
 documented corrections for known source defects, then uses rank assignments across
@@ -26,8 +32,9 @@ The setup removes Colab's optional preinstalled `torchao` package because the
 version currently supplied by Colab is incompatible with PEFT. This workflow uses
 BF16 LoRA and does not use TorchAO quantization.
 
-The notebook contains only Colab setup, Drive mounting, configuration, one durable
-training-and-persistence call, and result display. Reusable code lives in
+The notebook contains Colab setup, Drive mounting, a visible checkpoint signature
+and evaluation configuration, exact prompt preview, one evaluation workflow call,
+result display, and GitHub publication. Reusable code lives in
 `scripts/harmony_sft/`:
 
 - `data.py` constructs and validates the R1-only SFT examples.
@@ -37,6 +44,12 @@ training-and-persistence call, and result display. Reusable code lives in
 - `persistence.py` copies the complete local run to Drive, forces outstanding
   writes to flush, remounts Drive, and verifies recorded hashes from the fresh
   mount before reporting success.
+- `extreme_v2_eval.py` owns the six-template catalog, finds the compatible SFT
+  run, checks the complete base/aligned score matrix, and orchestrates durable
+  evaluation reuse or execution.
+- `github_publish.py` copies only the verified compact result bundle into
+  `results/harmony_eval/`, commits it, pushes without force, and reads the remote
+  branch tip back to verify publication.
 
 Every run is first completed under local `/content` storage. It is then copied
 beneath `MyDrive/value-misalignment/harmony_r1_qwen3_8b/`; the local run is retained
@@ -53,10 +66,19 @@ for recovery until the Colab runtime is disconnected. A Drive run contains:
   checked again after Drive is flushed and freshly remounted; a failed training run
   instead writes `FAILED.json` locally.
 
-The notebook prints `Completed and freshly verified Drive run` only after the
-fresh-mount hash check passes. If persistence fails, it prints the intact local run
-path and refuses to claim completion; keep the runtime connected and retry the
-persistence call rather than retraining.
+For the default eight-value cost grid, the extreme-v2 evaluation produces 48
+rendered cases and 96 raw-score rows: exactly one base and one aligned row for
+every template-by-cost case. The notebook reports completion only after the Drive
+copy passes a fresh-mount hash check. If persistence fails, it prints the intact
+local result path and refuses to claim completion.
+
+GitHub publication is enabled by default and requires a Colab secret named
+`GITHUB_TOKEN` with Contents read/write permission for this repository. Results
+are stored under
+`results/harmony_eval/qwen3_8b_harmony_r1_sft/<source-run>/<evaluation>/`.
+Authentication uses a transient askpass helper; the token is not printed, placed
+in the remote URL, or written into repository state. An existing result path is
+reused only when every published file is byte-identical.
 
 An adapter saved before a template update can be evaluated without another SFT
 run. `scripts/harmony_sft/posthoc_eval.py` reloads the pinned base and saved adapter,
