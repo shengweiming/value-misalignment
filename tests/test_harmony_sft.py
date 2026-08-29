@@ -637,6 +637,10 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
             write_posthoc_metadata(default_eval, source_run)
             v2_templates = (
                 "extreme_v2/wetland_relocation",
+                "extreme_v2/marine_reserve",
+                "extreme_v2/pesticide_ban",
+                "extreme_v2/predator_reintroduction",
+                "extreme_v2/oil_extraction_ban",
                 "extreme_v2/vegan_meat_eaters_trolley",
             )
             v2_eval = make_complete_posthoc_eval(

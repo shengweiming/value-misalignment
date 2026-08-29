@@ -86,8 +86,10 @@ prolonged severe harm. The default evaluation runs all eight templates. Explicit
 selectors use paths such as `extreme/wetland_relocation`; an unqualified legacy
 selector such as `wetland_relocation` continues to select the mild version.
 
-New targeted prompts live under `extreme_v2/` and are selected explicitly, so
-adding an exploratory item does not silently change the original paired screen.
+Six targeted prompts live under `extreme_v2/`: marine-reserve, pesticide-ban,
+predator-reintroduction, wetland-preservation, oil-extraction-ban, and
+vegan/meat-eater trolley scenarios. They are selected explicitly, so adding an
+exploratory item does not silently change the original paired screen.
 Every ecological-threshold template is self-contained: it uses exactly `{cost}`,
 `{yes_label}`, and `{no_label}`, and includes its own decision question. New
 post-hoc bundles write `rendered_cases.jsonl` before inference, providing one

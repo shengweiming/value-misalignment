@@ -107,40 +107,67 @@ class HarmonyEvalTests(unittest.TestCase):
         self.assertEqual(extreme[0]["template"], "extreme__wetland_relocation")
         self.assertIn("deliberately killed", extreme[0]["prompt"])
 
-    def test_extreme_v2_is_explicit_and_carries_wetland_unchanged(self):
+    def test_extreme_v2_is_explicit_and_renders_targeted_suite(self):
         original_wetland = build_cases(
             (1,),
             ("extreme/wetland_relocation",),
         )[0]
-        copied_wetland = build_cases(
-            (1,),
-            ("extreme_v2/wetland_relocation",),
-        )[0]
-        trolley_cases = build_cases(
+        template_names = (
+            "extreme_v2/wetland_relocation",
+            "extreme_v2/marine_reserve",
+            "extreme_v2/pesticide_ban",
+            "extreme_v2/predator_reintroduction",
+            "extreme_v2/oil_extraction_ban",
+            "extreme_v2/vegan_meat_eaters_trolley",
+        )
+        cases = build_cases(
             (0, 1, 10),
-            ("extreme_v2/vegan_meat_eaters_trolley",),
+            template_names,
         )
+        by_template_and_cost = {
+            (case["template"], case["cost_count"]): case for case in cases
+        }
+        wetland = by_template_and_cost[("extreme_v2__wetland_relocation", 1)]
+        trolley = by_template_and_cost[
+            ("extreme_v2__vegan_meat_eaters_trolley", 10)
+        ]
 
-        self.assertEqual(original_wetland["prompt"], copied_wetland["prompt"])
+        self.assertEqual(len(cases), 18)
         self.assertEqual(
-            original_wetland["template_sha256"],
-            copied_wetland["template_sha256"],
-        )
-        self.assertEqual(
-            {case["template"] for case in trolley_cases},
-            {"extreme_v2__vegan_meat_eaters_trolley"},
+            {case["template"] for case in cases},
+            {name.replace("/", "__") for name in template_names},
         )
         self.assertTrue(
-            all(case["severity"] == "extreme_v2" for case in trolley_cases)
+            all(case["severity"] == "extreme_v2" for case in cases)
         )
-        self.assertIn("approaching one adult vegan", trolley_cases[0]["prompt"])
+        self.assertNotEqual(original_wetland["prompt"], wetland["prompt"])
+        self.assertIn("disable the flood-control system", wetland["prompt"])
+        self.assertIn(
+            "establish the marine reserve",
+            by_template_and_cost[("extreme_v2__marine_reserve", 10)]["prompt"],
+        )
+        self.assertIn(
+            "ban the pesticide",
+            by_template_and_cost[("extreme_v2__pesticide_ban", 10)]["prompt"],
+        )
+        self.assertIn(
+            "reintroduce the predator",
+            by_template_and_cost[
+                ("extreme_v2__predator_reintroduction", 10)
+            ]["prompt"],
+        )
+        self.assertIn(
+            "permanently ban oil extraction",
+            by_template_and_cost[("extreme_v2__oil_extraction_ban", 10)]["prompt"],
+        )
+        self.assertIn("approaching one adult vegan", trolley["prompt"])
         self.assertIn(
             "number of adult meat-eaters on that track is 10",
-            trolley_cases[-1]["prompt"],
+            trolley["prompt"],
         )
         self.assertIn(
             "the vegan will survive and every meat-eater",
-            trolley_cases[-1]["prompt"],
+            trolley["prompt"],
         )
 
     def test_extreme_pairs_hold_the_ecological_setup_fixed(self):
