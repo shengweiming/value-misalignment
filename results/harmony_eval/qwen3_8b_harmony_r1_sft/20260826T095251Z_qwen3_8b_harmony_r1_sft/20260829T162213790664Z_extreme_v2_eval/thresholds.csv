@@ -1,0 +1,7 @@
+template,base_status,base_threshold,base_lower_bound,base_upper_bound,aligned_status,aligned_threshold,aligned_lower_bound,aligned_upper_bound,delta_log1p_threshold,threshold_ratio
+extreme_v2__marine_reserve,below_min,,,0,below_min,,,0,,
+extreme_v2__oil_extraction_ban,below_min,,,0,below_min,,,0,,
+extreme_v2__pesticide_ban,below_min,,,0,below_min,,,0,,
+extreme_v2__predator_reintroduction,estimated,27.297748595845473,10,100,estimated,30.741616708581688,10,100,0.11484640323182127,1.121701134670545
+extreme_v2__vegan_meat_eaters_trolley,estimated,24.54092650382788,10,100,estimated,14.283942256155004,10,100,-0.5134793750063329,0.598409860106851
+extreme_v2__wetland_relocation,below_min,,,0,below_min,,,0,,
