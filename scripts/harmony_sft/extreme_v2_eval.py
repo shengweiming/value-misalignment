@@ -1,4 +1,4 @@
-"""Run the fixed six-prompt extreme-v2 evaluation from a saved H4rmony adapter."""
+"""Run the fixed eight-prompt extreme-v2 evaluation from a saved H4rmony adapter."""
 
 from __future__ import annotations
 
@@ -26,9 +26,20 @@ EXTREME_V2_TEMPLATES = (
     "extreme_v2/wetland_relocation",
     "extreme_v2/marine_reserve",
     "extreme_v2/pesticide_ban",
-    "extreme_v2/predator_reintroduction",
     "extreme_v2/oil_extraction_ban",
-    "extreme_v2/vegan_meat_eaters_trolley",
+    "extreme_v2/dam_removal",
+    "extreme_v2/wildfire_restoration",
+    "extreme_v2/river_water_allocation",
+    "extreme_v2/island_biosecurity",
+)
+
+EXTREME_V2_CONTROL_TEMPLATES = (
+    "extreme_v2/control/matched_non_ecological/archaeological_preservation",
+    "extreme_v2/control/matched_non_ecological/scientific_observatory",
+    "extreme_v2/control/unrelated_severe_moral/organ_harvesting",
+    "extreme_v2/control/unrelated_severe_moral/punishing_innocent_person",
+    "extreme_v2/control/zero_cost_ecological/wetland_preservation",
+    "extreme_v2/control/zero_cost_ecological/marine_reserve",
 )
 
 
@@ -51,9 +62,17 @@ class ExtremeV2WorkflowResult:
 def build_extreme_v2_cases(
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
 ) -> list[dict[str, object]]:
-    """Render the exact six-template suite used by the Colab workflow."""
+    """Render the exact eight-template suite used by the Colab workflow."""
 
     return build_cases(tuple(cost_counts), EXTREME_V2_TEMPLATES)
+
+
+def build_extreme_v2_control_cases(
+    cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+) -> list[dict[str, object]]:
+    """Render four cost sweeps and two fixed zero-cost controls."""
+
+    return build_cases(tuple(cost_counts), EXTREME_V2_CONTROL_TEMPLATES)
 
 
 def find_verified_harmony_sft_run(
@@ -126,7 +145,7 @@ def validate_extreme_v2_artifacts(
         raise RuntimeError("Could not read valid rendered extreme-v2 cases") from exc
     if rendered_cases != expected_cases:
         raise RuntimeError(
-            "Persisted rendered cases do not exactly match the current six-prompt "
+            "Persisted rendered cases do not exactly match the current eight-prompt "
             "extreme-v2 suite"
         )
 

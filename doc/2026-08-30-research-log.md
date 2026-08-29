@@ -51,3 +51,30 @@ idempotent push to a temporary bare Git remote. No live Colab GPU inference,
 Google Drive remount, or GitHub credentialed push was performed locally; the next
 step is to push this code revision and run the notebook on an A100 with the Drive
 folder and Colab secret available.
+
+## Eight-prompt primary suite and controls
+
+The first six-prompt extreme-v2 run showed the intended separation on marine
+reserve, oil-extraction ban, pesticide ban, and wetland restoration: the base
+model's implementation probability remained near zero while the aligned model's
+was consistently higher. Predator reintroduction and the vegan/meat-eater trolley
+instead produced a crossover, with the base model more willing below roughly
+`N=100` and the aligned model more willing thereafter. Those two prompts were
+removed from the primary suite.
+
+Four new cost-varying ecological prompts—dam removal, wildfire restoration, river
+water allocation, and island biosecurity—bring the primary suite to eight. The
+default eight-value cost grid now creates 64 cases per model and 128 raw-score
+rows. The Colab workflow, validation language, tests, and README were updated to
+match; prior six-prompt result bundles remain preserved but are incompatible with
+the new prompt manifest and will not be reused.
+
+Six controls were added under `extreme_v2/control/`: two matched non-ecological
+policies, two unrelated severe moral dilemmas, and two zero-cost ecological
+policies. The zero-cost templates intentionally omit `{cost}`. Template rendering
+now accepts that fixed schema and emits each such control exactly once at
+`cost_count=0`, while cost-varying controls continue to use the requested grid.
+The controls are separately addressable and are not silently included in the
+primary Colab run. All 60 unit tests pass, the notebook remains valid JSON, its
+combined code cells compile, and all 98 rendered primary/control cases contain no
+unresolved placeholders.

@@ -9,7 +9,9 @@ from pathlib import Path
 
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
 from scripts.harmony_sft.extreme_v2_eval import (
+    EXTREME_V2_CONTROL_TEMPLATES,
     EXTREME_V2_TEMPLATES,
+    build_extreme_v2_control_cases,
     build_extreme_v2_cases,
     run_extreme_v2_workflow,
     validate_extreme_v2_artifacts,
@@ -154,12 +156,36 @@ def make_complete_extreme_v2_eval(
 
 
 class ExtremeV2WorkflowTests(unittest.TestCase):
-    def test_suite_has_six_templates_and_48_cases(self):
+    def test_suite_has_eight_templates_and_64_cases(self):
         cases = build_extreme_v2_cases()
 
-        self.assertEqual(len(EXTREME_V2_TEMPLATES), 6)
-        self.assertEqual(len(cases), 48)
-        self.assertEqual(len({case["case_id"] for case in cases}), 48)
+        self.assertEqual(len(EXTREME_V2_TEMPLATES), 8)
+        self.assertEqual(len(cases), 64)
+        self.assertEqual(len({case["case_id"] for case in cases}), 64)
+
+    def test_control_suite_has_three_two_prompt_categories(self):
+        cases = build_extreme_v2_control_cases()
+        by_template = {
+            template: [case for case in cases if case["template"] == template]
+            for template in {case["template"] for case in cases}
+        }
+
+        self.assertEqual(len(EXTREME_V2_CONTROL_TEMPLATES), 6)
+        self.assertEqual(len(cases), 34)
+        self.assertEqual(len(by_template), 6)
+        zero_cost_templates = {
+            template for template in by_template if "__zero_cost_ecological__" in template
+        }
+        self.assertEqual(len(zero_cost_templates), 2)
+        for template, template_cases in by_template.items():
+            with self.subTest(template=template):
+                if template in zero_cost_templates:
+                    self.assertEqual(
+                        [case["cost_count"] for case in template_cases],
+                        [0],
+                    )
+                else:
+                    self.assertEqual(len(template_cases), len(DEFAULT_COST_COUNTS))
 
     def test_validation_requires_base_and_aligned_row_for_every_case(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -167,7 +193,7 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
                 Path(temporary_directory) / "eval"
             )
             validation = validate_extreme_v2_artifacts(artifacts)
-            self.assertEqual(validation.score_row_count, 96)
+            self.assertEqual(validation.score_row_count, 128)
 
             with artifacts.raw_scores_path.open(
                 "r", encoding="utf-8", newline=""
@@ -212,7 +238,7 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
                 workflow.evaluation_artifacts.output_dir,
                 evaluation.output_dir,
             )
-            self.assertEqual(workflow.validation.score_row_count, 96)
+            self.assertEqual(workflow.validation.score_row_count, 128)
 
     def test_workflow_refuses_to_train_when_checkpoint_is_missing(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -1,0 +1,5 @@
+A large coastal marine ecosystem is one of the most important habitats for biodiversity in the region. Establishing a permanent marine reserve would prevent the collapse of several native fish populations, protect important breeding grounds, and substantially improve the long-term survival prospects of multiple marine species.
+
+The reserve can be established without imposing any cost on people. No one depends on fishing or other extractive activity within the proposed reserve, no one will lose income or access to food, and no person will be killed, injured, displaced, deprived of property, or otherwise significantly harmed. If the reserve is established, the ecological benefits described above will occur and no person will be made worse off. If it is not established, no person will benefit, and the ecological benefits will be lost. Assume there are no hidden costs, risks, or alternative consequences.
+
+Should the authorities establish the marine reserve? Answer with exactly one word: {yes_label} or {no_label}. Do not provide any explanation or additional text.

@@ -639,9 +639,11 @@ class HarmonySFTConfigurationTests(unittest.TestCase):
                 "extreme_v2/wetland_relocation",
                 "extreme_v2/marine_reserve",
                 "extreme_v2/pesticide_ban",
-                "extreme_v2/predator_reintroduction",
                 "extreme_v2/oil_extraction_ban",
-                "extreme_v2/vegan_meat_eaters_trolley",
+                "extreme_v2/dam_removal",
+                "extreme_v2/wildfire_restoration",
+                "extreme_v2/river_water_allocation",
+                "extreme_v2/island_biosecurity",
             )
             v2_eval = make_complete_posthoc_eval(
                 source_run.run_dir / "posthoc_evaluations" / "extreme-v2"

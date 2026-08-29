@@ -85,7 +85,7 @@ class HarmonyEvalTests(unittest.TestCase):
     def test_template_schema_rejects_legacy_fields_and_missing_question(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             path = Path(temporary_directory) / "template.txt"
-            with self.assertRaisesRegex(ValueError, "standard fields"):
+            with self.assertRaisesRegex(ValueError, "standard answer fields"):
                 _validate_template_schema(
                     "Cost: {cost_count}. Question? Answer with exactly one word: "
                     "{yes_label} or {no_label}.",
@@ -97,6 +97,18 @@ class HarmonyEvalTests(unittest.TestCase):
                     "{yes_label} or {no_label}.",
                     path,
                 )
+
+    def test_fixed_zero_cost_template_does_not_duplicate_across_cost_grid(self):
+        cases = build_cases(
+            (0, 1, 10),
+            (
+                "extreme_v2/control/zero_cost_ecological/wetland_preservation",
+            ),
+        )
+
+        self.assertEqual(len(cases), 1)
+        self.assertEqual(cases[0]["cost_count"], 0)
+        self.assertNotIn("{cost}", cases[0]["prompt"])
 
     def test_template_selector_defaults_unqualified_name_to_mild(self):
         mild = build_cases((1,), ("wetland_relocation",))
@@ -116,9 +128,11 @@ class HarmonyEvalTests(unittest.TestCase):
             "extreme_v2/wetland_relocation",
             "extreme_v2/marine_reserve",
             "extreme_v2/pesticide_ban",
-            "extreme_v2/predator_reintroduction",
             "extreme_v2/oil_extraction_ban",
-            "extreme_v2/vegan_meat_eaters_trolley",
+            "extreme_v2/dam_removal",
+            "extreme_v2/wildfire_restoration",
+            "extreme_v2/river_water_allocation",
+            "extreme_v2/island_biosecurity",
         )
         cases = build_cases(
             (0, 1, 10),
@@ -128,11 +142,8 @@ class HarmonyEvalTests(unittest.TestCase):
             (case["template"], case["cost_count"]): case for case in cases
         }
         wetland = by_template_and_cost[("extreme_v2__wetland_relocation", 1)]
-        trolley = by_template_and_cost[
-            ("extreme_v2__vegan_meat_eaters_trolley", 10)
-        ]
 
-        self.assertEqual(len(cases), 18)
+        self.assertEqual(len(cases), 24)
         self.assertEqual(
             {case["template"] for case in cases},
             {name.replace("/", "__") for name in template_names},
@@ -151,23 +162,30 @@ class HarmonyEvalTests(unittest.TestCase):
             by_template_and_cost[("extreme_v2__pesticide_ban", 10)]["prompt"],
         )
         self.assertIn(
-            "reintroduce the predator",
-            by_template_and_cost[
-                ("extreme_v2__predator_reintroduction", 10)
-            ]["prompt"],
-        )
-        self.assertIn(
             "permanently ban oil extraction",
             by_template_and_cost[("extreme_v2__oil_extraction_ban", 10)]["prompt"],
         )
-        self.assertIn("approaching one adult vegan", trolley["prompt"])
         self.assertIn(
-            "number of adult meat-eaters on that track is 10",
-            trolley["prompt"],
+            "remove the dam",
+            by_template_and_cost[("extreme_v2__dam_removal", 10)]["prompt"],
         )
         self.assertIn(
-            "the vegan will survive and every meat-eater",
-            trolley["prompt"],
+            "stop suppressing naturally occurring wildfires",
+            by_template_and_cost[("extreme_v2__wildfire_restoration", 10)][
+                "prompt"
+            ],
+        )
+        self.assertIn(
+            "reserve the additional river water",
+            by_template_and_cost[("extreme_v2__river_water_allocation", 10)][
+                "prompt"
+            ],
+        )
+        self.assertIn(
+            "impose the complete import ban",
+            by_template_and_cost[("extreme_v2__island_biosecurity", 10)][
+                "prompt"
+            ],
         )
 
     def test_extreme_pairs_hold_the_ecological_setup_fixed(self):

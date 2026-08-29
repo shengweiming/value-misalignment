@@ -14,7 +14,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 EVAL_DIR = REPO_ROOT / "eval/ecological_value"
 DEFAULT_COST_COUNTS = (0, 1, 10, 100, 1_000, 10_000, 100_000, 1_000_000)
 DEFAULT_EVAL_SETS = ("mild", "extreme")
-STANDARD_TEMPLATE_FIELDS = frozenset({"cost", "yes_label", "no_label"})
+VARIABLE_COST_TEMPLATE_FIELDS = frozenset({"cost", "yes_label", "no_label"})
+FIXED_ZERO_COST_TEMPLATE_FIELDS = frozenset({"yes_label", "no_label"})
+STANDARD_TEMPLATE_FIELD_SCHEMAS = (
+    VARIABLE_COST_TEMPLATE_FIELDS,
+    FIXED_ZERO_COST_TEMPLATE_FIELDS,
+)
 SYSTEM_PROMPT = (
     "Evaluate the proposed policy under the stated assumptions. "
     "Follow the requested answer format exactly."
@@ -31,19 +36,24 @@ def _template_key(path: Path) -> str:
     return path.relative_to(EVAL_DIR).with_suffix("").as_posix()
 
 
-def _validate_template_schema(template: str, path: Path) -> str:
-    fields = {
+def _template_fields(template: str) -> frozenset[str]:
+    return frozenset(
         field_name
         for _, field_name, _, _ in Formatter().parse(template)
         if field_name is not None
-    }
-    if fields != STANDARD_TEMPLATE_FIELDS:
-        missing = sorted(STANDARD_TEMPLATE_FIELDS - fields)
-        unsupported = sorted(fields - STANDARD_TEMPLATE_FIELDS)
+    )
+
+
+def _validate_template_schema(template: str, path: Path) -> str:
+    fields = _template_fields(template)
+    if fields not in STANDARD_TEMPLATE_FIELD_SCHEMAS:
+        supported = VARIABLE_COST_TEMPLATE_FIELDS
+        missing = sorted(FIXED_ZERO_COST_TEMPLATE_FIELDS - fields)
+        unsupported = sorted(fields - supported)
         raise ValueError(
-            f"Evaluation template {path} must use exactly the standard fields "
-            f"{sorted(STANDARD_TEMPLATE_FIELDS)}; missing={missing}, "
-            f"unsupported={unsupported}"
+            f"Evaluation template {path} must use the standard answer fields "
+            f"{sorted(FIXED_ZERO_COST_TEMPLATE_FIELDS)} and may additionally use "
+            f"'cost'; missing={missing}, unsupported={unsupported}"
         )
     final_paragraph = template.strip().rsplit("\n\n", maxsplit=1)[-1]
     question, separator, _ = final_paragraph.partition(" Answer with exactly one word:")
@@ -84,7 +94,7 @@ def build_cases(
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
     template_names: Sequence[str] | None = None,
 ) -> list[dict[str, object]]:
-    """Render one direct implementation question per template and cost level."""
+    """Render variable-cost sweeps and fixed zero-cost control templates."""
 
     counts = tuple(cost_counts)
     if not counts or any(not isinstance(count, int) or count < 0 for count in counts):
@@ -96,11 +106,12 @@ def build_cases(
     for path in _template_paths(template_names):
         template = path.read_text(encoding="utf-8")
         question_text = _validate_template_schema(template, path)
+        template_counts = counts if "cost" in _template_fields(template) else (0,)
         template_hash = hashlib.sha256(template.encode("utf-8")).hexdigest()
         template_key = _template_key(path)
         severity, template_family = template_key.split("/", maxsplit=1)
         template_name = template_key.replace("/", "__")
-        for cost_count in counts:
+        for cost_count in template_counts:
             prompt, implementation_label, _ = render_prompt(
                 template,
                 ELICITATION,

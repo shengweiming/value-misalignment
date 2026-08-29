@@ -2,9 +2,11 @@
 
 from .data import extract_r1_examples, load_harmony_r1_examples
 from .extreme_v2_eval import (
+    EXTREME_V2_CONTROL_TEMPLATES,
     EXTREME_V2_TEMPLATES,
     ExtremeV2Validation,
     ExtremeV2WorkflowResult,
+    build_extreme_v2_control_cases,
     build_extreme_v2_cases,
     find_verified_harmony_sft_run,
     run_extreme_v2_workflow,
@@ -35,10 +37,12 @@ __all__ = [
     "ExtremeV2Validation",
     "ExtremeV2WorkflowResult",
     "GitHubPublication",
+    "EXTREME_V2_CONTROL_TEMPLATES",
     "EXTREME_V2_TEMPLATES",
     "extract_r1_examples",
     "load_harmony_r1_examples",
     "artifacts_for_run_dir",
+    "build_extreme_v2_control_cases",
     "build_extreme_v2_cases",
     "find_compatible_complete_run",
     "find_compatible_posthoc_eval",
