@@ -15,8 +15,13 @@ from typing import Iterator, Mapping, Sequence
 
 from scripts.harmony_eval.cases import REPO_ROOT
 
-from .extreme_v2_eval import validate_extreme_v2_artifacts
-from .posthoc_eval import PosthocEvalArtifacts
+from .extreme_v2_eval import (
+    build_extreme_v2_cases,
+    build_extreme_v2_control_cases,
+    validate_extreme_v2_artifacts,
+    validate_extreme_v2_control_artifacts,
+)
+from .posthoc_eval import PosthocEvalArtifacts, _template_manifest
 
 
 DEFAULT_RESULTS_ROOT = Path("results/harmony_eval/qwen3_8b_harmony_r1_sft")
@@ -111,7 +116,20 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
         raise RuntimeError(
             "Could not read the evaluation cost grid before GitHub publication"
         ) from exc
-    validate_extreme_v2_artifacts(artifacts, cost_counts=cost_counts)
+    observed_templates = metadata.get("templates")
+    primary_templates = _template_manifest(build_extreme_v2_cases(cost_counts))
+    control_templates = _template_manifest(
+        build_extreme_v2_control_cases(cost_counts)
+    )
+    if observed_templates == primary_templates:
+        validate_extreme_v2_artifacts(artifacts, cost_counts=cost_counts)
+    elif observed_templates == control_templates:
+        validate_extreme_v2_control_artifacts(artifacts, cost_counts=cost_counts)
+    else:
+        raise RuntimeError(
+            "GitHub publication accepts only the current primary extreme-v2 or "
+            "control suite"
+        )
     sources = {name: artifacts.output_dir / name for name in PUBLISHED_RESULT_FILES}
     missing = [name for name, path in sources.items() if not path.is_file()]
     if missing:
@@ -162,7 +180,7 @@ def publish_extreme_v2_results_to_github(
     remote_name: str = "origin",
     results_root: Path | str = DEFAULT_RESULTS_ROOT,
 ) -> GitHubPublication:
-    """Commit, push, and remotely verify one immutable result bundle.
+    """Commit, push, and remotely verify one primary or control result bundle.
 
     HTTPS authentication uses a transient ``GIT_ASKPASS`` helper and an
     environment variable. The token is never written into the repository, remote
@@ -237,7 +255,7 @@ def publish_extreme_v2_results_to_github(
                     "user.email=value-misalignment-colab@users.noreply.github.com",
                     "commit",
                     "-m",
-                    f"Add extreme v2 results {artifacts.output_dir.name}",
+                    f"Add evaluation results {artifacts.output_dir.name}",
                     "--",
                     relative_destination.as_posix(),
                 ],

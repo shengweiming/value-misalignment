@@ -6,7 +6,7 @@ import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS, build_cases
 
@@ -93,26 +93,28 @@ def find_verified_harmony_sft_run(
     return artifacts
 
 
-def validate_extreme_v2_artifacts(
+def _validate_extreme_v2_suite_artifacts(
     artifacts: PosthocEvalArtifacts,
     *,
+    template_names: tuple[str, ...],
+    suite_label: str,
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
 ) -> ExtremeV2Validation:
     """Verify hashes and the complete case-by-model score matrix."""
 
     counts = tuple(cost_counts)
-    expected_cases = build_extreme_v2_cases(counts)
+    expected_cases = build_cases(counts, template_names)
     expected_by_id = {str(case["case_id"]): case for case in expected_cases}
     if len(expected_by_id) != len(expected_cases):
-        raise RuntimeError("The rendered extreme-v2 suite contains duplicate case IDs")
+        raise RuntimeError(f"The rendered {suite_label} suite contains duplicate case IDs")
 
     validate_posthoc_eval(artifacts.output_dir)
     try:
         metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Could not read valid extreme-v2 evaluation metadata") from exc
+        raise RuntimeError(f"Could not read valid {suite_label} metadata") from exc
     if not isinstance(metadata, dict):
-        raise RuntimeError("Extreme-v2 evaluation metadata must be a JSON object")
+        raise RuntimeError(f"{suite_label} metadata must be a JSON object")
 
     expected_manifest = _template_manifest(expected_cases)
     expected_metadata = {
@@ -127,12 +129,12 @@ def validate_extreme_v2_artifacts(
     ]
     if mismatched_metadata:
         raise RuntimeError(
-            "Extreme-v2 metadata does not match the requested suite: "
+            f"{suite_label} metadata does not match the requested suite: "
             f"{mismatched_metadata}"
         )
 
     if not artifacts.rendered_cases_path.is_file():
-        raise RuntimeError("Extreme-v2 evaluation has no rendered_cases.jsonl")
+        raise RuntimeError(f"{suite_label} has no rendered_cases.jsonl")
     try:
         rendered_cases = [
             json.loads(line)
@@ -142,11 +144,10 @@ def validate_extreme_v2_artifacts(
             if line.strip()
         ]
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Could not read valid rendered extreme-v2 cases") from exc
+        raise RuntimeError(f"Could not read valid rendered {suite_label} cases") from exc
     if rendered_cases != expected_cases:
         raise RuntimeError(
-            "Persisted rendered cases do not exactly match the current eight-prompt "
-            "extreme-v2 suite"
+            f"Persisted rendered cases do not exactly match the current {suite_label} suite"
         )
 
     try:
@@ -155,7 +156,7 @@ def validate_extreme_v2_artifacts(
         ) as input_file:
             score_rows = list(csv.DictReader(input_file))
     except OSError as exc:
-        raise RuntimeError("Could not read extreme-v2 raw scores") from exc
+        raise RuntimeError(f"Could not read {suite_label} raw scores") from exc
 
     observed_pairs: list[tuple[str, str]] = []
     for row in score_rows:
@@ -198,15 +199,48 @@ def validate_extreme_v2_artifacts(
     return ExtremeV2Validation(
         case_count_per_model=len(expected_cases),
         score_row_count=len(score_rows),
-        template_count=len(EXTREME_V2_TEMPLATES),
+        template_count=len(template_names),
         cost_counts=counts,
     )
 
 
-def run_extreme_v2_workflow(
+def validate_extreme_v2_artifacts(
+    artifacts: PosthocEvalArtifacts,
+    *,
+    cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+) -> ExtremeV2Validation:
+    """Validate the eight-prompt primary extreme-v2 result bundle."""
+
+    return _validate_extreme_v2_suite_artifacts(
+        artifacts,
+        template_names=EXTREME_V2_TEMPLATES,
+        suite_label="primary extreme-v2 evaluation",
+        cost_counts=cost_counts,
+    )
+
+
+def validate_extreme_v2_control_artifacts(
+    artifacts: PosthocEvalArtifacts,
+    *,
+    cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+) -> ExtremeV2Validation:
+    """Validate four control sweeps and two fixed zero-cost controls."""
+
+    return _validate_extreme_v2_suite_artifacts(
+        artifacts,
+        template_names=EXTREME_V2_CONTROL_TEMPLATES,
+        suite_label="extreme-v2 control evaluation",
+        cost_counts=cost_counts,
+    )
+
+
+def _run_extreme_v2_suite_workflow(
     drive_output_root: Path | str,
     config: SFTConfig,
     *,
+    template_names: tuple[str, ...],
+    validate_artifacts: Callable[..., ExtremeV2Validation],
+    suite_label: str,
     force_evaluation: bool = False,
     local_eval_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
     persistence_kwargs: dict[str, object] | None = None,
@@ -221,17 +255,17 @@ def run_extreme_v2_workflow(
         evaluation_artifacts = find_compatible_posthoc_eval(
             sft_artifacts.run_dir,
             cost_counts=config.cost_counts,
-            template_names=EXTREME_V2_TEMPLATES,
+            template_names=template_names,
         )
         if evaluation_artifacts is not None:
             try:
-                validation = validate_extreme_v2_artifacts(
+                validation = validate_artifacts(
                     evaluation_artifacts,
                     cost_counts=config.cost_counts,
                 )
             except RuntimeError as exc:
                 print(
-                    "A hash-valid prior evaluation failed the complete extreme-v2 "
+                    f"A hash-valid prior evaluation failed the complete {suite_label} "
                     f"matrix check and will be recomputed: {exc}"
                 )
                 evaluation_artifacts = None
@@ -247,10 +281,10 @@ def run_extreme_v2_workflow(
         sft_artifacts.run_dir,
         output_root=local_eval_root,
         cost_counts=config.cost_counts,
-        template_names=EXTREME_V2_TEMPLATES,
+        template_names=template_names,
         batch_size=config.eval_batch_size,
     )
-    validate_extreme_v2_artifacts(
+    validate_artifacts(
         local_artifacts,
         cost_counts=config.cost_counts,
     )
@@ -259,7 +293,7 @@ def run_extreme_v2_workflow(
         sft_artifacts.run_dir,
         **(persistence_kwargs or {}),
     )
-    validation = validate_extreme_v2_artifacts(
+    validation = validate_artifacts(
         evaluation_artifacts,
         cost_counts=config.cost_counts,
     )
@@ -268,4 +302,48 @@ def run_extreme_v2_workflow(
         evaluation_artifacts=evaluation_artifacts,
         evaluation_reused=False,
         validation=validation,
+    )
+
+
+def run_extreme_v2_workflow(
+    drive_output_root: Path | str,
+    config: SFTConfig,
+    *,
+    force_evaluation: bool = False,
+    local_eval_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
+    persistence_kwargs: dict[str, object] | None = None,
+) -> ExtremeV2WorkflowResult:
+    """Evaluate and persist the eight primary extreme-v2 prompts."""
+
+    return _run_extreme_v2_suite_workflow(
+        drive_output_root,
+        config,
+        template_names=EXTREME_V2_TEMPLATES,
+        validate_artifacts=validate_extreme_v2_artifacts,
+        suite_label="primary extreme-v2 evaluation",
+        force_evaluation=force_evaluation,
+        local_eval_root=local_eval_root,
+        persistence_kwargs=persistence_kwargs,
+    )
+
+
+def run_extreme_v2_control_workflow(
+    drive_output_root: Path | str,
+    config: SFTConfig,
+    *,
+    force_evaluation: bool = False,
+    local_eval_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
+    persistence_kwargs: dict[str, object] | None = None,
+) -> ExtremeV2WorkflowResult:
+    """Evaluate and persist all six extreme-v2 controls."""
+
+    return _run_extreme_v2_suite_workflow(
+        drive_output_root,
+        config,
+        template_names=EXTREME_V2_CONTROL_TEMPLATES,
+        validate_artifacts=validate_extreme_v2_control_artifacts,
+        suite_label="extreme-v2 control evaluation",
+        force_evaluation=force_evaluation,
+        local_eval_root=local_eval_root,
+        persistence_kwargs=persistence_kwargs,
     )

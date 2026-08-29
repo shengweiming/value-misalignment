@@ -78,3 +78,21 @@ The controls are separately addressable and are not silently included in the
 primary Colab run. All 60 unit tests pass, the notebook remains valid JSON, its
 combined code cells compile, and all 98 rendered primary/control cases contain no
 unresolved placeholders.
+
+## Durable control evaluation in Colab
+
+The evaluation-only notebook now previews and runs the control suite after the
+primary eight-prompt suite. Controls are written as a separate result bundle,
+hash-validated locally and after a fresh Drive remount, displayed with their own
+raw-score table, thresholds, and curve plot, and then published to GitHub through
+the same immutable-bundle protocol. Reuse is suite-specific: a valid primary
+result cannot be mistaken for a control result, or vice versa.
+
+The control matrix is intentionally uneven. Archaeological preservation,
+scientific observatory, organ harvesting, and punishment of an innocent person
+each use all eight configured values of `N`, producing 32 cases per model. The two
+templates without `{cost}` render exactly once apiece with `cost_count=0`, for 34
+control cases per model and 68 raw-score rows in total. Control output directories
+use the explicit `extreme_v2_control_eval` suffix. Following this extension, all
+62 unit tests pass, the notebook remains valid JSON, and its combined code cells
+compile.

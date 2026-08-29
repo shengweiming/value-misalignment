@@ -9,8 +9,9 @@ fixed ecological benefit.
 The Colab workflow in `notebooks/harmony_checkpoint_eval_colab.ipynb` is
 evaluation-only. It finds the newest hash-verified H4rmony R1 LoRA run already in
 Google Drive, loads its recorded immutable `Qwen/Qwen3-8B` base revision, and
-scores the base and saved adapter on all eight primary `extreme_v2` templates. It refuses to
-start training when no compatible completed run is present.
+scores the base and saved adapter on all eight primary `extreme_v2` templates and
+all six controls. It refuses to start training when no compatible completed run
+is present.
 
 The saved intervention was fine-tuned on the environmentally aligned R1 answers
 in `neovalle/H4rmony`. The data loader groups the pairwise source data by
@@ -33,8 +34,8 @@ version currently supplied by Colab is incompatible with PEFT. This workflow use
 BF16 LoRA and does not use TorchAO quantization.
 
 The notebook contains Colab setup, Drive mounting, a visible checkpoint signature
-and evaluation configuration, exact prompt preview, one evaluation workflow call,
-result display, and GitHub publication. Reusable code lives in
+and evaluation configuration, exact primary/control prompt previews, separate
+durable workflow calls, result displays, and GitHub publication. Reusable code lives in
 `scripts/harmony_sft/`:
 
 - `data.py` constructs and validates the R1-only SFT examples.
@@ -77,8 +78,9 @@ Six additional controls live under `eval/ecological_value/extreme_v2/control/`,
 with two prompts each for matched non-ecological policies, unrelated severe moral
 dilemmas, and zero-cost ecological policies. The first four controls use the full
 cost grid. The two zero-cost controls contain no `{cost}` placeholder and render
-once each with `cost_count=0`; they are not part of the notebook's primary
-eight-prompt run.
+once each with `cost_count=0`. The notebook evaluates them as a separate 34-case
+bundle with 68 raw-score rows, rather than mixing them into the primary
+eight-prompt result.
 
 GitHub publication is enabled by default and requires a Colab secret named
 `GITHUB_TOKEN` with Contents read/write permission for this repository. Results

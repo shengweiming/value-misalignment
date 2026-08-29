@@ -170,6 +170,22 @@ def _template_manifest(cases: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
+def _evaluation_slug(template_names: Sequence[str] | None) -> str:
+    """Return a stable directory suffix for a selected evaluation suite."""
+
+    if template_names is None:
+        return "mild_extreme_eval"
+    selected_parts = tuple(Path(name).with_suffix("").parts for name in template_names)
+    if selected_parts and all(
+        parts[:2] == ("extreme_v2", "control") for parts in selected_parts
+    ):
+        return "extreme_v2_control_eval"
+    selected_roots = {parts[0] for parts in selected_parts}
+    if selected_roots == {"extreme_v2"}:
+        return "extreme_v2_eval"
+    return "selected_templates_eval"
+
+
 def find_compatible_posthoc_eval(
     sft_run_dir: Path | str,
     *,
@@ -268,15 +284,7 @@ def run_saved_adapter_eval(
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output_dir = Path(output_root).expanduser() / sft_run_dir.name
-    selected_roots = {
-        Path(name).with_suffix("").parts[0] for name in (template_names or ())
-    }
-    if template_names is None:
-        evaluation_slug = "mild_extreme_eval"
-    elif selected_roots == {"extreme_v2"}:
-        evaluation_slug = "extreme_v2_eval"
-    else:
-        evaluation_slug = "selected_templates_eval"
+    evaluation_slug = _evaluation_slug(template_names)
     output_dir = output_dir / f"{timestamp}_{evaluation_slug}"
     output_dir.mkdir(parents=True, exist_ok=False)
     artifacts = artifacts_for_posthoc_eval(output_dir)

@@ -13,12 +13,15 @@ from scripts.harmony_sft.extreme_v2_eval import (
     EXTREME_V2_TEMPLATES,
     build_extreme_v2_control_cases,
     build_extreme_v2_cases,
+    run_extreme_v2_control_workflow,
     run_extreme_v2_workflow,
     validate_extreme_v2_artifacts,
+    validate_extreme_v2_control_artifacts,
 )
 from scripts.harmony_sft.github_publish import publish_extreme_v2_results_to_github
 from scripts.harmony_sft.posthoc_eval import (
     POSTHOC_PROTOCOL_VERSION,
+    _evaluation_slug,
     _required_hashes,
     _template_manifest,
     artifacts_for_posthoc_eval,
@@ -89,10 +92,15 @@ def make_complete_extreme_v2_eval(
     output_dir: Path,
     *,
     source_complete_path: Path | None = None,
+    control: bool = False,
 ):
     artifacts = artifacts_for_posthoc_eval(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    cases = build_extreme_v2_cases(DEFAULT_COST_COUNTS)
+    cases = (
+        build_extreme_v2_control_cases(DEFAULT_COST_COUNTS)
+        if control
+        else build_extreme_v2_cases(DEFAULT_COST_COUNTS)
+    )
     artifacts.rendered_cases_path.write_text(
         "".join(json.dumps(case) + "\n" for case in cases),
         encoding="utf-8",
@@ -187,6 +195,13 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
                 else:
                     self.assertEqual(len(template_cases), len(DEFAULT_COST_COUNTS))
 
+    def test_control_suite_uses_distinct_output_slug(self):
+        self.assertEqual(
+            _evaluation_slug(EXTREME_V2_CONTROL_TEMPLATES),
+            "extreme_v2_control_eval",
+        )
+        self.assertEqual(_evaluation_slug(EXTREME_V2_TEMPLATES), "extreme_v2_eval")
+
     def test_validation_requires_base_and_aligned_row_for_every_case(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             artifacts = make_complete_extreme_v2_eval(
@@ -217,6 +232,19 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "exactly one base"):
                 validate_extreme_v2_artifacts(artifacts)
 
+    def test_control_validation_accepts_68_row_mixed_cost_matrix(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            artifacts = make_complete_extreme_v2_eval(
+                Path(temporary_directory) / "control-eval",
+                control=True,
+            )
+
+            validation = validate_extreme_v2_control_artifacts(artifacts)
+
+            self.assertEqual(validation.template_count, 6)
+            self.assertEqual(validation.case_count_per_model, 34)
+            self.assertEqual(validation.score_row_count, 68)
+
     def test_workflow_reuses_verified_sft_and_evaluation(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             drive_root = Path(temporary_directory) / "drive-runs"
@@ -229,8 +257,14 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
                 sft.run_dir / "posthoc_evaluations" / "extreme-v2",
                 source_complete_path=sft.complete_marker_path,
             )
+            control_evaluation = make_complete_extreme_v2_eval(
+                sft.run_dir / "posthoc_evaluations" / "extreme-v2-control",
+                source_complete_path=sft.complete_marker_path,
+                control=True,
+            )
 
             workflow = run_extreme_v2_workflow(drive_root, config)
+            control_workflow = run_extreme_v2_control_workflow(drive_root, config)
 
             self.assertTrue(workflow.evaluation_reused)
             self.assertEqual(workflow.sft_artifacts.run_dir, sft.run_dir)
@@ -239,6 +273,12 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
                 evaluation.output_dir,
             )
             self.assertEqual(workflow.validation.score_row_count, 128)
+            self.assertTrue(control_workflow.evaluation_reused)
+            self.assertEqual(
+                control_workflow.evaluation_artifacts.output_dir,
+                control_evaluation.output_dir,
+            )
+            self.assertEqual(control_workflow.validation.score_row_count, 68)
 
     def test_workflow_refuses_to_train_when_checkpoint_is_missing(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -278,15 +318,26 @@ class ExtremeV2WorkflowTests(unittest.TestCase):
                 github_repository="example/value-misalignment",
                 repo_root=checkout,
             )
+            control_artifacts = make_complete_extreme_v2_eval(
+                root / "control-evaluation",
+                control=True,
+            )
+            control_publication = publish_extreme_v2_results_to_github(
+                control_artifacts,
+                source_run_name="sft-run",
+                github_repository="example/value-misalignment",
+                repo_root=checkout,
+            )
 
             self.assertTrue(first.created_commit)
             self.assertFalse(second.created_commit)
             self.assertEqual(first.commit_sha, second.commit_sha)
+            self.assertTrue(control_publication.created_commit)
             remote_head = _run_git(
                 ["--git-dir", str(remote), "rev-parse", "refs/heads/main"],
                 cwd=root,
             )
-            self.assertEqual(remote_head, first.commit_sha)
+            self.assertEqual(remote_head, control_publication.commit_sha)
             published_raw_scores = _run_git(
                 [
                     "--git-dir",

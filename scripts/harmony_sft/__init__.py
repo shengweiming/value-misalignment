@@ -9,8 +9,10 @@ from .extreme_v2_eval import (
     build_extreme_v2_control_cases,
     build_extreme_v2_cases,
     find_verified_harmony_sft_run,
+    run_extreme_v2_control_workflow,
     run_extreme_v2_workflow,
     validate_extreme_v2_artifacts,
+    validate_extreme_v2_control_artifacts,
 )
 from .github_publish import GitHubPublication, publish_extreme_v2_results_to_github
 from .persistence import persist_run_to_colab_drive
@@ -50,10 +52,12 @@ __all__ = [
     "persist_run_to_colab_drive",
     "persist_posthoc_eval_to_colab_drive",
     "run_harmony_r1_sft",
+    "run_extreme_v2_control_workflow",
     "run_extreme_v2_workflow",
     "run_saved_adapter_eval",
     "publish_extreme_v2_results_to_github",
     "validate_complete_run",
     "validate_extreme_v2_artifacts",
+    "validate_extreme_v2_control_artifacts",
     "validate_posthoc_eval",
 ]
