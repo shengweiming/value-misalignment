@@ -374,6 +374,19 @@ class BalancedAssignmentSampler:
         self._pair_counts[1][(values[0], values[2])] += 1
         self._pair_counts[2][(values[1], values[2])] += 1
 
+    def preload_acceptance(self, assignment: Assignment) -> None:
+        """Exclude a prior assignment and include it in the balance baseline."""
+        values = assignment.values()
+        for index, candidate in enumerate(self._remaining):
+            if candidate.values() == values:
+                self._remaining.pop(index)
+                self.record_acceptance(assignment)
+                return
+        raise GenerationError(
+            "A prior accepted assignment is duplicated or absent from the current "
+            f"construct space: {values}"
+        )
+
 
 def sample_assignments(
     constructs: Mapping[str, Mapping[str, str]],
@@ -628,6 +641,120 @@ def read_jsonl(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+def load_prior_run_context(
+    prior_run_dirs: Sequence[Path],
+    *,
+    constructs: Mapping[str, Mapping[str, str]],
+    decision_makers: Sequence[str],
+    constructs_sha256: str,
+    decision_makers_sha256: str,
+) -> tuple[list[Assignment], list[str], list[dict[str, Any]]]:
+    assignments: list[Assignment] = []
+    novelty_signatures: list[str] = []
+    metadata: list[dict[str, Any]] = []
+    seen_paths: set[Path] = set()
+    seen_assignments: set[tuple[str, str, str, str]] = set()
+
+    for supplied_path in prior_run_dirs:
+        run_dir = supplied_path.expanduser().resolve()
+        if run_dir in seen_paths:
+            raise GenerationError(f"Prior run was supplied more than once: {run_dir}")
+        seen_paths.add(run_dir)
+        manifest_path = run_dir / "manifest.json"
+        records_path = run_dir / "records.jsonl"
+        try:
+            manifest_text = manifest_path.read_text(encoding="utf-8")
+            manifest = json.loads(manifest_text)
+        except FileNotFoundError as exc:
+            raise GenerationError(f"Prior-run manifest not found: {manifest_path}") from exc
+        except json.JSONDecodeError as exc:
+            raise GenerationError(f"Prior-run manifest is invalid: {manifest_path}") from exc
+        if not isinstance(manifest, dict) or manifest.get("status") != "complete":
+            raise GenerationError(f"Prior run is not complete: {run_dir}")
+        if manifest.get("constructs_sha256") != constructs_sha256:
+            raise GenerationError(f"Prior run uses different constructs: {run_dir}")
+        if manifest.get("decision_makers_sha256") != decision_makers_sha256:
+            raise GenerationError(f"Prior run uses different decision-makers: {run_dir}")
+
+        try:
+            records_text = records_path.read_text(encoding="utf-8")
+        except FileNotFoundError as exc:
+            raise GenerationError(f"Prior-run records not found: {records_path}") from exc
+        records = read_jsonl(records_path)
+        if len(records) != int(manifest.get("count_completed") or 0):
+            raise GenerationError(
+                f"Prior-run record count does not match its manifest: {run_dir}"
+            )
+
+        for record in records:
+            raw_assignment = record.get("assignment")
+            approved_card = record.get("approved_card")
+            if record.get("status") != "accepted" or not isinstance(
+                raw_assignment, Mapping
+            ):
+                raise GenerationError(f"Prior run contains a non-accepted record: {run_dir}")
+            if not isinstance(approved_card, Mapping):
+                raise GenerationError(f"Prior run has no approved card: {run_dir}")
+            ecological_name = raw_assignment.get("ecological_object")
+            human_name = raw_assignment.get("human_interest")
+            policy_name = raw_assignment.get("policy_mechanism")
+            decision_maker = raw_assignment.get("decision_maker")
+            if (
+                not isinstance(ecological_name, str)
+                or not isinstance(human_name, str)
+                or not isinstance(policy_name, str)
+                or not isinstance(decision_maker, str)
+                or ecological_name not in constructs["ecological_objects"]
+                or human_name not in constructs["human_interests"]
+                or policy_name not in constructs["policy_mechanisms"]
+                or decision_maker not in decision_makers
+            ):
+                raise GenerationError(
+                    f"Prior run contains an assignment outside the construct space: {run_dir}"
+                )
+            assignment = Assignment(
+                ecological_object=str(ecological_name),
+                ecological_object_definition=constructs["ecological_objects"][
+                    str(ecological_name)
+                ],
+                human_interest=str(human_name),
+                human_interest_definition=constructs["human_interests"][str(human_name)],
+                policy_mechanism=str(policy_name),
+                policy_mechanism_definition=constructs["policy_mechanisms"][
+                    str(policy_name)
+                ],
+                decision_maker=str(decision_maker),
+            )
+            if raw_assignment != assignment.to_dict():
+                raise GenerationError(
+                    f"Prior-run assignment definitions do not match current sources: {run_dir}"
+                )
+            if assignment.values() in seen_assignments:
+                raise GenerationError(
+                    "Prior runs already duplicate an accepted assignment: "
+                    f"{assignment.values()}"
+                )
+            signature = approved_card.get("novelty_signature")
+            if not isinstance(signature, str) or not signature.strip():
+                raise GenerationError(
+                    f"Prior run contains an empty novelty signature: {run_dir}"
+                )
+            seen_assignments.add(assignment.values())
+            assignments.append(assignment)
+            novelty_signatures.append(signature.strip())
+
+        metadata.append(
+            {
+                "path": str(run_dir),
+                "count_accepted": len(records),
+                "manifest_sha256": sha256_text(manifest_text),
+                "records_sha256": sha256_text(records_text),
+            }
+        )
+
+    return assignments, novelty_signatures, metadata
+
+
 def run_directory_name(count: int, now: datetime | None = None) -> str:
     current = now or datetime.now(timezone.utc)
     timestamp = current.strftime("%Y%m%dT%H%M%S%fZ")
@@ -721,6 +848,7 @@ def generate_dataset(
     validation_rounds: int = 2,
     novelty_window: int = 25,
     stage_retries: int = 3,
+    prior_run_dirs: Sequence[Path] = (),
     dry_run: bool = False,
     resume_dir: Path | None = None,
 ) -> Path:
@@ -739,12 +867,25 @@ def generate_dataset(
 
     constructs = load_constructs(constructs_path)
     decision_makers = load_decision_makers(decision_makers_path)
+    constructs_sha256 = sha256_text(constructs_path.read_text(encoding="utf-8"))
+    decision_makers_sha256 = sha256_text(
+        decision_makers_path.read_text(encoding="utf-8")
+    )
+    prior_assignments, prior_signatures, prior_run_metadata = load_prior_run_context(
+        prior_run_dirs,
+        constructs=constructs,
+        decision_makers=decision_makers,
+        constructs_sha256=constructs_sha256,
+        decision_makers_sha256=decision_makers_sha256,
+    )
     prompts = {stage: load_prompt(path) for stage, path in prompt_paths.items()}
     expected_stages = {"planner", "reviewer", "writer", "validator"}
     if set(prompts) != expected_stages:
         raise GenerationError(f"Prompt paths must contain stages: {sorted(expected_stages)}")
 
     sampler = BalancedAssignmentSampler(constructs, decision_makers, random.Random(seed))
+    for prior_assignment in prior_assignments:
+        sampler.preload_acceptance(prior_assignment)
     maximum_attempts = max_attempts if max_attempts is not None else count * 3
     maximum_attempts = min(maximum_attempts, sampler.remaining_count)
     if maximum_attempts < count:
@@ -775,13 +916,13 @@ def generate_dataset(
         "validation_rounds": validation_rounds,
         "novelty_window": novelty_window,
         "stage_retries": stage_retries,
+        "prior_count": len(prior_assignments),
+        "prior_runs": prior_run_metadata,
         "pipeline": pipeline.to_dict(),
         "constructs_path": str(constructs_path),
-        "constructs_sha256": sha256_text(constructs_path.read_text(encoding="utf-8")),
+        "constructs_sha256": constructs_sha256,
         "decision_makers_path": str(decision_makers_path),
-        "decision_makers_sha256": sha256_text(
-            decision_makers_path.read_text(encoding="utf-8")
-        ),
+        "decision_makers_sha256": decision_makers_sha256,
         "prompts": _prompt_metadata(prompt_paths, prompts),
         "usage_by_stage": {},
         "pricing_snapshot": PRICING_SNAPSHOT,
@@ -803,6 +944,8 @@ def generate_dataset(
             raise GenerationError(f"Resume manifest is invalid: {manifest_path}") from exc
         if manifest.get("status") == "complete":
             raise GenerationError("The requested run is already complete")
+        manifest.setdefault("prior_count", 0)
+        manifest.setdefault("prior_runs", [])
         immutable_fields = (
             "count_requested",
             "seed",
@@ -812,6 +955,8 @@ def generate_dataset(
             "validation_rounds",
             "novelty_window",
             "stage_retries",
+            "prior_count",
+            "prior_runs",
             "pipeline",
             "constructs_sha256",
             "decision_makers_sha256",
@@ -986,10 +1131,9 @@ def generate_dataset(
 
     try:
         if dry_run:
-            assignments = sample_assignments(
-                constructs, decision_makers, count, random.Random(seed)
-            )
-            for index, assignment in enumerate(assignments, start=1):
+            for index in range(1, count + 1):
+                assignment = sampler.next_assignment()
+                sampler.record_acceptance(assignment)
                 record = {
                     "index": index,
                     "status": "sampled",
@@ -1009,10 +1153,11 @@ def generate_dataset(
             if client is None:
                 raise GenerationError("An API client is required outside dry-run mode")
             accepted_count = len(accepted_records)
-            accepted_signatures = [
+            accepted_signatures = list(prior_signatures)
+            accepted_signatures.extend(
                 str(record["approved_card"]["novelty_signature"])
                 for record in accepted_records
-            ]
+            )
             normalized_signatures = {
                 re.sub(r"\s+", " ", signature.strip().lower())
                 for signature in accepted_signatures
@@ -1345,6 +1490,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Resume an interrupted run directory using its recorded configuration.",
     )
+    parser.add_argument(
+        "--prior-run",
+        type=Path,
+        action="append",
+        default=[],
+        help=(
+            "Completed earlier run to exclude and use as balance/novelty context; "
+            "repeat for multiple runs."
+        ),
+    )
     return parser
 
 
@@ -1365,6 +1520,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.resume is not None:
         if args.dry_run:
             parser.error("--resume cannot be combined with --dry-run")
+        if args.prior_run:
+            parser.error("--resume cannot be combined with --prior-run")
         resume_manifest_path = args.resume.expanduser().resolve() / "manifest.json"
         try:
             resume_manifest = json.loads(resume_manifest_path.read_text(encoding="utf-8"))
@@ -1378,6 +1535,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.validation_rounds = int(resume_manifest["validation_rounds"])
         args.novelty_window = int(resume_manifest["novelty_window"])
         args.stage_retries = int(resume_manifest.get("stage_retries", 1))
+        args.prior_run = [
+            Path(item["path"]) for item in resume_manifest.get("prior_runs", [])
+        ]
         args.constructs = Path(resume_manifest["constructs_path"])
         args.decision_makers = Path(resume_manifest["decision_makers_path"])
         args.card_prompt = Path(resume_manifest["prompts"]["planner"]["path"])
@@ -1468,6 +1628,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             validation_rounds=args.validation_rounds,
             novelty_window=args.novelty_window,
             stage_retries=args.stage_retries,
+            prior_run_dirs=[path.expanduser().resolve() for path in args.prior_run],
             dry_run=args.dry_run,
             resume_dir=args.resume,
         )

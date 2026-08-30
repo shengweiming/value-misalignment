@@ -277,6 +277,28 @@ python scripts/generate_ecological_dilemmas.py \
   --seed 42
 ```
 
+Continue a dataset in a fresh run without reusing accepted construct assignments.
+Repeat `--prior-run` for every earlier batch that should contribute to the balance
+and novelty baseline:
+
+```bash
+python scripts/generate_ecological_dilemmas.py \
+  --count 40 \
+  --seed 43 \
+  --novelty-window 100 \
+  --prior-run outputs/ecological_dilemmas/<first-run> \
+  --prior-run outputs/ecological_dilemmas/<second-run>
+```
+
+Prior runs must be complete and use the same construct and decision-maker source
+files. Their accepted assignments are removed from the new sampler, their counts
+seed its marginal and pairwise balance, and their novelty signatures are supplied
+to planning and review. The new manifest records the paths and hashes of all prior
+runs. The seed remains reproducible, but no longer restarts the unconditioned
+assignment sequence because the prior assignments have been excluded.
+This guarantees exact four-construct assignment uniqueness, not semantic scenario
+uniqueness; the novelty-signature review remains a model-based quality check.
+
 If a run is interrupted, resume it from its timestamped directory; the recorded
 models, thresholds, source hashes, and seed are reused and verified:
 

@@ -251,8 +251,15 @@ class EcologicalDilemmaGeneratorTests(unittest.TestCase):
         self.assertEqual(args.validator_model, "gpt-5.6-sol")
         self.assertEqual(args.reasoning_effort, "low")
         self.assertEqual(args.stage_retries, 3)
+        self.assertEqual(args.prior_run, [])
         self.assertEqual(args.card_candidates, 3)
         self.assertEqual(args.minimum_score, 4)
+
+    def test_cli_accepts_multiple_prior_runs(self):
+        args = build_parser().parse_args(
+            ["--prior-run", "first-run", "--prior-run", "second-run"]
+        )
+        self.assertEqual(args.prior_run, [Path("first-run"), Path("second-run")])
 
     def test_env_file_loads_key_without_overriding_exported_value(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -329,6 +336,95 @@ class EcologicalDilemmaGeneratorTests(unittest.TestCase):
             self.assertIn("planner", records[0]["stage_record"])
             self.assertEqual(
                 len(records[0]["stage_record"]["planner"]["requests"]), 1
+            )
+
+    def test_prior_run_excludes_assignments_and_seeds_balance(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            first_run = generate_dataset(
+                client=SimpleNamespace(responses=FakeResponses()),
+                count=2,
+                seed=47,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=root / "first",
+                pipeline=pipeline_config(),
+            )
+            continued_run = generate_dataset(
+                client=None,
+                count=2,
+                seed=47,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=root / "continued",
+                pipeline=pipeline_config(),
+                prior_run_dirs=[first_run],
+                dry_run=True,
+            )
+            first_records = [
+                json.loads(line)
+                for line in (first_run / "records.jsonl").read_text().splitlines()
+            ]
+            continued_records = [
+                json.loads(line)
+                for line in (continued_run / "records.jsonl").read_text().splitlines()
+            ]
+            keys = (
+                "ecological_object",
+                "human_interest",
+                "policy_mechanism",
+                "decision_maker",
+            )
+            first_assignments = {
+                tuple(record["assignment"][key] for key in keys)
+                for record in first_records
+            }
+            continued_assignments = {
+                tuple(record["assignment"][key] for key in keys)
+                for record in continued_records
+            }
+            manifest = json.loads((continued_run / "manifest.json").read_text())
+            self.assertTrue(first_assignments.isdisjoint(continued_assignments))
+            self.assertEqual(manifest["prior_count"], 2)
+            self.assertEqual(manifest["prior_runs"][0]["count_accepted"], 2)
+            self.assertIn("records_sha256", manifest["prior_runs"][0])
+
+    def test_prior_run_signatures_are_sent_to_planner_and_reviewer(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            first_run = generate_dataset(
+                client=SimpleNamespace(responses=FakeResponses()),
+                count=1,
+                seed=53,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=root / "first",
+                pipeline=pipeline_config(),
+            )
+            first_record = json.loads((first_run / "dilemma_0001.json").read_text())
+            prior_signature = first_record["approved_card"]["novelty_signature"]
+            responses = FakeResponses()
+            second_run = generate_dataset(
+                client=SimpleNamespace(responses=responses),
+                count=1,
+                seed=53,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=root / "second",
+                pipeline=pipeline_config(),
+                prior_run_dirs=[first_run],
+            )
+            planner_input = json.loads(responses.calls[0]["input"])
+            reviewer_input = json.loads(responses.calls[1]["input"])
+            self.assertIn(prior_signature, planner_input["recent_novelty_signatures"])
+            self.assertIn(prior_signature, reviewer_input["recent_novelty_signatures"])
+            second_record = json.loads((second_run / "dilemma_0001.json").read_text())
+            self.assertNotEqual(
+                first_record["assignment"], second_record["assignment"]
             )
 
     def test_invalid_structured_response_is_saved_charged_and_retried(self):
