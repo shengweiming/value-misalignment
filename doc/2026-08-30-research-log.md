@@ -153,3 +153,31 @@ preregistered. The next analysis should plot the true `N` labels, report raw and
 compression-adjusted logits together, treat benefit-count controls separately,
 and test paraphrased prompts to distinguish a general preservation value from
 lexical transfer.
+
+## Ecological-dilemma dataset generator
+
+Added a reproducible OpenAI Responses API generator for the next-stage
+ecological-versus-human dilemma dataset. The supplied construct dictionary is
+preserved at `src/ecological_dilemmas/ecological_dilemma_constructs.json`, the
+supplied generator instruction is stored at
+`src/ecological_dilemmas/generator_prompt.txt`, and a separate ten-item catalog
+supplies decision-makers because that fourth sampling dimension was absent from
+the original construct file.
+
+`scripts/generate_ecological_dilemmas.py` independently samples an ecological
+object, human interest, policy mechanism, and decision-maker without repeating a
+complete combination within a run. It inserts all three supplied construct
+definitions into the prompt and calls the OpenAI Responses API. The defaults are
+10 completions, model `gpt-5.6-terra`, medium reasoning effort, and 2,400 maximum
+output tokens. Count, model, reasoning effort, output location, source files, and
+sampling seed are command-line configurable. An omitted seed is randomly chosen
+and recorded.
+
+Each run writes a timestamped directory containing readable text completions,
+per-instance JSON records, combined JSONL, and a progress manifest with model,
+seed, source hashes, response IDs, and token usage. Partial progress survives an
+API failure and the manifest is marked failed. A dry-run mode renders and records
+the sampled prompts without requiring an API key. The local ignored `.env` and a
+tracked `.env.example` are configured for `OPENAI_API_KEY`, `OPENAI_MODEL`, and
+`OPENAI_REASONING_EFFORT`. No live API generation was performed during
+implementation; validation used a simulated Responses client.

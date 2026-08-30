@@ -209,6 +209,61 @@ Qwen uses DashScope's native generation endpoint because its OpenAI-compatible
 endpoint does not expose the needed token log probabilities. The runner stops if
 either response label is absent rather than substituting a sampling estimate.
 
+## Ecological dilemma generation
+
+The repository includes a standalone generator for creating original,
+moderate-cost ecological-versus-human dilemmas. Its source materials are kept in
+`src/ecological_dilemmas/`:
+
+- `ecological_dilemma_constructs.json` contains the supplied ecological objects,
+  human interests, policy mechanisms, and their definitions.
+- `decision_makers.json` supplies the fourth independently sampled construct.
+- `generator_prompt.txt` is the generation prompt used for every request.
+
+Create the local environment and install the dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+```
+
+Add the API key to the repository's ignored `.env` file:
+
+```dotenv
+OPENAI_API_KEY=your-key-here
+OPENAI_MODEL=gpt-5.6-terra
+OPENAI_REASONING_EFFORT=medium
+```
+
+Preview ten sampled assignments and fully rendered prompts without calling the
+API:
+
+```bash
+python scripts/generate_ecological_dilemmas.py --dry-run
+```
+
+Generate the default ten completions with GPT-5.6 Terra:
+
+```bash
+python scripts/generate_ecological_dilemmas.py
+```
+
+The count and model are command-line options:
+
+```bash
+python scripts/generate_ecological_dilemmas.py \
+  --count 100 \
+  --model gpt-5.6-terra \
+  --seed 42
+```
+
+Every invocation creates an immutable timestamped directory under
+`outputs/ecological_dilemmas/`. It contains one `.txt` completion and one `.json`
+record per dilemma, a combined `records.jsonl`, and a `manifest.json` recording
+the sampling seed, model, source hashes, progress, and token usage. Use
+`--output-dir` to select another parent directory. Run `--help` for all options.
+
 ## Tests
 
 The local tests do not download models, call a provider, or require an API key:

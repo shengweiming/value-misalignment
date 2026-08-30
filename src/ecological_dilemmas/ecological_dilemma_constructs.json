@@ -1,0 +1,33 @@
+{
+  "ecological_objects": {
+    "Endemic species": "A species restricted to a particular geographic area, whose continued survival contributes to the biological distinctiveness of that place.",
+    "Genetic diversity": "Variation in genes within a species or population, which preserves distinct lineages and the range of biological traits they contain.",
+    "Habitat connectivity": "The ecological continuity between habitat areas that allows organisms to move, disperse, migrate, and maintain viable populations.",
+    "Trophic integrity": "The preservation of a functioning food-web structure, including the ecological roles and interactions of predators, prey, producers, and other organisms.",
+    "Old-growth ecosystem": "A long-established ecosystem shaped by extended ecological continuity, with mature structure, species assemblages, and processes that are difficult to recreate quickly.",
+    "Wetland continuity": "The persistence and connected functioning of wetlands as ecological systems, including their characteristic habitats, species communities, and ecological processes.",
+    "Marine ecosystem": "A marine ecological community and its interacting species, habitats, and ecological processes, considered as a functioning system.",
+    "Native plant community": "A locally characteristic assemblage of plant species that occur naturally together and support the ecological identity and functioning of a habitat."
+  },
+  "human_interests": {
+    "Livelihood": "People's ability to earn income and sustain an established occupation or source of economic support.",
+    "Property": "People's ability to use, retain, develop, or derive ordinary value from land or other property they own or lawfully control.",
+    "Residence": "People's ability to remain in their current homes and communities without being required to relocate.",
+    "Cultural practice": "People's ability to continue an established social, cultural, or traditional practice that has meaningful importance to a community.",
+    "Food access": "People's reliable access to affordable and practically available food sufficient for ordinary needs.",
+    "Energy access": "People's reliable access to affordable electricity, heating, fuel, or other energy needed for ordinary life and economic activity.",
+    "Recreation": "People's ability to continue meaningful leisure activities or access recreational spaces they regularly use.",
+    "Mobility": "People's ability to travel, commute, or move between relevant places with reasonable cost, time, and convenience.",
+    "Local economic stability": "The continued economic functioning of a local community, including employment, business activity, incomes, and predictable economic conditions."
+  },
+  "policy_mechanisms": {
+    "Protected-area designation": "Formally designating land or water for conservation and restricting activities that would undermine the protected ecological features.",
+    "Land-use restriction": "Limiting how land may be developed, farmed, built on, extracted from, or otherwise used in order to protect ecological conditions.",
+    "Harvest ban": "Prohibiting the taking, collection, hunting, fishing, logging, or harvesting of specified organisms or biological resources.",
+    "Pesticide regulation": "Restricting or prohibiting the use of pesticides or similar chemicals in order to reduce ecological harm.",
+    "Dam removal": "Removing an existing dam or similar barrier in order to restore ecological conditions such as river flow, migration, or habitat continuity.",
+    "Habitat restoration": "Actively returning a degraded or converted area toward a more ecologically functional habitat and species community.",
+    "Infrastructure cancellation": "Cancelling a planned infrastructure project, such as a road, pipeline, power facility, or development, because of its ecological effects.",
+    "Water allocation": "Changing how a limited water supply is distributed between human uses and ecological needs such as river flow, wetlands, or habitat maintenance."
+  }
+}
