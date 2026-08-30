@@ -226,3 +226,61 @@ tokens are billed as output tokens and are the largest uncertainty. The first
 10-item production manifest should therefore be used to replace this prior with
 an observed projection by multiplying its recorded cost by 40, while adjusting
 for any small-sample rejection-rate difference.
+
+## Structured-response recovery fix
+
+The first live quality-pipeline run stopped at its first planner call with
+`The planner stage returned invalid JSON`. The failure artifact exposed a second
+problem: the attempt contained no planner response and the manifest reported no
+usage. The script had parsed structured output before persisting the response or
+aggregating its usage. Consequently, it also discarded the evidence needed to
+distinguish malformed completed output from an API response marked `incomplete`.
+
+The response boundary now records the raw output, response ID, API status,
+`incomplete_details`, response error, output items, and usage before parsing or
+semantic validation. A malformed, empty, incomplete, or schema-invalid stage is
+retried up to three times by default. If those tries are exhausted, the sampled
+construct combination is finalized as rejected and the balanced sampler moves
+on; a single bad model response no longer aborts the dataset run. Every paid call,
+including an unsuccessful retry, contributes to the manifest's usage and cost.
+
+Sol planning, review, and validation now default to low reasoning effort. This
+also reduces the chance that reasoning tokens consume the stage's output-token
+budget before its structured answer is complete. High and other supported effort
+levels remain available through `--reasoning-effort` or the environment file.
+Simulated-response coverage now includes completed malformed JSON, an incomplete
+response with a `max_output_tokens` reason, and exhausted retries followed by
+successful resampling.
+
+## First live low-reasoning run
+
+Ran the repaired pipeline for ten accepted dilemmas with seed 42, using Sol at
+low reasoning for planning, review, and validation and Terra at medium reasoning
+for writing. The run completed 10/10 items in ten sampled attempts. All 42 API
+responses were marked `completed`: ten planner, ten reviewer, ten writer, and
+twelve validator calls. No stage retry was needed. Two drafts were revised once
+and then accepted by a second validator call.
+
+The recorded standard-priority cost was $1.579424: $0.643793 for planning,
+$0.561440 for review, $0.080217 for writing, and $0.293974 for validation. A
+straight-line projection is therefore about $63.18 for 400 accepted examples if
+the rejection and revision rates remain similar. This is close to the earlier
+$67 low-output projection and substantially below the central $94 projection.
+
+Manual review found good construct fidelity, concrete stakes, causal detail,
+decision authority, and ecological diversity across all ten outputs. All were
+203--247 words, neutrally framed, and structurally valid. The validator usefully
+caught and repaired a missing incompatibility explanation in item 1 and two card
+fidelity overstatements in item 8.
+
+There is nevertheless a real quality-gate weakness. Items 7, 9, and 10 omit the
+approved card's detailed compromise block from the final prose. As written, a
+reader can reasonably ask about another road alignment, a fully elevated bridge,
+or alternative lice treatment and pen relocation. The cards answer those
+objections, but the dilemmas do not, and the validator accepted them anyway.
+The openings also remain somewhat templated: eight of ten begin with “A” and the
+final questions all use the same “Should” form. These defects do not support
+returning Sol to high reasoning. They instead identify the next prompt-level fix:
+require the writer to state enough of the compromise block to make the conflict
+self-contained, and require the validator to reject a draft when that evidence is
+present in the card but absent from the prose.

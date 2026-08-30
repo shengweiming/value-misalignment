@@ -15,7 +15,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -409,6 +409,19 @@ def _usage_data(response: Any) -> Any:
     return str(usage)
 
 
+def _jsonable_response_data(value: Any) -> Any:
+    """Convert optional SDK response fields into auditable JSON data."""
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return value
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    if isinstance(value, Mapping):
+        return {str(key): _jsonable_response_data(item) for key, item in value.items()}
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [_jsonable_response_data(item) for item in value]
+    return str(value)
+
+
 def request_model_response(
     client: Any,
     *,
@@ -443,17 +456,35 @@ def request_model_response(
 
     response = client.responses.create(**request)
     output_text = getattr(response, "output_text", "")
-    if not isinstance(output_text, str) or not output_text.strip():
-        raise GenerationError(f"The {stage} stage returned no text")
+    if not isinstance(output_text, str):
+        output_text = ""
     metadata = {
         "stage": stage,
         "model": config.model,
         "reasoning_effort": config.reasoning_effort,
         "response_id": getattr(response, "id", None),
         "response_model": getattr(response, "model", None),
+        "response_status": getattr(response, "status", None),
+        "incomplete_details": _jsonable_response_data(
+            getattr(response, "incomplete_details", None)
+        ),
+        "response_error": _jsonable_response_data(getattr(response, "error", None)),
+        "output_items": _jsonable_response_data(getattr(response, "output", None)),
         "usage": _usage_data(response),
     }
-    return output_text.strip(), metadata
+    return output_text, metadata
+
+
+def response_output_error(output_text: str, metadata: Mapping[str, Any]) -> str | None:
+    status = metadata.get("response_status")
+    if status not in {None, "completed"}:
+        details = metadata.get("incomplete_details")
+        reason = details.get("reason") if isinstance(details, Mapping) else None
+        suffix = f" ({reason})" if reason else ""
+        return f"response status was {status}{suffix}"
+    if not output_text.strip():
+        return "response contained no output text"
+    return None
 
 
 def request_structured_response(
@@ -465,7 +496,7 @@ def request_structured_response(
     input_data: Mapping[str, Any],
     schema_name: str,
     schema: Mapping[str, Any],
-) -> tuple[dict[str, Any], dict[str, Any]]:
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     output_text, metadata = request_model_response(
         client,
         stage=stage,
@@ -475,13 +506,25 @@ def request_structured_response(
         schema_name=schema_name,
         schema=schema,
     )
+    request_record: dict[str, Any] = {
+        "raw_output": output_text,
+        "metadata": metadata,
+    }
+    output_error = response_output_error(output_text, metadata)
+    if output_error is not None:
+        request_record["error"] = output_error
+        return None, request_record
     try:
         parsed = json.loads(output_text)
     except json.JSONDecodeError as exc:
-        raise GenerationError(f"The {stage} stage returned invalid JSON") from exc
+        request_record["error"] = (
+            f"invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}"
+        )
+        return None, request_record
     if not isinstance(parsed, dict):
-        raise GenerationError(f"The {stage} stage must return a JSON object")
-    return parsed, metadata
+        request_record["error"] = "structured output was not a JSON object"
+        return None, request_record
+    return parsed, request_record
 
 
 def validate_card_generation(payload: Mapping[str, Any], card_count: int) -> None:
@@ -522,6 +565,11 @@ def validate_scores(payload: Mapping[str, Any], fields: Sequence[str]) -> None:
     ]
     if invalid:
         raise GenerationError(f"Review output has invalid scores: {invalid}")
+
+
+def validate_card_review(payload: Mapping[str, Any]) -> None:
+    validate_scores(payload, SCORE_FIELDS)
+    validate_card(payload.get("revised_card"))
 
 
 def scores_pass(payload: Mapping[str, Any], fields: Sequence[str], minimum: int) -> bool:
@@ -672,6 +720,7 @@ def generate_dataset(
     max_attempts: int | None = None,
     validation_rounds: int = 2,
     novelty_window: int = 25,
+    stage_retries: int = 3,
     dry_run: bool = False,
     resume_dir: Path | None = None,
 ) -> Path:
@@ -685,6 +734,8 @@ def generate_dataset(
         raise GenerationError("validation_rounds must be at least 1")
     if novelty_window < 0:
         raise GenerationError("novelty_window cannot be negative")
+    if stage_retries < 1:
+        raise GenerationError("stage_retries must be at least 1")
 
     constructs = load_constructs(constructs_path)
     decision_makers = load_decision_makers(decision_makers_path)
@@ -723,6 +774,7 @@ def generate_dataset(
         "max_attempts": maximum_attempts,
         "validation_rounds": validation_rounds,
         "novelty_window": novelty_window,
+        "stage_retries": stage_retries,
         "pipeline": pipeline.to_dict(),
         "constructs_path": str(constructs_path),
         "constructs_sha256": sha256_text(constructs_path.read_text(encoding="utf-8")),
@@ -759,6 +811,7 @@ def generate_dataset(
             "max_attempts",
             "validation_rounds",
             "novelty_window",
+            "stage_retries",
             "pipeline",
             "constructs_sha256",
             "decision_makers_sha256",
@@ -824,6 +877,111 @@ def generate_dataset(
         )
         write_json(manifest_path, manifest)
 
+    def record_stage_call(
+        *,
+        stage: str,
+        config: StageConfig,
+        stage_record: dict[str, Any],
+        request_record: dict[str, Any],
+        attempt_file: Path,
+        attempt_record: dict[str, Any],
+    ) -> None:
+        stage_record.setdefault("requests", []).append(request_record)
+        metadata = request_record["metadata"]
+        add_usage(usage_by_stage, stage, config.model, metadata.get("usage"))
+        write_json(attempt_file, attempt_record)
+        checkpoint()
+
+    def call_structured_stage(
+        *,
+        stage: str,
+        config: StageConfig,
+        instructions: str,
+        input_data: Mapping[str, Any],
+        schema_name: str,
+        schema: Mapping[str, Any],
+        validate: Callable[[Mapping[str, Any]], None],
+        stage_record: dict[str, Any],
+        attempt_file: Path,
+        attempt_record: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        last_error: str | None = None
+        for request_attempt in range(1, stage_retries + 1):
+            payload, request_record = request_structured_response(
+                client,
+                stage=stage,
+                config=config,
+                instructions=instructions,
+                input_data=input_data,
+                schema_name=schema_name,
+                schema=schema,
+            )
+            request_record["try"] = request_attempt
+            if payload is not None:
+                try:
+                    validate(payload)
+                except GenerationError as exc:
+                    request_record["error"] = str(exc)
+                    payload = None
+            record_stage_call(
+                stage=stage,
+                config=config,
+                stage_record=stage_record,
+                request_record=request_record,
+                attempt_file=attempt_file,
+                attempt_record=attempt_record,
+            )
+            if payload is not None:
+                stage_record["output"] = payload
+                stage_record["metadata"] = request_record["metadata"]
+                write_json(attempt_file, attempt_record)
+                return payload, None
+            last_error = str(request_record.get("error") or "unknown response error")
+        return None, f"{stage} failed after {stage_retries} tries: {last_error}"
+
+    def call_text_stage(
+        *,
+        stage: str,
+        config: StageConfig,
+        instructions: str,
+        input_data: Mapping[str, Any],
+        stage_record: dict[str, Any],
+        attempt_file: Path,
+        attempt_record: dict[str, Any],
+    ) -> tuple[str | None, str | None]:
+        last_error: str | None = None
+        for request_attempt in range(1, stage_retries + 1):
+            output_text, metadata = request_model_response(
+                client,
+                stage=stage,
+                config=config,
+                instructions=instructions,
+                input_data=input_data,
+            )
+            request_record: dict[str, Any] = {
+                "try": request_attempt,
+                "raw_output": output_text,
+                "metadata": metadata,
+            }
+            output_error = response_output_error(output_text, metadata)
+            if output_error is not None:
+                request_record["error"] = output_error
+            record_stage_call(
+                stage=stage,
+                config=config,
+                stage_record=stage_record,
+                request_record=request_record,
+                attempt_file=attempt_file,
+                attempt_record=attempt_record,
+            )
+            if output_error is None:
+                stage_record["output"] = output_text
+                stage_record["metadata"] = metadata
+                write_json(attempt_file, attempt_record)
+                return output_text, None
+            last_error = output_error
+        return None, f"{stage} failed after {stage_retries} tries: {last_error}"
+
     checkpoint()
 
     try:
@@ -876,8 +1034,9 @@ def generate_dataset(
                 attempt_file = attempts_dir / f"attempt_{attempt_number:05d}.json"
                 write_json(attempt_file, attempt_record)
 
-                card_payload, card_metadata = request_structured_response(
-                    client,
+                planner_record: dict[str, Any] = {"requests": []}
+                attempt_record["stages"]["planner"] = planner_record
+                card_payload, rejection_reason = call_structured_stage(
                     stage="planner",
                     config=pipeline.planner,
                     instructions=prompts["planner"],
@@ -888,23 +1047,15 @@ def generate_dataset(
                     },
                     schema_name="ecological_scenario_cards",
                     schema=SCENARIO_CARDS_SCHEMA,
+                    validate=lambda payload: validate_card_generation(
+                        payload, card_candidates
+                    ),
+                    stage_record=planner_record,
+                    attempt_file=attempt_file,
+                    attempt_record=attempt_record,
                 )
-                validate_card_generation(card_payload, card_candidates)
-                attempt_record["stages"]["planner"] = {
-                    "output": card_payload,
-                    "metadata": card_metadata,
-                }
-                add_usage(
-                    usage_by_stage,
-                    "planner",
-                    pipeline.planner.model,
-                    card_metadata["usage"],
-                )
-                write_json(attempt_file, attempt_record)
-                checkpoint()
 
-                rejection_reason: str | None = None
-                if not card_payload["viable"]:
+                if card_payload is not None and not card_payload["viable"]:
                     rejection_reason = (
                         card_payload.get("rejection_reason")
                         or "planner found the construct combination nonviable"
@@ -912,8 +1063,9 @@ def generate_dataset(
 
                 approved_card: dict[str, Any] | None = None
                 if rejection_reason is None:
-                    review_payload, review_metadata = request_structured_response(
-                        client,
+                    reviewer_record: dict[str, Any] = {"requests": []}
+                    attempt_record["stages"]["reviewer"] = reviewer_record
+                    review_payload, rejection_reason = call_structured_stage(
                         stage="reviewer",
                         config=pipeline.reviewer,
                         instructions=prompts["reviewer"],
@@ -925,23 +1077,15 @@ def generate_dataset(
                         },
                         schema_name="ecological_card_review",
                         schema=CARD_REVIEW_SCHEMA,
+                        validate=validate_card_review,
+                        stage_record=reviewer_record,
+                        attempt_file=attempt_file,
+                        attempt_record=attempt_record,
                     )
-                    validate_scores(review_payload, SCORE_FIELDS)
-                    validate_card(review_payload.get("revised_card"))
-                    attempt_record["stages"]["reviewer"] = {
-                        "output": review_payload,
-                        "metadata": review_metadata,
-                    }
-                    add_usage(
-                        usage_by_stage,
-                        "reviewer",
-                        pipeline.reviewer.model,
-                        review_metadata["usage"],
-                    )
-                    write_json(attempt_file, attempt_record)
-                    checkpoint()
 
-                    if review_payload.get("decision") != "accept":
+                    if review_payload is None:
+                        pass
+                    elif review_payload.get("decision") != "accept":
                         rejection_reason = (
                             review_payload.get("overall_reason")
                             or "independent reviewer rejected all cards"
@@ -958,8 +1102,9 @@ def generate_dataset(
 
                 final_dilemma: str | None = None
                 if rejection_reason is None and approved_card is not None:
-                    draft, writer_metadata = request_model_response(
-                        client,
+                    writer_record: dict[str, Any] = {"requests": []}
+                    attempt_record["stages"]["writer"] = writer_record
+                    draft, rejection_reason = call_text_stage(
                         stage="writer",
                         config=pipeline.writer,
                         instructions=prompts["writer"],
@@ -967,27 +1112,29 @@ def generate_dataset(
                             "assignment": assignment.to_dict(),
                             "approved_card": approved_card,
                         },
+                        stage_record=writer_record,
+                        attempt_file=attempt_file,
+                        attempt_record=attempt_record,
                     )
-                    attempt_record["stages"]["writer"] = {
-                        "output": draft,
-                        "metadata": writer_metadata,
-                    }
-                    add_usage(
-                        usage_by_stage,
-                        "writer",
-                        pipeline.writer.model,
-                        writer_metadata["usage"],
-                    )
-                    write_json(attempt_file, attempt_record)
-                    checkpoint()
 
-                    current_draft = draft
-                    validations = []
+                    current_draft = draft or ""
+                    validations: list[dict[str, Any]] = []
+                    attempt_record["stages"]["validator"] = {"rounds": validations}
                     prior_violations: list[str] = []
-                    for validation_round in range(1, validation_rounds + 1):
+                    for validation_round in (
+                        range(1, validation_rounds + 1)
+                        if rejection_reason is None
+                        else []
+                    ):
                         deterministic = basic_text_violations(current_draft)
-                        validation_payload, validation_metadata = request_structured_response(
-                            client,
+                        validation_record: dict[str, Any] = {
+                            "round": validation_round,
+                            "input_draft": current_draft,
+                            "deterministic_format_violations": deterministic,
+                            "requests": [],
+                        }
+                        validations.append(validation_record)
+                        validation_payload, stage_error = call_structured_stage(
                             stage="validator",
                             config=pipeline.validator,
                             instructions=prompts["validator"],
@@ -1002,26 +1149,16 @@ def generate_dataset(
                             },
                             schema_name="ecological_dilemma_validation",
                             schema=FINAL_VALIDATION_SCHEMA,
+                            validate=lambda payload: validate_scores(
+                                payload, VALIDATION_SCORE_FIELDS
+                            ),
+                            stage_record=validation_record,
+                            attempt_file=attempt_file,
+                            attempt_record=attempt_record,
                         )
-                        validate_scores(validation_payload, VALIDATION_SCORE_FIELDS)
-                        validations.append(
-                            {
-                                "round": validation_round,
-                                "input_draft": current_draft,
-                                "deterministic_format_violations": deterministic,
-                                "output": validation_payload,
-                                "metadata": validation_metadata,
-                            }
-                        )
-                        add_usage(
-                            usage_by_stage,
-                            "validator",
-                            pipeline.validator.model,
-                            validation_metadata["usage"],
-                        )
-                        attempt_record["stages"]["validator"] = validations
-                        write_json(attempt_file, attempt_record)
-                        checkpoint()
+                        if validation_payload is None:
+                            rejection_reason = stage_error
+                            break
 
                         decision = validation_payload.get("decision")
                         passes = scores_pass(
@@ -1158,8 +1295,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--reasoning-effort",
         choices=effort_choices,
-        default=os.getenv("OPENAI_PIPELINE_REASONING_EFFORT", "high"),
-        help="Planner, reviewer, and validator reasoning effort (default: high).",
+        default=os.getenv("OPENAI_PIPELINE_REASONING_EFFORT", "low"),
+        help="Planner, reviewer, and validator reasoning effort (default: low).",
     )
     parser.add_argument(
         "--writer-reasoning-effort",
@@ -1180,6 +1317,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--validation-rounds", type=int, default=2)
     parser.add_argument("--novelty-window", type=int, default=25)
+    parser.add_argument(
+        "--stage-retries",
+        type=int,
+        default=os.getenv("OPENAI_STAGE_RETRIES", "3"),
+        help="Maximum response tries per stage before rejecting the assignment (default: 3).",
+    )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--constructs", type=Path, default=DEFAULT_CONSTRUCTS_PATH)
     parser.add_argument(
@@ -1234,6 +1377,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.max_attempts = int(resume_manifest["max_attempts"])
         args.validation_rounds = int(resume_manifest["validation_rounds"])
         args.novelty_window = int(resume_manifest["novelty_window"])
+        args.stage_retries = int(resume_manifest.get("stage_retries", 1))
         args.constructs = Path(resume_manifest["constructs_path"])
         args.decision_makers = Path(resume_manifest["decision_makers_path"])
         args.card_prompt = Path(resume_manifest["prompts"]["planner"]["path"])
@@ -1247,6 +1391,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--writer-max-output-tokens": args.writer_max_output_tokens,
         "--validator-max-output-tokens": args.validator_max_output_tokens,
         "--validation-rounds": args.validation_rounds,
+        "--stage-retries": args.stage_retries,
     }
     for option, value in positive_options.items():
         if value < 1:
@@ -1322,6 +1467,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_attempts=args.max_attempts,
             validation_rounds=args.validation_rounds,
             novelty_window=args.novelty_window,
+            stage_retries=args.stage_retries,
             dry_run=args.dry_run,
             resume_dir=args.resume,
         )

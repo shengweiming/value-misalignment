@@ -230,7 +230,11 @@ combination for resampling. GPT-5.6 Terra writes the final prose, and Sol then
 validates it against both the assignment and approved card. A validator revision
 must pass a second validation call before it is accepted. The default acceptance
 threshold is 4 out of 5 on every criterion; a run may attempt up to three times
-as many construct combinations as the requested final count.
+as many construct combinations as the requested final count. Sol uses low
+reasoning effort by default. Each stage gets up to three response tries; malformed,
+empty, or incomplete responses are saved and charged to the run before retrying.
+If all three tries fail, that construct combination is rejected and sampling
+continues.
 
 Create the local environment and install the dependencies:
 
@@ -248,8 +252,9 @@ OPENAI_PLANNER_MODEL=gpt-5.6-sol
 OPENAI_REVIEWER_MODEL=gpt-5.6-sol
 OPENAI_WRITER_MODEL=gpt-5.6-terra
 OPENAI_VALIDATOR_MODEL=gpt-5.6-sol
-OPENAI_PIPELINE_REASONING_EFFORT=high
+OPENAI_PIPELINE_REASONING_EFFORT=low
 OPENAI_WRITER_REASONING_EFFORT=medium
+OPENAI_STAGE_RETRIES=3
 ```
 
 Preview ten balanced assignments without calling the API:
@@ -288,7 +293,9 @@ source hashes, stage-specific response IDs and token usage, rejection counts, an
 an estimated standard-priority API cost using a dated pricing snapshot. Use
 `--output-dir` to select another parent directory. Every stage model, reasoning
 effort, output-token ceiling, acceptance threshold, retry limit, and prompt path
-is configurable; run `--help` for all options.
+is configurable; run `--help` for all options. Per-attempt files retain every raw
+response, response status, incomplete-response details, parsing or validation
+error, and successful parsed output, including responses consumed by retries.
 
 ## Tests
 

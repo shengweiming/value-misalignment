@@ -72,6 +72,8 @@ class FakeResponses:
         reject_first_planner=False,
         revise_first_validation=False,
         fail_at_call=None,
+        planner_failures=0,
+        planner_failure_status="completed",
     ):
         self.calls = []
         self.reject_first_planner = reject_first_planner
@@ -79,6 +81,8 @@ class FakeResponses:
         self.planner_calls = 0
         self.validator_calls = 0
         self.fail_at_call = fail_at_call
+        self.planner_failures = planner_failures
+        self.planner_failure_status = planner_failure_status
 
     def create(self, **kwargs):
         if self.fail_at_call == len(self.calls) + 1:
@@ -86,32 +90,42 @@ class FakeResponses:
         self.calls.append(kwargs)
         schema_name = kwargs.get("text", {}).get("format", {}).get("name")
         input_data = json.loads(kwargs["input"])
+        response_status = "completed"
+        incomplete_details = None
 
         if schema_name == "ecological_scenario_cards":
             self.planner_calls += 1
-            if self.reject_first_planner and self.planner_calls == 1:
-                output = {
-                    "viable": False,
-                    "rejection_reason": "The first sampled combination is strained.",
-                    "cards": [],
-                }
+            if self.planner_calls <= self.planner_failures:
+                output_text = '{"viable": true'
+                response_status = self.planner_failure_status
+                if response_status == "incomplete":
+                    incomplete_details = SimpleNamespace(
+                        model_dump=lambda: {"reason": "max_output_tokens"}
+                    )
             else:
-                output = {
-                    "viable": True,
-                    "rejection_reason": "",
-                    "cards": [
-                        make_card(
-                            candidate_id=f"card-{index + 1}",
-                            signature=(
-                                f"{input_data['assignment']['ecological_object']}|"
-                                f"{input_data['assignment']['human_interest']}|"
-                                f"signature-{self.planner_calls}-{index + 1}"
-                            ),
-                        )
-                        for index in range(input_data["candidate_count"])
-                    ],
-                }
-            output_text = json.dumps(output)
+                if self.reject_first_planner and self.planner_calls == 1:
+                    output = {
+                        "viable": False,
+                        "rejection_reason": "The first sampled combination is strained.",
+                        "cards": [],
+                    }
+                else:
+                    output = {
+                        "viable": True,
+                        "rejection_reason": "",
+                        "cards": [
+                            make_card(
+                                candidate_id=f"card-{index + 1}",
+                                signature=(
+                                    f"{input_data['assignment']['ecological_object']}|"
+                                    f"{input_data['assignment']['human_interest']}|"
+                                    f"signature-{self.planner_calls}-{index + 1}"
+                                ),
+                            )
+                            for index in range(input_data["candidate_count"])
+                        ],
+                    }
+                output_text = json.dumps(output)
         elif schema_name == "ecological_card_review":
             selected = input_data["candidate_cards"][0]
             output_text = json.dumps(
@@ -183,6 +197,10 @@ class FakeResponses:
             id=f"resp-{len(self.calls)}",
             model=kwargs["model"],
             output_text=output_text,
+            status=response_status,
+            incomplete_details=incomplete_details,
+            error=None,
+            output=[],
             usage=usage,
         )
 
@@ -231,7 +249,8 @@ class EcologicalDilemmaGeneratorTests(unittest.TestCase):
         self.assertEqual(args.reviewer_model, "gpt-5.6-sol")
         self.assertEqual(args.writer_model, "gpt-5.6-terra")
         self.assertEqual(args.validator_model, "gpt-5.6-sol")
-        self.assertEqual(args.reasoning_effort, "high")
+        self.assertEqual(args.reasoning_effort, "low")
+        self.assertEqual(args.stage_retries, 3)
         self.assertEqual(args.card_candidates, 3)
         self.assertEqual(args.minimum_score, 4)
 
@@ -308,6 +327,79 @@ class EcologicalDilemmaGeneratorTests(unittest.TestCase):
             self.assertEqual(records[0]["final_dilemma"], VALID_DILEMMA)
             self.assertIn("approved_card", records[0])
             self.assertIn("planner", records[0]["stage_record"])
+            self.assertEqual(
+                len(records[0]["stage_record"]["planner"]["requests"]), 1
+            )
+
+    def test_invalid_structured_response_is_saved_charged_and_retried(self):
+        responses = FakeResponses(planner_failures=1)
+        client = SimpleNamespace(responses=responses)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            run_dir = generate_dataset(
+                client=client,
+                count=1,
+                seed=23,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=Path(temporary_directory),
+                pipeline=pipeline_config(),
+            )
+            manifest = json.loads((run_dir / "manifest.json").read_text())
+            record = json.loads((run_dir / "dilemma_0001.json").read_text())
+            requests = record["stage_record"]["planner"]["requests"]
+            self.assertEqual(len(requests), 2)
+            self.assertEqual(requests[0]["raw_output"], '{"viable": true')
+            self.assertIn("invalid JSON", requests[0]["error"])
+            self.assertEqual(manifest["usage_by_stage"]["planner"]["calls"], 2)
+            self.assertGreater(manifest["estimated_standard_cost_usd"], 0)
+            self.assertEqual(manifest["status"], "complete")
+
+    def test_incomplete_response_reason_is_saved_before_retry(self):
+        responses = FakeResponses(
+            planner_failures=1, planner_failure_status="incomplete"
+        )
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            run_dir = generate_dataset(
+                client=SimpleNamespace(responses=responses),
+                count=1,
+                seed=29,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=Path(temporary_directory),
+                pipeline=pipeline_config(),
+            )
+            record = json.loads((run_dir / "dilemma_0001.json").read_text())
+            first = record["stage_record"]["planner"]["requests"][0]
+            self.assertEqual(first["metadata"]["response_status"], "incomplete")
+            self.assertEqual(
+                first["metadata"]["incomplete_details"],
+                {"reason": "max_output_tokens"},
+            )
+            self.assertIn("max_output_tokens", first["error"])
+
+    def test_exhausted_stage_retries_reject_assignment_and_resample(self):
+        responses = FakeResponses(planner_failures=3)
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            run_dir = generate_dataset(
+                client=SimpleNamespace(responses=responses),
+                count=1,
+                seed=31,
+                constructs_path=DEFAULT_CONSTRUCTS_PATH,
+                decision_makers_path=DEFAULT_DECISION_MAKERS_PATH,
+                prompt_paths=prompt_paths(),
+                output_dir=Path(temporary_directory),
+                pipeline=pipeline_config(),
+            )
+            manifest = json.loads((run_dir / "manifest.json").read_text())
+            attempts = [
+                json.loads(line)
+                for line in (run_dir / "attempts.jsonl").read_text().splitlines()
+            ]
+            self.assertEqual([item["status"] for item in attempts], ["rejected", "accepted"])
+            self.assertIn("planner failed after 3 tries", attempts[0]["rejection_reason"])
+            self.assertEqual(manifest["usage_by_stage"]["planner"]["calls"], 4)
 
     def test_nonviable_card_combination_is_rejected_and_resampled(self):
         responses = FakeResponses(reject_first_planner=True)
@@ -350,7 +442,7 @@ class EcologicalDilemmaGeneratorTests(unittest.TestCase):
             )
             record = json.loads((run_dir / "dilemma_0001.json").read_text())
             self.assertEqual(record["final_dilemma"], REVISED_DILEMMA)
-            self.assertEqual(len(record["stage_record"]["validator"]), 2)
+            self.assertEqual(len(record["stage_record"]["validator"]["rounds"]), 2)
             self.assertEqual(len(responses.calls), 5)
 
     def test_failed_run_resumes_after_last_finalized_attempt(self):
