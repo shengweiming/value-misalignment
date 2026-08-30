@@ -211,14 +211,26 @@ either response label is absent rather than substituting a sampling estimate.
 
 ## Ecological dilemma generation
 
-The repository includes a standalone generator for creating original,
+The repository includes a quality-controlled generator for creating original,
 moderate-cost ecological-versus-human dilemmas. Its source materials are kept in
 `src/ecological_dilemmas/`:
 
 - `ecological_dilemma_constructs.json` contains the supplied ecological objects,
   human interests, policy mechanisms, and their definitions.
-- `decision_makers.json` supplies the fourth independently sampled construct.
-- `generator_prompt.txt` is the generation prompt used for every request.
+- `decision_makers.json` supplies the fourth sampled construct.
+- `generator_prompt.txt` preserves the original one-shot generation prompt.
+- `scenario_card_prompt.txt`, `card_review_prompt.txt`,
+  `dilemma_writer_prompt.txt`, and `dilemma_validation_prompt.txt` implement the
+  staged quality-control workflow.
+
+The sampler balances each construct dimension across accepted cases. For each
+assignment, GPT-5.6 Sol plans three materially different scenario cards. A
+separate Sol call selects and repairs the strongest card or rejects the construct
+combination for resampling. GPT-5.6 Terra writes the final prose, and Sol then
+validates it against both the assignment and approved card. A validator revision
+must pass a second validation call before it is accepted. The default acceptance
+threshold is 4 out of 5 on every criterion; a run may attempt up to three times
+as many construct combinations as the requested final count.
 
 Create the local environment and install the dependencies:
 
@@ -232,37 +244,51 @@ Add the API key to the repository's ignored `.env` file:
 
 ```dotenv
 OPENAI_API_KEY=your-key-here
-OPENAI_MODEL=gpt-5.6-terra
-OPENAI_REASONING_EFFORT=medium
+OPENAI_PLANNER_MODEL=gpt-5.6-sol
+OPENAI_REVIEWER_MODEL=gpt-5.6-sol
+OPENAI_WRITER_MODEL=gpt-5.6-terra
+OPENAI_VALIDATOR_MODEL=gpt-5.6-sol
+OPENAI_PIPELINE_REASONING_EFFORT=high
+OPENAI_WRITER_REASONING_EFFORT=medium
 ```
 
-Preview ten sampled assignments and fully rendered prompts without calling the
-API:
+Preview ten balanced assignments without calling the API:
 
 ```bash
 python scripts/generate_ecological_dilemmas.py --dry-run
 ```
 
-Generate the default ten completions with GPT-5.6 Terra:
+Generate and quality-control ten dilemmas:
 
 ```bash
 python scripts/generate_ecological_dilemmas.py
 ```
 
-The count and model are command-line options:
+Generate 400 accepted dilemmas with a reproducible sampling seed:
 
 ```bash
 python scripts/generate_ecological_dilemmas.py \
-  --count 100 \
-  --model gpt-5.6-terra \
+  --count 400 \
   --seed 42
 ```
 
-Every invocation creates an immutable timestamped directory under
-`outputs/ecological_dilemmas/`. It contains one `.txt` completion and one `.json`
-record per dilemma, a combined `records.jsonl`, and a `manifest.json` recording
-the sampling seed, model, source hashes, progress, and token usage. Use
-`--output-dir` to select another parent directory. Run `--help` for all options.
+If a run is interrupted, resume it from its timestamped directory; the recorded
+models, thresholds, source hashes, and seed are reused and verified:
+
+```bash
+python scripts/generate_ecological_dilemmas.py \
+  --resume outputs/ecological_dilemmas/<run-directory>
+```
+
+Every invocation creates a timestamped directory under
+`outputs/ecological_dilemmas/`. It contains one `.txt` and one `.json` record per
+accepted dilemma, combined `records.jsonl`, all accepted and rejected attempts in
+`attempts.jsonl` and `attempts/`, and a progress manifest. The manifest records
+source hashes, stage-specific response IDs and token usage, rejection counts, and
+an estimated standard-priority API cost using a dated pricing snapshot. Use
+`--output-dir` to select another parent directory. Every stage model, reasoning
+effort, output-token ceiling, acceptance threshold, retry limit, and prompt path
+is configurable; run `--help` for all options.
 
 ## Tests
 

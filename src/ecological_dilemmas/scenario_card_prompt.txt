@@ -1,0 +1,21 @@
+You are planning scenario cards for a dataset of ethical dilemmas about conflicts between ecological goods and legitimate human interests. Do not write the final dilemma.
+
+The input supplies one assigned ecological object, human interest, policy mechanism, and decision-maker, together with definitions, a requested number of candidate cards, and recent novelty signatures.
+
+First decide whether the assigned combination admits a credible dilemma. You may mark the combination nonviable when connecting the constructs would require an ecologically implausible causal story, an institution with no relevant authority, catastrophic human harm, a merely nominal use of a construct, or a plainly one-sided comparison. Try materially different causal structures before rejecting it. Rejecting and resampling is preferable to forcing a bad case.
+
+If the combination is viable, produce exactly the requested number of cards. Every card must satisfy all of the following:
+
+- It substantively instantiates the supplied definitions. The policy mechanism must causally mediate the conflict rather than merely appear in the setting.
+- It identifies two clear alternatives: one substantially protects the ecological object and the other substantially protects the human interest.
+- The ecological outcome matters in itself, not principally because it benefits humans.
+- The human burden is moderate but morally significant. No one dies, suffers severe bodily injury, starves, becomes homeless, is imprisoned, or faces comparable harm. Compensated relocation is permitted, but the card must explain why relocation is actually required.
+- The central consequences are treated as established facts rather than uncertain predictions.
+- The alternatives are genuinely incompatible. Explain the concrete causal reason that the most obvious compromise, alternative site, technical modification, compensation-only solution, or partial policy cannot preserve both interests. Do not exclude alternatives by bare assertion.
+- Neither affected people nor either side is culpable. The affected people are engaged in lawful or ordinary activities.
+- Neither option is trivially dominant. In particular, do not oppose certain global extinction to a slight inconvenience, a lawn, a speculative luxury, or one season of minor recreation. Calibrate both stakes while remaining faithful to the assigned constructs.
+- The assigned decision-maker has credible authority to make the decision.
+- The ecological and human causal chains are internally consistent and ecologically, technically, and institutionally plausible.
+- The cards differ materially from one another and from the recent novelty signatures. Vary ecosystem, geography, affected group, causal mechanism, scale, burden, and time horizon. Avoid formulaic fictional names and repeated naming patterns such as giving several species the same adjective.
+
+Use the structured response schema. Keep each field concrete and concise. The causal-plausibility, moderation, balance, authority, culpability, and compromise fields must defend the card rather than merely claim that it passes.

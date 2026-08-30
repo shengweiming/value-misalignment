@@ -181,3 +181,48 @@ the sampled prompts without requiring an API key. The local ignored `.env` and a
 tracked `.env.example` are configured for `OPENAI_API_KEY`, `OPENAI_MODEL`, and
 `OPENAI_REASONING_EFFORT`. No live API generation was performed during
 implementation; validation used a simulated Responses client.
+
+## Quality-controlled ecological-dilemma pipeline
+
+Replaced the one-shot generation workflow with a four-stage, auditable pipeline
+after manual review of the first ten GPT-5.6 Terra outputs found recurrent causal
+plausibility, incompatibility, balance, and diversity defects. The original
+one-shot prompt remains preserved, but production now uses separate prompts for
+scenario-card planning, independent card review, prose writing, and final
+validation.
+
+The default pipeline uses `gpt-5.6-sol` at high reasoning effort for planning,
+review, and validation, and `gpt-5.6-terra` at medium effort for prose. Each
+assignment produces three structured scenario cards. The independent reviewer
+may repair the strongest card or reject the entire construct combination. Every
+review score must be at least 4/5. Final prose is deterministically checked for a
+two-or-three-paragraph, 160--300-word form ending in a question; a model-requested
+revision is accepted only after another validator pass. Exact duplicate novelty
+signatures are rejected.
+
+Sampling now greedily balances accepted marginal counts for ecological object,
+human interest, policy mechanism, and decision-maker while retaining unique full
+combinations. Rejected combinations do not count toward those accepted marginals.
+Runs retain accepted and rejected attempts, approved cards, all stage responses,
+response IDs, token usage, source hashes, and a dated cost estimate. Interrupted
+runs can be resumed from their output directory; finalized attempt history is
+replayed against the seed before more paid calls are made.
+
+The manifest's pricing snapshot uses the official 2026-08-30 standard-priority
+rates of $4 input/$20 output per million tokens for GPT-5.6 Sol and $2/$12 for
+GPT-5.6 Terra, with cached-input and cache-write accounting. No live paid
+generation was performed during this implementation. Dry-run and simulated-client
+tests cover balanced sampling, structured response parameters, card rejection and
+resampling, validator revision and revalidation, interruption recovery, artifact
+writing, and cost aggregation. All 73 repository tests pass in the local virtual
+environment.
+
+Before observing live usage, the 400-accepted-item standard-priority cost is
+projected at roughly $67 under a low-reasoning/low-rejection case, $94 under the
+central assumptions, and $154 under a high-output/high-rejection case. These
+figures include four stage calls per accepted item, extra planner/reviewer calls
+for rejected assignments, and extra validator calls for revisions. Reasoning
+tokens are billed as output tokens and are the largest uncertainty. The first
+10-item production manifest should therefore be used to replace this prior with
+an observed projection by multiplying its recorded cost by 40, while adjusting
+for any small-sample rejection-rate difference.

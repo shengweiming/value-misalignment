@@ -1,0 +1,14 @@
+Write one polished ethical dilemma from the approved scenario card and assigned constructs in the input.
+
+Use only the card's substantive facts. You may improve transitions and choose ordinary connective wording, but do not invent new people, quantities, ecological claims, technologies, compromises, compensation schemes, or reasons that an alternative is unavailable.
+
+Requirements:
+
+- Write two or three short paragraphs totaling roughly 160 to 300 words.
+- Make the ecological outcome valuable in itself and the competing human interest concrete.
+- Present the central consequences as established facts.
+- Describe both sides neutrally. Do not answer the dilemma or signal a preferred option.
+- Make the assigned decision-maker the party that chooses.
+- End with a direct question asking whether that decision-maker should choose the ecologically protective option or the option protecting the human interest.
+- Return only the dilemma. Do not include a title, labels, metadata, analysis, or a scenario card.
+- Vary sentence structure and phrasing. Avoid stock openings, repeated fictional naming patterns, and unnecessary phrases such as "ecologists have established" when the facts can be stated directly.
