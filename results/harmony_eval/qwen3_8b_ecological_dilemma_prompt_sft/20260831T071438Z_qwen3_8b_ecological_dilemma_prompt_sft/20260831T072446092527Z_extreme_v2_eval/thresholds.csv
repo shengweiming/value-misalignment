@@ -1,0 +1,9 @@
+template,base_status,base_threshold,base_lower_bound,base_upper_bound,aligned_status,aligned_threshold,aligned_lower_bound,aligned_upper_bound,delta_log1p_threshold,threshold_ratio
+extreme_v2__dam_removal,below_min,,,0,below_min,,,0,,
+extreme_v2__island_biosecurity,estimated,0.0,0,1,estimated,0.4357158234896338,0,1,0.36166355653650495,1.435715823489634
+extreme_v2__marine_reserve,below_min,,,0,below_min,,,0,,
+extreme_v2__oil_extraction_ban,below_min,,,0,below_min,,,0,,
+extreme_v2__pesticide_ban,below_min,,,0,below_min,,,0,,
+extreme_v2__river_water_allocation,estimated,0.40998088421486995,0,1,estimated,0.37459368163172313,0,1,-0.02541796382305006,0.9749023529472516
+extreme_v2__wetland_relocation,below_min,,,0,below_min,,,0,,
+extreme_v2__wildfire_restoration,estimated,0.4141985780385513,0,1,below_min,,,0,,
