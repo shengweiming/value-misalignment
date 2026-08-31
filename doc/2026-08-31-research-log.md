@@ -2,6 +2,10 @@
 
 ## Audited ecological-dilemma SFT release
 
+This section records the initial release draft. Its claims about constructed
+supervision and a held-out split are invalid and are superseded by the correction
+later in this log; the audit, repairs, and duplicate exclusions remain valid.
+
 Completed the prerelease audit and formatting milestone for the 100 ecological-
 versus-human dilemma candidates generated on 2026-08-30. The source evidence is
 the three completed quality-pipeline runs:
@@ -95,3 +99,65 @@ and ecological-counterconsideration arm should be evaluated on the same held-out
 development cases, the existing extreme-v2 primary suite, and its non-ecological
 controls. Confirmatory claims still require separately authored prompts and
 replication across seeds and checkpoints.
+
+## Correction: prompt-only ecological-dilemma fine-tuning workflow
+
+The supervision portion of the release described above was invalid. Only the
+dilemma setups had been collected. No human-priority labels, human-centered
+rationales, or ecological counterconsideration rationales had been authored or
+adjudicated. Inferring those targets from descriptive option fields would have
+created training data that did not exist. The audit result itself remains valid:
+five incomplete cases were repaired from their approved cards, two semantic
+duplicates were excluded, and 98 dilemmas remain.
+
+Removed the three generated training files, the inferred held-out references, and
+the split file. The deterministic builder now emits only `records.jsonl`,
+`audit.jsonl`, `semantic_pair_reviews.json`, `manifest.json`, and the release
+README. Its manifest marks the release `prompt_only` and explicitly records that
+it contains neither normative labels nor assistant responses. Rebuilding also
+deletes the known obsolete supervision and split artifacts so they cannot survive
+from an earlier output directory.
+
+Added `scripts/ecological_prompt_sft/` and
+`notebooks/ecological_dilemma_prompt_sft_colab.ipynb`. The loader consumes the
+unchanged `dilemma` field from all 98 released records and rejects top-level answer,
+label, rationale, message, or split fields. Qwen's chat template renders each
+example as one user message with `add_generation_prompt=False` and
+`enable_thinking=False`. There is no assistant turn. Labels equal all non-padding
+input tokens, so the intervention is prompt-only causal-language-model fine-tuning
+rather than response-supervised SFT. It refuses to truncate any dilemma.
+
+The Colab configuration reuses the transferable H4rmony setup: Qwen3-8B revision
+`b968826d9c46dd6066d109eabc6255188de91218`, BF16 LoRA over all linear layers,
+rank 16, alpha 32, dropout 0.05, three epochs, learning rate `1e-4`, micro-batch
+size 1, gradient accumulation 16, maximum length 1,024, and seed 42. Training
+first completes under local `/content`, including resumable epoch checkpoints,
+the final adapter, tokenizer, exact prompt snapshot, token-length summary, metrics,
+environment metadata, and hashes. The completed run is then copied beneath
+`MyDrive/value-misalignment/ecological_dilemma_prompt_qwen3_8b/`; Drive is flushed,
+unmounted, freshly remounted, and every required artifact is rehashed before the
+run is reported durable.
+
+The notebook reuses a compatible verified Drive run unless retraining is forced.
+It evaluates the unchanged base and saved adapter on the current eight-template,
+64-case `extreme_v2` primary suite and the separate six-template, 34-case control
+suite. Each result bundle is also written locally first, copied beneath the source
+Drive run, and checked after a fresh remount. GitHub publication places the compact
+verified bundles under
+`results/harmony_eval/qwen3_8b_ecological_dilemma_prompt_sft/<source-run>/` and
+verifies the remote branch tip after each non-force push. The notebook checks for a
+Colab `GITHUB_TOKEN` before starting the expensive work.
+
+No GPU training or model evaluation was run in the local development environment;
+there is no checkpoint or empirical effect yet. Local verification covers release
+reproducibility, absence of supervision, user-only full-prompt loss, refusal to
+truncate, completed-run hash and reuse checks, and the complete primary/control
+matrix. The next step is to push this corrective commit, run the new notebook on a
+Colab A100, inspect the displayed prompts before inference, and treat any observed
+base-to-adapter difference as an exploratory prompt-exposure result rather than an
+effect of answer supervision.
+
+Final local verification passed all 86 repository unit tests. Static compilation,
+notebook JSON validation, combined notebook code-cell compilation, a clean
+`git diff --check`, and a second deterministic rebuild of the 98-record release
+also passed.

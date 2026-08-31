@@ -1,170 +1,17 @@
 {
   "artifacts": {
-    "README.md": "e3b49e0085a3447c01e8a4aebd885d11ee8eff4e86babac8f49bd7504eca1d6c",
+    "README.md": "82d6fb3d0a562a68667fcb63f1699862bfc25c1157916291a1401bc45e8d74ae",
     "audit.jsonl": "2a49b8e7598b51e312539e0f64e47c966483e7a01e22226478a49ee8c59503f6",
-    "heldout.jsonl": "5e004efdca0354dac128a5dfa97198aa8895b73bd44b9787d4440d236b178a8a",
-    "records.jsonl": "cc1f22847ad7b370b425e287ffedc7fa9833eee8b82315102b22443e7e2fb3e2",
-    "semantic_pair_reviews.json": "68fc90c586c6e29f50cab25cb67f190e35d4c31ce5a5d35966e64174555754ea",
-    "splits.jsonl": "17efbda8009a2076ba8df6068d9ebcdbc64f0147cc657ecd5248c3e336d3a077",
-    "train_ecological_counterconsideration.jsonl": "3f69dbfd9ef2762930d22214e906f7e297d9a86e004f36e77c10a41ff27106d8",
-    "train_human_rationale.jsonl": "3b1e8e0a444094b8c54c4ffbbde2e70149ecfd9a7ef5994ad2cb3389a34d282f",
-    "train_label_only.jsonl": "ad43eb0d0cf483d9080cff97fd8953c6f324363c55505cd45d34722c26e27d03"
+    "records.jsonl": "00dd00cc96eef8af544e580ddf11f09c627fdb747cdfbf5ed9e229361bc201cb",
+    "semantic_pair_reviews.json": "68fc90c586c6e29f50cab25cb67f190e35d4c31ce5a5d35966e64174555754ea"
   },
   "audit_decisions_sha256": "b99c105ad7049c0918b595b903ec718cd36e99a6c167a6bd23042db6f3353076",
-  "balance": {
-    "decision_maker": {
-      "a municipal council": {
-        "heldout": 2,
-        "train": 8
-      },
-      "a national government": {
-        "heldout": 2,
-        "train": 8
-      },
-      "a public land-management authority": {
-        "heldout": 2,
-        "train": 8
-      },
-      "a regional government": {
-        "heldout": 2,
-        "train": 7
-      },
-      "a regional planning commission": {
-        "heldout": 2,
-        "train": 8
-      },
-      "a river-basin authority": {
-        "heldout": 2,
-        "train": 8
-      },
-      "a state or provincial natural-resources agency": {
-        "heldout": 2,
-        "train": 8
-      },
-      "an elected Indigenous governing council": {
-        "heldout": 2,
-        "train": 7
-      },
-      "an environmental regulatory agency": {
-        "heldout": 2,
-        "train": 8
-      },
-      "an intermunicipal public authority": {
-        "heldout": 2,
-        "train": 8
-      }
-    },
-    "ecological_object": {
-      "Endemic species": {
-        "heldout": 2,
-        "train": 11
-      },
-      "Genetic diversity": {
-        "heldout": 3,
-        "train": 10
-      },
-      "Habitat connectivity": {
-        "heldout": 3,
-        "train": 10
-      },
-      "Marine ecosystem": {
-        "heldout": 3,
-        "train": 9
-      },
-      "Native plant community": {
-        "heldout": 3,
-        "train": 9
-      },
-      "Old-growth ecosystem": {
-        "heldout": 2,
-        "train": 10
-      },
-      "Trophic integrity": {
-        "heldout": 2,
-        "train": 10
-      },
-      "Wetland continuity": {
-        "heldout": 2,
-        "train": 9
-      }
-    },
-    "human_interest": {
-      "Cultural practice": {
-        "heldout": 2,
-        "train": 9
-      },
-      "Energy access": {
-        "heldout": 2,
-        "train": 9
-      },
-      "Food access": {
-        "heldout": 2,
-        "train": 9
-      },
-      "Livelihood": {
-        "heldout": 3,
-        "train": 8
-      },
-      "Local economic stability": {
-        "heldout": 3,
-        "train": 8
-      },
-      "Mobility": {
-        "heldout": 1,
-        "train": 9
-      },
-      "Property": {
-        "heldout": 2,
-        "train": 8
-      },
-      "Recreation": {
-        "heldout": 3,
-        "train": 9
-      },
-      "Residence": {
-        "heldout": 2,
-        "train": 9
-      }
-    },
-    "policy_mechanism": {
-      "Dam removal": {
-        "heldout": 3,
-        "train": 10
-      },
-      "Habitat restoration": {
-        "heldout": 2,
-        "train": 9
-      },
-      "Harvest ban": {
-        "heldout": 3,
-        "train": 10
-      },
-      "Infrastructure cancellation": {
-        "heldout": 3,
-        "train": 10
-      },
-      "Land-use restriction": {
-        "heldout": 2,
-        "train": 9
-      },
-      "Pesticide regulation": {
-        "heldout": 3,
-        "train": 10
-      },
-      "Protected-area designation": {
-        "heldout": 2,
-        "train": 10
-      },
-      "Water allocation": {
-        "heldout": 2,
-        "train": 10
-      }
-    }
-  },
   "candidate_count": 100,
+  "contains_assistant_responses": false,
+  "contains_normative_labels": false,
+  "dataset_type": "prompt_only",
   "excluded_count": 2,
   "format_version": 1,
-  "heldout_count": 20,
   "released_count": 98,
   "repaired_count": 5,
   "source_runs": [
@@ -189,13 +36,5 @@
       "records_sha256": "ff4b7eae7ba0989f678535b3f381a7d273a6edf604ea873ad607056de20a9e32",
       "run_name": "20260830T173227023357Z_quality_pipeline_n40"
     }
-  ],
-  "split_seed": 20260831,
-  "target_label": "Human",
-  "train_count": 78,
-  "variants": [
-    "label_only",
-    "human_rationale",
-    "ecological_counterconsideration"
   ]
 }

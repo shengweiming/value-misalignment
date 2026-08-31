@@ -250,6 +250,8 @@ def run_saved_adapter_eval(
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
     template_names: Sequence[str] | None = None,
     batch_size: int | None = None,
+    pair_name: str = PAIR_NAME,
+    training_method: str = "sft",
 ) -> PosthocEvalArtifacts:
     """Score a completed base/adapter pair on the requested template suite."""
 
@@ -331,8 +333,8 @@ def run_saved_adapter_eval(
             model_role="base",
             model_id=base_model_id,
             model_revision=base_revision,
-            pair_name=PAIR_NAME,
-            training_method="sft",
+            pair_name=pair_name,
+            training_method=training_method,
             batch_size=eval_batch_size,
             enable_thinking=False,
         )
@@ -351,8 +353,8 @@ def run_saved_adapter_eval(
             model_role="aligned",
             model_id=str(adapter_dir),
             model_revision=adapter_revision,
-            pair_name=PAIR_NAME,
-            training_method="sft",
+            pair_name=pair_name,
+            training_method=training_method,
             batch_size=eval_batch_size,
             enable_thinking=False,
         )
@@ -376,6 +378,8 @@ def run_saved_adapter_eval(
                 "base_revision": base_revision,
                 "adapter_path": str(adapter_dir),
                 "adapter_revision": adapter_revision,
+                "pair_name": pair_name,
+                "training_method": training_method,
                 "cost_counts": list(counts),
                 "case_count_per_model": len(cases),
                 "batch_size": eval_batch_size,

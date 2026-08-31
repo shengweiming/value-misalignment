@@ -319,7 +319,7 @@ is configurable; run `--help` for all options. Per-attempt files retain every ra
 response, response status, incomplete-response details, parsing or validation
 error, and successful parsed output, including responses consumed by retries.
 
-## Audited ecological-dilemma SFT release
+## Prompt-only ecological-dilemma fine-tuning
 
 The 100 candidates produced by the three completed quality-pipeline runs have a
 reproducible audit and release step:
@@ -336,13 +336,11 @@ above the configured threshold has an explicit duplicate-or-distinct judgment in
 five evidence-preserving prose repairs and two documented duplicate exclusions.
 
 The versioned output is committed under `data/ecological_dilemmas/v1/`. It contains
-98 released dilemmas: a deterministic, construct-balanced 78-case training split
-and a 20-case held-out development split. Three chat-format training files hold
-the prompt and human-protective target fixed while varying supervision between a
-label only, a human-centered rationale, and an ecological-counterconsideration
-rationale. The held-out file contains no assistant response. The release manifest
-pins the source-run, decision-file, and artifact hashes, while the audit and
-semantic-review files retain every keep, repair, exclusion, and pairwise judgment.
+98 prompt-only dilemmas after five repairs and two duplicate exclusions. There is
+no train/held-out split, answer label, assistant response, rationale, or normative
+adjudication. The release manifest states those absences explicitly and pins the
+source-run, decision-file, and artifact hashes. The audit and semantic-review files
+retain every keep, repair, exclusion, and pairwise judgment.
 The compact source evidence needed to reproduce the build is committed under
 `data/ecological_dilemmas/source_runs/`; its manifests pin the corresponding full
 raw-run hashes. If the ignored raw generation directories are available locally,
@@ -352,6 +350,27 @@ refresh that snapshot and rebuild with:
 python scripts/build_ecological_sft_dataset.py \
   --refresh-sources-from outputs/ecological_dilemmas
 ```
+
+`notebooks/ecological_dilemma_prompt_sft_colab.ipynb` trains on the `dilemma`
+field from all 98 records. Each record is rendered as one non-thinking Qwen user
+message with no assistant turn. This is prompt-only causal-language-model
+fine-tuning, not answer-supervised SFT: every non-padding prompt token supplies
+next-token loss, and the loader refuses records containing supervision fields.
+
+The Colab setup otherwise retains the transferable H4rmony configuration: the
+same immutable Qwen3-8B revision, BF16 LoRA on all linear layers, rank 16, alpha
+32, dropout 0.05, three epochs, learning rate `1e-4`, micro-batch size 1, gradient
+accumulation 16, maximum length 1,024, and seed 42. It refuses to truncate a
+dilemma. Completed epoch checkpoints, the final adapter, the exact 98 prompts,
+metrics, and hashes are written locally, copied to Google Drive, and reverified
+after a flush and fresh remount.
+
+The notebook then compares the saved adapter with the unchanged base model on all
+64 primary `extreme_v2` cases and all 34 controls. The two verified bundles are
+published beneath
+`results/harmony_eval/qwen3_8b_ecological_dilemma_prompt_sft/<source-run>/`.
+GitHub publication is enabled by default and requires a Colab `GITHUB_TOKEN`
+secret with Contents read/write permission.
 
 ## Tests
 
