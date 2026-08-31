@@ -630,3 +630,67 @@ train and score counterbalanced `A`/`B` choice labels, with option order reverse
 across examples. Free generation on held-out dilemmas and multiple seeds should
 follow. Until then, the corrected runs remain evidence about representation and
 readout drift, not evidence that either value was successfully implanted.
+
+## Supervision-matched extreme-v2 readout battery
+
+Added the first follow-up needed to distinguish learned value direction from a
+literal `Yes`/`No` readout artifact. The eight existing `extreme_v2` scenario
+bodies and the fixed cost grid `(0, 1, 10, 100, 1,000, 10,000, 100,000,
+1,000,000)` remain unchanged. New specifications under
+`eval/ecological_value/extreme_v2/readouts/` pin an explicit ecological option,
+human-protective option, and reversed human-action question for each family. The
+builder hashes the source scenario, shared option registry, readout protocol, and
+order variant into every rendered case, and the saved evaluation metadata also
+hashes the exact ordered case matrix.
+
+The battery has three readouts. Reversed-polarity `Yes`/`No` asks whether to take
+the human-protective action, so the semantic ecological candidate is `No` and the
+human candidate is `Yes`. Counterbalanced `A`/`B` renders each family and cost in
+both orders, once with ecology as `A` and once as `B`, then remaps the literal
+letter scores to ecological-minus-human direction. Complete option-text scoring
+scores both full policy strings in both display orders. It records summed
+sequence log-probabilities, mean log-probabilities, and candidate token counts;
+the primary margin for this readout uses mean log-probability per candidate token
+to prevent unequal string length from mechanically favoring the shorter option.
+The raw summed margin and its two-candidate normalized score remain available in
+the CSV. In total there are five readout/order variants, 40 family-by-variant
+templates, and 320 cases per model. Every reported primary semantic margin is
+oriented so a positive value means greater support for the ecological option.
+The canonical ordered case-set SHA-256 is
+`9f3a45d9c57316dde3c928259db86954aa5d95e62dd2f34607987bfac28a2ce3`.
+
+The saved-adapter evaluator now accepts an explicit rendered case matrix and
+arbitrary per-case candidate strings while retaining backward compatibility with
+the original `Yes`/`No` suites. Evaluation reuse requires the source completion
+hash, cost grid, template manifest, exact case-set hash, protocol slug, and
+thinking setting to match. Result publication accepts the new validated bundle
+in addition to the existing primary and control suites. The readout plot uses an
+eight-family by five-variant matrix rather than producing a 40-panel vertical
+strip.
+
+The Colab notebook now discovers all three completed interventions before the new
+evaluation begins. For `prompt_only`, `ecological_option`, and `human_option`, it
+checks the configured model and hyperparameter signature, exact dataset hash,
+training objective, arm-specific pair name, completion manifest, and all required
+adapter/checkpoint hashes. This preserves reuse of the legacy prompt-only run but
+rejects the two buggy unsuffixed answer objectives and any cross-arm substitution.
+The notebook evaluates and publishes one complete readout bundle beneath each of
+the three source runs. The older forward-polarity primary evaluation remains as a
+cached reference. The preview, execution, and display cells for the six earlier
+controls remain in the notebook, but every line is commented so they are not run
+by default.
+
+No GPU inference was run locally, so this change contains no empirical result.
+All 101 repository unit tests pass, including exact 320-case construction,
+polarity and A/B remapping, full-text length normalization, complete 640-row
+base/aligned bundle validation, arm-isolated checkpoint discovery, exact bundle
+reuse, and publication admission. Every notebook code cell parses, static Python
+compilation and `git diff --check` pass, and the five-column plot layout is
+structurally tested. A local image render could not be exercised because the
+host's global NumPy binary has the wrong architecture and the repository virtual
+environment does not include Matplotlib; Colab installs the pinned plotting
+dependency from `requirements-colab.txt`. The next step is to run the notebook on
+the existing three Drive checkpoints and compare whether the ecological-versus-
+human direction and broad margin contraction persist across the reversed,
+counterbalanced, and full-text readouts. Free generation and judge-based scoring
+remain deliberately deferred.

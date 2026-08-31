@@ -125,10 +125,24 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
         validate_extreme_v2_artifacts(artifacts, cost_counts=cost_counts)
     elif observed_templates == control_templates:
         validate_extreme_v2_control_artifacts(artifacts, cost_counts=cost_counts)
+    elif metadata.get("evaluation_slug") == (
+        "extreme_v2_supervision_matched_readouts_eval"
+    ):
+        # Import lazily: the ecological workflow itself reuses this generic
+        # publication module, so importing its validator at module load time
+        # would create a cycle.
+        from scripts.ecological_prompt_sft.readout_evaluation import (
+            validate_supervision_matched_readout_artifacts,
+        )
+
+        validate_supervision_matched_readout_artifacts(
+            artifacts,
+            cost_counts=cost_counts,
+        )
     else:
         raise RuntimeError(
-            "GitHub publication accepts only the current primary extreme-v2 or "
-            "control suite"
+            "GitHub publication accepts only the current primary, control, or "
+            "supervision-matched extreme-v2 suite"
         )
     sources = {name: artifacts.output_dir / name for name in PUBLISHED_RESULT_FILES}
     missing = [name for name, path in sources.items() if not path.is_file()]
@@ -180,7 +194,7 @@ def publish_extreme_v2_results_to_github(
     remote_name: str = "origin",
     results_root: Path | str = DEFAULT_RESULTS_ROOT,
 ) -> GitHubPublication:
-    """Commit, push, and remotely verify one primary or control result bundle.
+    """Commit, push, and remotely verify one approved evaluation result bundle.
 
     HTTPS authentication uses a transient ``GIT_ASKPASS`` helper and an
     environment variable. The token is never written into the repository, remote

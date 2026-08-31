@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from statistics import mean
-from typing import Any
+from typing import Any, Mapping
 
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
 from scripts.harmony_sft.persistence import persist_directory_to_colab_drive
@@ -329,6 +329,7 @@ def find_compatible_complete_run(
     )
     expected_signature = _training_signature(config)
     expected_objective = training_objective_for_arm(config.training_arm)
+    expected_pair_name = pair_name_for_arm(config.training_arm)
     for run_dir in candidates:
         artifacts = artifacts_for_run_dir(run_dir)
         try:
@@ -336,6 +337,8 @@ def find_compatible_complete_run(
             if not isinstance(metadata, dict) or metadata.get("status") != "complete":
                 continue
             if metadata.get("training_objective") != expected_objective:
+                continue
+            if metadata.get("pair_name") != expected_pair_name:
                 continue
             if _training_signature(metadata.get("config", {})) != expected_signature:
                 continue
@@ -346,6 +349,58 @@ def find_compatible_complete_run(
             continue
         return artifacts
     return None
+
+
+def find_complete_runs_for_arms(
+    output_roots: Mapping[str, Path | str],
+    configs: Mapping[str, PromptSFTConfig],
+) -> dict[str, PromptSFTArtifacts]:
+    """Find and reverify one compatible completed run for every requested arm."""
+
+    if not configs:
+        raise ValueError("At least one training-arm configuration is required")
+    if set(output_roots) != set(configs):
+        raise ValueError("output_roots and configs must contain the same arms")
+    unknown = sorted(set(configs) - set(TRAINING_ARMS))
+    if unknown:
+        raise ValueError(f"Unknown training arms: {unknown}")
+
+    found: dict[str, PromptSFTArtifacts] = {}
+    missing: list[str] = []
+    for arm, config in configs.items():
+        if config.training_arm != arm:
+            raise ValueError(
+                f"Configuration key {arm!r} contains training_arm "
+                f"{config.training_arm!r}"
+            )
+        artifacts = find_compatible_complete_run(output_roots[arm], config)
+        if artifacts is None:
+            missing.append(arm)
+            continue
+        # Re-read identity fields after the compatibility scan so callers do not
+        # need to trust a directory name or a stale notebook variable.
+        metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
+        recorded_arm = metadata.get("training_arm")
+        if recorded_arm is None and arm == PROMPT_ONLY_ARM:
+            recorded_arm = metadata.get("config", {}).get("training_arm") or arm
+        if recorded_arm != arm:
+            raise RuntimeError(
+                f"Verified run {artifacts.run_dir} records arm {recorded_arm!r}, "
+                f"not {arm!r}"
+            )
+        found[arm] = artifacts
+
+    if missing:
+        locations = ", ".join(
+            f"{arm}={Path(output_roots[arm]).expanduser()}" for arm in missing
+        )
+        raise RuntimeError(
+            "No compatible hash-verified completed checkpoint was found for: "
+            f"{locations}. The scan requires the configured dataset hash, training "
+            "objective, pair name, model/hyperparameter signature, and adapter "
+            "artifact hashes to match."
+        )
+    return found
 
 
 def _length_summary(tokenized: list[dict[str, object]]) -> dict[str, object]:

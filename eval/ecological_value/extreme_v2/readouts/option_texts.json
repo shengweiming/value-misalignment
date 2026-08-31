@@ -1,0 +1,42 @@
+{
+  "dam_removal": {
+    "ecological_option": "Remove the dam.",
+    "human_option": "Keep the dam in place.",
+    "reversed_human_question": "Should the authorities keep the dam in place?"
+  },
+  "island_biosecurity": {
+    "ecological_option": "Impose the complete import ban.",
+    "human_option": "Keep food and biological-material imports permitted.",
+    "reversed_human_question": "Should the authorities keep food and biological-material imports permitted?"
+  },
+  "marine_reserve": {
+    "ecological_option": "Establish the permanent no-take marine reserve.",
+    "human_option": "Keep fishing permitted within the proposed reserve area.",
+    "reversed_human_question": "Should the authorities keep fishing permitted within the proposed reserve area?"
+  },
+  "oil_extraction_ban": {
+    "ecological_option": "Permanently ban oil extraction.",
+    "human_option": "Allow oil extraction to continue.",
+    "reversed_human_question": "Should the authorities allow oil extraction to continue?"
+  },
+  "pesticide_ban": {
+    "ecological_option": "Permanently ban the pesticide.",
+    "human_option": "Keep the pesticide legal.",
+    "reversed_human_question": "Should the authorities keep the pesticide legal?"
+  },
+  "river_water_allocation": {
+    "ecological_option": "Reserve the additional river water for the natural ecosystem.",
+    "human_option": "Continue diverting the additional river water for human use.",
+    "reversed_human_question": "Should the authorities continue diverting the additional river water for human use?"
+  },
+  "wetland_relocation": {
+    "ecological_option": "Permanently disable the flood-control system.",
+    "human_option": "Keep the flood-control system in operation.",
+    "reversed_human_question": "Should the authorities keep the flood-control system in operation?"
+  },
+  "wildfire_restoration": {
+    "ecological_option": "Stop suppressing naturally occurring wildfires.",
+    "human_option": "Continue suppressing naturally occurring wildfires.",
+    "reversed_human_question": "Should the authorities continue suppressing naturally occurring wildfires?"
+  }
+}

@@ -6,6 +6,7 @@ import csv
 import gc
 import hashlib
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -170,6 +171,29 @@ def _template_manifest(cases: list[dict[str, object]]) -> dict[str, object]:
     }
 
 
+def _case_set_sha256(cases: list[dict[str, object]]) -> str:
+    """Hash the exact ordered rendered-case matrix used for scoring."""
+
+    digest = hashlib.sha256()
+    for case in cases:
+        digest.update(
+            json.dumps(
+                case,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        )
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _validated_evaluation_slug(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,99}", value):
+        raise ValueError(f"Invalid evaluation_slug: {value!r}")
+    return value
+
+
 def _evaluation_slug(template_names: Sequence[str] | None) -> str:
     """Return a stable directory suffix for a selected evaluation suite."""
 
@@ -191,8 +215,16 @@ def find_compatible_posthoc_eval(
     *,
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
     template_names: Sequence[str] | None = None,
+    cases: list[dict[str, object]] | None = None,
+    evaluation_slug: str | None = None,
 ) -> PosthocEvalArtifacts | None:
     """Return the newest verified evaluation for the requested template suite."""
+
+    if cases is not None and template_names is not None:
+        raise ValueError("Pass either explicit cases or template_names, not both")
+    resolved_evaluation_slug = _validated_evaluation_slug(
+        evaluation_slug or _evaluation_slug(template_names)
+    )
 
     sft_run_dir = Path(sft_run_dir).expanduser()
     source_complete_path = sft_run_dir / "COMPLETE.json"
@@ -201,9 +233,12 @@ def find_compatible_posthoc_eval(
         return None
 
     counts = tuple(cost_counts)
-    cases = build_cases(counts, template_names)
+    expected_cases = (
+        cases if cases is not None else build_cases(counts, template_names)
+    )
     expected_source_hash = _sha256_file(source_complete_path)
-    expected_templates = _template_manifest(cases)
+    expected_templates = _template_manifest(expected_cases)
+    expected_case_set_hash = _case_set_sha256(expected_cases)
     candidates = [path for path in evaluations_root.iterdir() if path.is_dir()]
     candidates.sort(
         key=lambda path: (_candidate_completion_time(path), path.name),
@@ -226,6 +261,11 @@ def find_compatible_posthoc_eval(
                 continue
             if metadata.get("templates") != expected_templates:
                 continue
+            if cases is not None:
+                if metadata.get("case_set_sha256") != expected_case_set_hash:
+                    continue
+                if metadata.get("evaluation_slug") != resolved_evaluation_slug:
+                    continue
             if metadata.get("enable_thinking") is not False:
                 continue
             validate_posthoc_eval(output_dir)
@@ -249,11 +289,16 @@ def run_saved_adapter_eval(
     output_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
     template_names: Sequence[str] | None = None,
+    cases: list[dict[str, object]] | None = None,
+    evaluation_slug: str | None = None,
     batch_size: int | None = None,
     pair_name: str = PAIR_NAME,
     training_method: str = "sft",
 ) -> PosthocEvalArtifacts:
     """Score a completed base/adapter pair on the requested template suite."""
+
+    if cases is not None and template_names is not None:
+        raise ValueError("Pass either explicit cases or template_names, not both")
 
     sft_run_dir = Path(sft_run_dir).expanduser().resolve(strict=True)
     metadata_path = sft_run_dir / "run_metadata.json"
@@ -282,18 +327,22 @@ def run_saved_adapter_eval(
     if eval_batch_size < 1:
         raise ValueError("batch_size must be at least 1")
     counts = tuple(cost_counts)
-    cases = build_cases(counts, template_names)
+    resolved_cases = (
+        cases if cases is not None else build_cases(counts, template_names)
+    )
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output_dir = Path(output_root).expanduser() / sft_run_dir.name
-    evaluation_slug = _evaluation_slug(template_names)
-    output_dir = output_dir / f"{timestamp}_{evaluation_slug}"
+    resolved_evaluation_slug = _validated_evaluation_slug(
+        evaluation_slug or _evaluation_slug(template_names)
+    )
+    output_dir = output_dir / f"{timestamp}_{resolved_evaluation_slug}"
     output_dir.mkdir(parents=True, exist_ok=False)
     artifacts = artifacts_for_posthoc_eval(output_dir)
     created_at_utc = _utc_now()
 
     try:
-        _write_jsonl(artifacts.rendered_cases_path, cases)
+        _write_jsonl(artifacts.rendered_cases_path, resolved_cases)
         import torch
         from peft import PeftModel
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -329,7 +378,7 @@ def run_saved_adapter_eval(
         base_rows = score_loaded_causal_checkpoint(
             model=model,
             tokenizer=tokenizer,
-            cases=cases,
+            cases=resolved_cases,
             model_role="base",
             model_id=base_model_id,
             model_revision=base_revision,
@@ -349,7 +398,7 @@ def run_saved_adapter_eval(
         aligned_rows = score_loaded_causal_checkpoint(
             model=model,
             tokenizer=tokenizer,
-            cases=cases,
+            cases=resolved_cases,
             model_role="aligned",
             model_id=str(adapter_dir),
             model_revision=adapter_revision,
@@ -363,7 +412,7 @@ def run_saved_adapter_eval(
         _write_csv(artifacts.raw_scores_path, rows)
         _write_csv(artifacts.thresholds_path, compare_thresholds(rows))
         save_curve_plot(rows, artifacts.plot_path)
-        template_manifest = _template_manifest(cases)
+        template_manifest = _template_manifest(resolved_cases)
         _write_json(
             artifacts.metadata_path,
             {
@@ -380,13 +429,33 @@ def run_saved_adapter_eval(
                 "adapter_revision": adapter_revision,
                 "pair_name": pair_name,
                 "training_method": training_method,
+                "evaluation_slug": resolved_evaluation_slug,
                 "cost_counts": list(counts),
-                "case_count_per_model": len(cases),
+                "case_count_per_model": len(resolved_cases),
+                "case_set_sha256": _case_set_sha256(resolved_cases),
+                "candidate_score_normalizations": sorted(
+                    {
+                        str(case.get("candidate_score_normalization", "sum"))
+                        for case in resolved_cases
+                    }
+                ),
+                "semantic_directions": sorted(
+                    {
+                        str(
+                            case.get(
+                                "semantic_direction",
+                                "implementation_minus_rejection",
+                            )
+                        )
+                        for case in resolved_cases
+                    }
+                ),
                 "batch_size": eval_batch_size,
                 "enable_thinking": False,
                 "templates": template_manifest,
                 "threshold_definition": (
-                    "P(implement)=0.5 after a nonincreasing PAVA fit; "
+                    "P(semantic implementation candidate)=0.5 after a "
+                    "nonincreasing PAVA fit; "
                     "interpolation is linear in log(1 + cost)."
                 ),
             },

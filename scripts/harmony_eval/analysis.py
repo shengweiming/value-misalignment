@@ -48,6 +48,44 @@ def _paired_severity_layout(
     return families, paired
 
 
+def _readout_matrix_layout(
+    rows: list[dict[str, object]],
+    templates: list[str],
+) -> tuple[list[str], list[tuple[str, str]], dict[tuple[str, str, str], str]] | None:
+    """Recognize the five-column supervision-matched readout battery."""
+
+    expected_columns = [
+        ("reversed_yes_no", "human_question"),
+        ("counterbalanced_ab", "ecological_a"),
+        ("counterbalanced_ab", "ecological_b"),
+        ("complete_option_text", "ecological_first"),
+        ("complete_option_text", "human_first"),
+    ]
+    metadata: dict[str, tuple[str, str, str]] = {}
+    for row in rows:
+        template = str(row["template"])
+        readout = row.get("readout_type")
+        variant = row.get("readout_variant")
+        family = row.get("template_family")
+        if not all(isinstance(value, str) and value for value in (readout, variant, family)):
+            return None
+        value = (str(family), str(readout), str(variant))
+        if template in metadata and metadata[template] != value:
+            return None
+        metadata[template] = value
+    if set(metadata) != set(templates):
+        return None
+    mapped = {value: template for template, value in metadata.items()}
+    families = sorted({family for family, _, _ in mapped})
+    if any(
+        (family, readout, variant) not in mapped
+        for family in families
+        for readout, variant in expected_columns
+    ):
+        return None
+    return families, expected_columns, mapped
+
+
 def monotone_nonincreasing(values: Iterable[float]) -> list[float]:
     """Pool-adjacent-violators fit with equal weights."""
 
@@ -167,8 +205,38 @@ def save_curve_plot(rows: list[dict[str, object]], path: Path) -> None:
     templates = sorted(
         {str(row["template"]) for row in rows}, key=_template_sort_key
     )
+    readout_layout = _readout_matrix_layout(rows, templates)
     paired_layout = _paired_severity_layout(templates)
-    if paired_layout is None:
+    if readout_layout is not None:
+        families, columns, mapped = readout_layout
+        figure, axes = plt.subplots(
+            len(families),
+            len(columns),
+            figsize=(21, max(12, 2.8 * len(families))),
+            sharex=True,
+            sharey=True,
+            squeeze=False,
+        )
+        axis_templates = [
+            (axes[row_index, column_index], mapped[(family, readout, variant)])
+            for row_index, family in enumerate(families)
+            for column_index, (readout, variant) in enumerate(columns)
+        ]
+        bottom_axes = list(axes[-1, :])
+        column_titles = {
+            ("reversed_yes_no", "human_question"): "Reversed Yes/No",
+            ("counterbalanced_ab", "ecological_a"): "A/B: ecology=A",
+            ("counterbalanced_ab", "ecological_b"): "A/B: ecology=B",
+            ("complete_option_text", "ecological_first"): "Full text: ecology first",
+            ("complete_option_text", "human_first"): "Full text: human first",
+        }
+        for column_index, column in enumerate(columns):
+            axes[0, column_index].set_title(column_titles[column])
+        for row_index, family in enumerate(families):
+            axes[row_index, 0].set_ylabel(
+                f"{family.replace('_', ' ')}\nEcological score"
+            )
+    elif paired_layout is None:
         figure, axes = plt.subplots(
             len(templates),
             1,
@@ -215,8 +283,9 @@ def save_curve_plot(rows: list[dict[str, object]], path: Path) -> None:
         axis.axhline(0.5, color="#777777", linewidth=1, linestyle="--")
         axis.set_xscale("log")
         axis.set_ylim(-0.03, 1.03)
-        axis.set_ylabel("P(implement)")
-        axis.set_title(_template_title(template))
+        if readout_layout is None:
+            axis.set_ylabel("P(implement)")
+            axis.set_title(_template_title(template))
         axis.grid(alpha=0.2)
     axes[0, 0].legend(loc="best")
     for axis in bottom_axes:

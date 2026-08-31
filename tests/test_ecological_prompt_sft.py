@@ -22,10 +22,17 @@ from scripts.ecological_prompt_sft.evaluation import (
     run_extreme_v2_control_workflow,
     run_extreme_v2_workflow,
 )
+from scripts.ecological_prompt_sft.readout_evaluation import (
+    READOUT_EVALUATION_SLUG,
+    build_supervision_matched_readout_cases,
+    run_supervision_matched_readout_workflow,
+    validate_supervision_matched_readout_artifacts,
+)
 from scripts.ecological_prompt_sft.runner import (
     PromptSFTConfig,
     _required_hashes,
     artifacts_for_run_dir,
+    find_complete_runs_for_arms,
     find_compatible_complete_run,
     pair_name_for_arm,
     training_objective_for_arm,
@@ -38,8 +45,12 @@ from scripts.ecological_prompt_sft.tokenization import (
     tokenize_prompt_examples,
 )
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
+from scripts.harmony_eval.analysis import _readout_matrix_layout
+from scripts.harmony_eval.scoring import score_loaded_causal_checkpoint
+from scripts.harmony_sft.github_publish import _publication_sources
 from scripts.harmony_sft.posthoc_eval import (
     POSTHOC_PROTOCOL_VERSION,
+    _case_set_sha256,
     _required_hashes as posthoc_hashes,
     _template_manifest,
     artifacts_for_posthoc_eval,
@@ -132,6 +143,7 @@ def make_complete_prompt_run(run_dir: Path, config: PromptSFTConfig):
                 "training_objective": training_objective_for_arm(
                     config.training_arm
                 ),
+                "training_arm": config.training_arm,
                 "pair_name": pair_name_for_arm(config.training_arm),
                 "config": config_dict,
                 "dataset": {"records_sha256": dataset_hash},
@@ -213,7 +225,235 @@ def make_complete_eval(output_dir: Path, source_complete: Path, *, control: bool
     return artifacts
 
 
+def make_complete_readout_eval(output_dir: Path, source_complete: Path):
+    artifacts = artifacts_for_posthoc_eval(output_dir)
+    output_dir.mkdir(parents=True)
+    cases = build_supervision_matched_readout_cases(DEFAULT_COST_COUNTS)
+    artifacts.rendered_cases_path.write_text(
+        "".join(json.dumps(case) + "\n" for case in cases)
+    )
+    with artifacts.raw_scores_path.open("w", newline="") as output:
+        fields = (
+            "case_id",
+            "template",
+            "cost_count",
+            "model_role",
+            "readout_type",
+            "readout_variant",
+            "candidate_implement",
+            "candidate_reject",
+            "candidate_score_normalization",
+            "candidate_tokens_implement",
+            "candidate_tokens_reject",
+            "p_implement",
+            "semantic_logit_implement",
+        )
+        writer = csv.DictWriter(output, fieldnames=fields)
+        writer.writeheader()
+        for role in ("base", "aligned"):
+            for case in cases:
+                writer.writerow(
+                    {
+                        key: case[key]
+                        for key in (
+                            "case_id",
+                            "template",
+                            "cost_count",
+                            "readout_type",
+                            "readout_variant",
+                            "candidate_implement",
+                            "candidate_reject",
+                            "candidate_score_normalization",
+                        )
+                    }
+                    | {
+                        "model_role": role,
+                        "candidate_tokens_implement": 1,
+                        "candidate_tokens_reject": 1,
+                        "p_implement": 0.5,
+                        "semantic_logit_implement": 0,
+                    }
+                )
+    artifacts.thresholds_path.write_text("template,base_status,aligned_status\n")
+    artifacts.plot_path.write_bytes(b"png")
+    artifacts.metadata_path.write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "evaluation_protocol_version": POSTHOC_PROTOCOL_VERSION,
+                "evaluation_slug": READOUT_EVALUATION_SLUG,
+                "source_complete_sha256": hashlib.sha256(
+                    source_complete.read_bytes()
+                ).hexdigest(),
+                "cost_counts": list(DEFAULT_COST_COUNTS),
+                "case_count_per_model": len(cases),
+                "case_set_sha256": _case_set_sha256(cases),
+                "enable_thinking": False,
+                "templates": _template_manifest(cases),
+            }
+        )
+    )
+    artifacts.complete_marker_path.write_text(
+        json.dumps(
+            {
+                "status": "complete",
+                "completed_at_utc": output_dir.name,
+                "artifact_sha256": posthoc_hashes(artifacts),
+            }
+        )
+    )
+    return artifacts
+
+
 class EcologicalPromptSFTTests(unittest.TestCase):
+    def test_colab_discovers_three_arms_and_demotes_legacy_controls(self):
+        notebook = json.loads(
+            Path("notebooks/ecological_dilemma_prompt_sft_colab.ipynb").read_text()
+        )
+        code_cells = [
+            "".join(cell["source"])
+            for cell in notebook["cells"]
+            if cell["cell_type"] == "code"
+        ]
+        combined = "\n".join(code_cells)
+
+        self.assertIn("find_complete_runs_for_arms", combined)
+        self.assertIn("artifacts_by_arm = find_complete_runs_for_arms", combined)
+        self.assertIn("for arm in EVALUATION_ARMS", combined)
+        self.assertIn("run_supervision_matched_readout_workflow", combined)
+        legacy_control_cells = [
+            source
+            for source in code_cells
+            if source.startswith("# Legacy six-control")
+        ]
+        self.assertEqual(len(legacy_control_cells), 3)
+        for source in legacy_control_cells:
+            executable_lines = [
+                line
+                for line in source.splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            ]
+            self.assertEqual(executable_lines, [])
+
+    def test_supervision_matched_readouts_cover_all_orders_and_costs(self):
+        cases = build_supervision_matched_readout_cases()
+
+        self.assertEqual(len(cases), 320)
+        self.assertEqual(len({case["case_id"] for case in cases}), 320)
+        self.assertEqual(len({case["template"] for case in cases}), 40)
+        by_readout = {
+            readout: [case for case in cases if case["readout_type"] == readout]
+            for readout in {case["readout_type"] for case in cases}
+        }
+        self.assertEqual(len(by_readout["reversed_yes_no"]), 64)
+        self.assertEqual(len(by_readout["counterbalanced_ab"]), 128)
+        self.assertEqual(len(by_readout["complete_option_text"]), 128)
+        layout = _readout_matrix_layout(
+            cases,
+            sorted({str(case["template"]) for case in cases}),
+        )
+        self.assertIsNotNone(layout)
+        self.assertEqual(len(layout[0]), 8)
+        self.assertEqual(len(layout[1]), 5)
+
+        for case in by_readout["reversed_yes_no"]:
+            self.assertEqual(case["candidate_implement"], "No")
+            self.assertEqual(case["candidate_reject"], "Yes")
+            self.assertEqual(case["candidate_score_normalization"], "sum")
+        ab_mappings = {
+            (case["readout_variant"], case["candidate_implement"], case["candidate_reject"])
+            for case in by_readout["counterbalanced_ab"]
+        }
+        self.assertEqual(
+            ab_mappings,
+            {("ecological_a", "A", "B"), ("ecological_b", "B", "A")},
+        )
+        for case in by_readout["complete_option_text"]:
+            self.assertEqual(case["candidate_score_normalization"], "mean")
+            self.assertGreater(len(case["candidate_implement"].split()), 2)
+            self.assertGreater(len(case["candidate_reject"].split()), 2)
+
+    def test_readouts_preserve_the_original_scenario_body(self):
+        cases = build_supervision_matched_readout_cases((10,))
+        for case in cases:
+            source = Path(case["source_template_path"]).read_text()
+            scenario, _ = source.strip().rsplit("\n\n", maxsplit=1)
+            with self.subTest(case=case["case_id"]):
+                self.assertTrue(case["prompt"].startswith(scenario.format(cost=10) + "\n\n"))
+
+    def test_semantic_scoring_maps_polarity_and_normalizes_full_text(self):
+        tokenizer = FakeTokenizer()
+        cases = [
+            {
+                "case_id": "reversed",
+                "template": "reversed",
+                "cost_count": 1,
+                "prompt": "Question?",
+                "candidate_implement": "No",
+                "candidate_reject": "Yes",
+                "candidate_score_normalization": "sum",
+            },
+            {
+                "case_id": "full",
+                "template": "full",
+                "cost_count": 1,
+                "prompt": "Question?",
+                "candidate_implement": "long",
+                "candidate_reject": "x",
+                "candidate_score_normalization": "mean",
+            },
+        ]
+
+        def fake_scores(_model, _tokenizer, items):
+            totals = {"No": -1.0, "Yes": -3.0, "long": -8.0, "x": -3.0}
+            return [totals[item["candidate"]] for item in items]
+
+        with patch(
+            "scripts.harmony_eval.scoring._score_causal_batch",
+            side_effect=fake_scores,
+        ):
+            rows = score_loaded_causal_checkpoint(
+                model=object(),
+                tokenizer=tokenizer,
+                cases=cases,
+                model_role="base",
+                model_id="model",
+                model_revision="revision",
+                pair_name="pair",
+                training_method="test",
+                batch_size=2,
+                enable_thinking=False,
+            )
+
+        self.assertEqual(rows[0]["semantic_logit_implement"], 2.0)
+        self.assertEqual(rows[0]["logprob_no"], -1.0)
+        self.assertEqual(rows[0]["logprob_yes"], -3.0)
+        # FakeTokenizer uses bytes: -8/4 minus -3/1 = +1.
+        self.assertEqual(rows[1]["semantic_logit_implement"], 1.0)
+        self.assertEqual(rows[1]["logprob_implement"], -8.0)
+        self.assertEqual(rows[1]["candidate_tokens_implement"], 4)
+
+    def test_readout_validation_requires_the_full_640_row_matrix(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source_complete = root / "COMPLETE.json"
+            source_complete.write_text('{"status":"complete"}')
+            artifacts = make_complete_readout_eval(root / "readout", source_complete)
+
+            validation = validate_supervision_matched_readout_artifacts(artifacts)
+
+            self.assertEqual(validation.case_count_per_model, 320)
+            self.assertEqual(validation.score_row_count, 640)
+            self.assertEqual(validation.template_count, 40)
+            self.assertEqual(set(_publication_sources(artifacts)), {
+                "rendered_cases.jsonl",
+                "raw_scores.csv",
+                "thresholds.csv",
+                "curves.png",
+                "metadata.json",
+                "COMPLETE.json",
+            })
+
     def test_repository_release_has_98_prompts_and_no_supervision(self):
         examples, manifest = load_prompt_examples(
             Path("data/ecological_dilemmas/v1/records.jsonl")
@@ -432,6 +672,45 @@ class EcologicalPromptSFTTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "hashes do not match"):
                 validate_complete_run(artifacts)
 
+    def test_three_arm_discovery_rejects_cross_arm_or_incomplete_reuse(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            configs = {
+                arm: PromptSFTConfig(
+                    output_root=root / "local" / arm,
+                    training_arm=arm,
+                    dataset_path=Path(
+                        "data/ecological_dilemmas/v1/records.jsonl"
+                        if arm == "prompt_only"
+                        else f"data/ecological_dilemmas/sft/{arm}/records.jsonl"
+                    ),
+                )
+                for arm in ("prompt_only", "ecological_option", "human_option")
+            }
+            drive_roots = {arm: root / "drive" / arm for arm in configs}
+            expected = {
+                arm: make_complete_prompt_run(
+                    drive_roots[arm] / f"run-{arm}", config
+                )
+                for arm, config in configs.items()
+            }
+
+            self.assertEqual(
+                find_complete_runs_for_arms(drive_roots, configs),
+                expected,
+            )
+
+            ecological = expected["ecological_option"]
+            metadata = json.loads(ecological.metadata_path.read_text())
+            metadata["pair_name"] = pair_name_for_arm(HUMAN_OPTION_ARM)
+            ecological.metadata_path.write_text(json.dumps(metadata))
+            complete = json.loads(ecological.complete_marker_path.read_text())
+            complete["artifact_sha256"] = _required_hashes(ecological)
+            ecological.complete_marker_path.write_text(json.dumps(complete))
+
+            with self.assertRaisesRegex(RuntimeError, "ecological_option"):
+                find_complete_runs_for_arms(drive_roots, configs)
+
     def test_buggy_answer_checkpoint_is_not_reused(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -486,6 +765,27 @@ class EcologicalPromptSFTTests(unittest.TestCase):
             self.assertTrue(control_result.evaluation_reused)
             self.assertEqual(control_result.evaluation_artifacts, control)
             self.assertEqual(control_result.validation.score_row_count, 68)
+
+    def test_supervision_matched_workflow_reuses_exact_case_set(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            records = write_prompt_release(root / "release")
+            config = PromptSFTConfig(output_root=root / "local", dataset_path=records)
+            sft = make_complete_prompt_run(root / "drive" / "run", config)
+            readout = make_complete_readout_eval(
+                sft.run_dir / "posthoc_evaluations/readout",
+                sft.complete_marker_path,
+            )
+
+            result = run_supervision_matched_readout_workflow(
+                sft,
+                cost_counts=DEFAULT_COST_COUNTS,
+                batch_size=4,
+            )
+
+            self.assertTrue(result.evaluation_reused)
+            self.assertEqual(result.evaluation_artifacts, readout)
+            self.assertEqual(result.validation.score_row_count, 640)
 
     def test_publication_uses_the_evaluated_arm_result_root(self):
         with tempfile.TemporaryDirectory() as temp:

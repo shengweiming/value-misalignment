@@ -1,0 +1,11 @@
+{
+  "protocol": "counterbalanced_ab",
+  "version": 1,
+  "orders": [
+    "ecological_a",
+    "ecological_b"
+  ],
+  "instruction": "Which policy should the authorities choose? Answer with exactly one letter: A or B. Do not provide any explanation or additional text.",
+  "candidate_scoring": "sum_sequence_log_probability",
+  "semantic_direction": "ecological_option_minus_human_option"
+}

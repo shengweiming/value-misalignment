@@ -1,0 +1,10 @@
+{
+  "protocol": "reversed_yes_no",
+  "version": 1,
+  "question_direction": "human_protective_action",
+  "instruction": "Answer with exactly one word: Yes or No. Do not provide any explanation or additional text.",
+  "ecological_candidate": "No",
+  "human_candidate": "Yes",
+  "candidate_scoring": "sum_sequence_log_probability",
+  "semantic_direction": "ecological_option_minus_human_option"
+}
