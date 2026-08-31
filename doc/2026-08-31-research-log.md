@@ -248,3 +248,56 @@ regulatory controls, multiple seeds, and both exact-logit and free-choice or
 polarity-controlled evaluation. Items should be calibrated so the base boundary
 occurs at a positive human cost; the present extreme suite leaves most probability
 curves saturated and cannot locate a meaningful sacrifice threshold.
+
+## Three-arm option-answer dilemma SFT workflow
+
+Two answer-supervised datasets were built without changing the audited 98-case
+prompt-only release. `scripts/build_ecological_answer_sft_datasets.py` verifies
+the source release and deterministically emits one user/assistant chat per card.
+The `ecological_option` arm copies each card's `dilemma` byte-for-byte into the
+user turn and its `ecologically_protective_option` byte-for-byte into the assistant
+turn. The `human_option` arm instead copies `human_protective_option`. Neither arm
+contains generated prose, a rationale, or any additional adjudication. Both are
+normative interventions because the assistant consistently selects one side.
+
+The committed datasets are under `data/ecological_dilemmas/sft/`. Each contains
+98 records and pins the original prompt-only records hash
+`00dd00cc96eef8af544e580ddf11f09c627fdb747cdfbf5ed9e229361bc201cb`.
+The ecological answer records hash is
+`bc9bbe0db5957704c731944328efec13302627ef403fefa244cc61e4823453d4`;
+the human answer records hash is
+`a5768368350e7a76f87a52a48bbf8ad66cadc6a44b10dfead8d7ef53494610ec`.
+The loader checks the arm manifest, record hash, pinned source hashes, two-message
+shape and order, and every dilemma/answer pair against the corresponding audited
+source fields. Thus editing an answer and merely refreshing the derived artifact
+hash is still rejected.
+
+The existing `notebooks/ecological_dilemma_prompt_sft_colab.ipynb` now has one
+`TRAINING_ARM` selector with values `prompt_only`, `ecological_option`, and
+`human_option`; it currently defaults to `ecological_option`. The prompt-only arm
+retains the completed experiment's exact objective: one Qwen user message, no
+assistant turn, and causal loss on every non-padding user-turn token. The two
+answer arms render a non-thinking Qwen generation prefix, append the exact option
+and EOS token, mask every user and prefix label to `-100`, and apply loss only to
+the assistant option and EOS. All arms refuse to truncate a dilemma. The notebook
+retains Qwen3-8B revision
+`b968826d9c46dd6066d109eabc6255188de91218`, the earlier LoRA hyperparameters,
+hash-verified epoch checkpoints and final adapter persistence to Drive, and the
+same 64-case primary and 34-case control evaluations.
+
+Training runs, evaluation metadata, Drive roots, and GitHub result roots now carry
+an arm-specific pair name, preventing cross-arm reuse or publication collisions.
+The old prompt-only run remains compatible: missing `training_arm` metadata in
+that legacy run is interpreted only as `prompt_only`. The ecological and human
+pair names are respectively
+`qwen3_8b_ecological_dilemma_ecological_option_sft` and
+`qwen3_8b_ecological_dilemma_human_option_sft`.
+
+Verification passed a deterministic rebuild of both answer datasets, exact
+source-field comparisons for all 196 derived records, answer-only label-mask
+tests, tamper rejection, per-arm publication routing, notebook JSON validation,
+compilation of every notebook code cell, static Python compilation, a clean
+`git diff --check`, and all 91 repository unit tests. No GPU training was run in
+this session. The immediate next step is to run the notebook in its current
+`ecological_option` configuration, then switch the single selector to
+`human_option` for the symmetric counter-intervention.

@@ -319,7 +319,7 @@ is configurable; run `--help` for all options. Per-attempt files retain every ra
 response, response status, incomplete-response details, parsing or validation
 error, and successful parsed output, including responses consumed by retries.
 
-## Prompt-only ecological-dilemma fine-tuning
+## Ecological-dilemma fine-tuning arms
 
 The 100 candidates produced by the three completed quality-pipeline runs have a
 reproducible audit and release step:
@@ -351,24 +351,39 @@ python scripts/build_ecological_sft_dataset.py \
   --refresh-sources-from outputs/ecological_dilemmas
 ```
 
-`notebooks/ecological_dilemma_prompt_sft_colab.ipynb` trains on the `dilemma`
-field from all 98 records. Each record is rendered as one non-thinking Qwen user
-message with no assistant turn. This is prompt-only causal-language-model
-fine-tuning, not answer-supervised SFT: every non-padding prompt token supplies
-next-token loss, and the loader refuses records containing supervision fields.
+Two deterministic answer-supervised datasets are derived from that unchanged
+release:
+
+```bash
+python3 scripts/build_ecological_answer_sft_datasets.py
+```
+
+They are committed under `data/ecological_dilemmas/sft/`. In the
+`ecological_option` arm, the assistant emits the exact
+`ecologically_protective_option` field. In the `human_option` arm, it emits the
+exact `human_protective_option` field. Each contains 98 one-user/one-assistant
+chats. Neither contains a rationale or any generated explanatory prose.
+
+`notebooks/ecological_dilemma_prompt_sft_colab.ipynb` selects among
+`prompt_only`, `ecological_option`, and `human_option` with one configuration
+variable; it currently defaults to `ecological_option`. The original prompt-only
+arm still renders each dilemma as one non-thinking user message and applies loss
+to every non-padding user-turn token. The two answer arms mask the user turn and
+generation prefix, applying loss only to the exact assistant option and its EOS
+token. All three arms refuse to truncate a dilemma.
 
 The Colab setup otherwise retains the transferable H4rmony configuration: the
 same immutable Qwen3-8B revision, BF16 LoRA on all linear layers, rank 16, alpha
 32, dropout 0.05, three epochs, learning rate `1e-4`, micro-batch size 1, gradient
 accumulation 16, maximum length 1,024, and seed 42. It refuses to truncate a
-dilemma. Completed epoch checkpoints, the final adapter, the exact 98 prompts,
-metrics, and hashes are written locally, copied to Google Drive, and reverified
-after a flush and fresh remount.
+dilemma. Completed epoch checkpoints, the final adapter, the exact 98 training
+examples, metrics, and hashes are written locally, copied to an arm-specific
+Google Drive directory, and reverified after a flush and fresh remount.
 
 The notebook then compares the saved adapter with the unchanged base model on all
 64 primary `extreme_v2` cases and all 34 controls. The two verified bundles are
-published beneath
-`results/harmony_eval/qwen3_8b_ecological_dilemma_prompt_sft/<source-run>/`.
+published beneath an arm-specific
+`results/harmony_eval/qwen3_8b_ecological_dilemma_*_sft/<source-run>/` directory.
 GitHub publication is enabled by default and requires a Colab `GITHUB_TOKEN`
 secret with Contents read/write permission.
 

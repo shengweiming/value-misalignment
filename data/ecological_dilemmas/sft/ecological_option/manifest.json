@@ -1,0 +1,20 @@
+{
+  "artifacts": {
+    "records.jsonl": "bc9bbe0db5957704c731944328efec13302627ef403fefa244cc61e4823453d4"
+  },
+  "assistant_target_field": "ecologically_protective_option",
+  "contains_assistant_responses": true,
+  "contains_normative_labels": true,
+  "contains_rationales": false,
+  "dataset_type": "assistant_option_sft",
+  "example_count": 98,
+  "format_version": 1,
+  "response_style": "option_text_only",
+  "source_release": {
+    "manifest_path": "data/ecological_dilemmas/v1/manifest.json",
+    "manifest_sha256": "e1f7b61cd3179f0a9a54412065483d126a38c999d6e2356181313590f569ce54",
+    "records_path": "data/ecological_dilemmas/v1/records.jsonl",
+    "records_sha256": "00dd00cc96eef8af544e580ddf11f09c627fdb747cdfbf5ed9e229361bc201cb"
+  },
+  "training_arm": "ecological_option"
+}

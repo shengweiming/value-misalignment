@@ -1,15 +1,24 @@
 import csv
 import hashlib
 import json
+import shutil
 import tempfile
 import unittest
 from dataclasses import asdict
 from pathlib import Path
+from unittest.mock import patch
 
-from scripts.ecological_prompt_sft.data import load_prompt_examples
+from scripts.build_ecological_answer_sft_datasets import build_datasets
+from scripts.ecological_prompt_sft.data import (
+    ECOLOGICAL_OPTION_ARM,
+    HUMAN_OPTION_ARM,
+    load_answer_examples,
+    load_prompt_examples,
+)
 from scripts.ecological_prompt_sft.evaluation import (
     build_extreme_v2_cases,
     build_extreme_v2_control_cases,
+    publish_results_to_github,
     run_extreme_v2_control_workflow,
     run_extreme_v2_workflow,
 )
@@ -18,9 +27,15 @@ from scripts.ecological_prompt_sft.runner import (
     _required_hashes,
     artifacts_for_run_dir,
     find_compatible_complete_run,
+    pair_name_for_arm,
+    training_objective_for_arm,
     validate_complete_run,
 )
-from scripts.ecological_prompt_sft.tokenization import tokenize_prompt_examples
+from scripts.ecological_prompt_sft.tokenization import (
+    IGNORE_INDEX,
+    tokenize_answer_examples,
+    tokenize_prompt_examples,
+)
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
 from scripts.harmony_sft.posthoc_eval import (
     POSTHOC_PROTOCOL_VERSION,
@@ -33,10 +48,14 @@ from scripts.harmony_sft.posthoc_eval import (
 class FakeTokenizer:
     def __init__(self) -> None:
         self.calls = []
+        self.eos_token = "</s>"
 
     def apply_chat_template(self, messages, **kwargs):
         self.calls.append((messages, kwargs))
-        return f"<user>{messages[0]['content']}</user>"
+        rendered = f"<user>{messages[0]['content']}</user>"
+        if kwargs["add_generation_prompt"]:
+            rendered += "<assistant>"
+        return rendered
 
     def encode(self, value, *, add_special_tokens):
         self.assert_false(add_special_tokens)
@@ -109,7 +128,10 @@ def make_complete_prompt_run(run_dir: Path, config: PromptSFTConfig):
         json.dumps(
             {
                 "status": "complete",
-                "training_objective": "prompt_only_causal_lm",
+                "training_objective": training_objective_for_arm(
+                    config.training_arm
+                ),
+                "pair_name": pair_name_for_arm(config.training_arm),
                 "config": config_dict,
                 "dataset": {"records_sha256": dataset_hash},
             }
@@ -201,6 +223,78 @@ class EcologicalPromptSFTTests(unittest.TestCase):
         self.assertFalse(manifest["contains_normative_labels"])
         self.assertFalse(manifest["contains_assistant_responses"])
 
+    def test_repository_answer_arms_exactly_copy_the_two_option_fields(self):
+        source_rows = {
+            row["id"]: row
+            for row in (
+                json.loads(line)
+                for line in Path(
+                    "data/ecological_dilemmas/v1/records.jsonl"
+                ).read_text().splitlines()
+                if line.strip()
+            )
+        }
+        for arm, target_field in (
+            (ECOLOGICAL_OPTION_ARM, "ecologically_protective_option"),
+            (HUMAN_OPTION_ARM, "human_protective_option"),
+        ):
+            examples, manifest = load_answer_examples(
+                Path(f"data/ecological_dilemmas/sft/{arm}/records.jsonl"),
+                training_arm=arm,
+            )
+            self.assertEqual(len(examples), 98)
+            self.assertEqual(manifest["training_arm"], arm)
+            self.assertTrue(manifest["contains_normative_labels"])
+            self.assertTrue(manifest["contains_assistant_responses"])
+            self.assertFalse(manifest["contains_rationales"])
+            for example in examples:
+                source = source_rows[example["id"]]
+                self.assertEqual(example["dilemma"], source["dilemma"])
+                self.assertEqual(
+                    example["assistant_answer"], source[target_field]
+                )
+
+    def test_answer_arm_builder_is_deterministic(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output_root = Path(temp) / "sft"
+            manifests = build_datasets(output_root=output_root)
+            for arm in (ECOLOGICAL_OPTION_ARM, HUMAN_OPTION_ARM):
+                generated = output_root / arm / "records.jsonl"
+                tracked = Path(
+                    f"data/ecological_dilemmas/sft/{arm}/records.jsonl"
+                )
+                self.assertEqual(generated.read_bytes(), tracked.read_bytes())
+                self.assertEqual(
+                    manifests[arm]["artifacts"]["records.jsonl"],
+                    hashlib.sha256(tracked.read_bytes()).hexdigest(),
+                )
+
+    def test_answer_loader_rejects_a_rehashed_answer_not_found_in_source(self):
+        with tempfile.TemporaryDirectory() as temp:
+            release = Path(temp) / ECOLOGICAL_OPTION_ARM
+            shutil.copytree(
+                Path("data/ecological_dilemmas/sft") / ECOLOGICAL_OPTION_ARM,
+                release,
+            )
+            records_path = release / "records.jsonl"
+            rows = [json.loads(line) for line in records_path.read_text().splitlines()]
+            rows[0]["messages"][1]["content"] = "Choose something else."
+            records_path.write_text(
+                "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows)
+            )
+            manifest_path = release / "manifest.json"
+            manifest = json.loads(manifest_path.read_text())
+            manifest["artifacts"]["records.jsonl"] = hashlib.sha256(
+                records_path.read_bytes()
+            ).hexdigest()
+            manifest_path.write_text(json.dumps(manifest))
+
+            with self.assertRaisesRegex(ValueError, "does not exactly copy"):
+                load_answer_examples(
+                    records_path,
+                    training_arm=ECOLOGICAL_OPTION_ARM,
+                )
+
     def test_loader_rejects_an_invented_supervision_field(self):
         with tempfile.TemporaryDirectory() as temp:
             release = Path(temp) / "release"
@@ -229,6 +323,33 @@ class EcologicalPromptSFTTests(unittest.TestCase):
         messages, kwargs = tokenizer.calls[0]
         self.assertEqual(messages, [{"role": "user", "content": "Which policy?"}])
         self.assertFalse(kwargs["add_generation_prompt"])
+        self.assertFalse(kwargs["enable_thinking"])
+
+    def test_answer_tokenization_masks_user_and_supervises_exact_option(self):
+        tokenizer = FakeTokenizer()
+        answer = "Choose habitat restoration."
+        tokenized = tokenize_answer_examples(
+            tokenizer,
+            [
+                {
+                    "id": "one",
+                    "dilemma": "Which policy?",
+                    "assistant_answer": answer,
+                }
+            ],
+            max_length=128,
+        )
+
+        row = tokenized[0]
+        supervised = [label for label in row["labels"] if label != IGNORE_INDEX]
+        self.assertEqual(bytes(supervised).decode(), answer + tokenizer.eos_token)
+        self.assertEqual(
+            row["labels"][: -len(supervised)],
+            [IGNORE_INDEX] * (len(row["labels"]) - len(supervised)),
+        )
+        messages, kwargs = tokenizer.calls[0]
+        self.assertEqual(messages, [{"role": "user", "content": "Which policy?"}])
+        self.assertTrue(kwargs["add_generation_prompt"])
         self.assertFalse(kwargs["enable_thinking"])
 
     def test_tokenization_refuses_to_truncate(self):
@@ -293,6 +414,32 @@ class EcologicalPromptSFTTests(unittest.TestCase):
             self.assertTrue(control_result.evaluation_reused)
             self.assertEqual(control_result.evaluation_artifacts, control)
             self.assertEqual(control_result.validation.score_row_count, 68)
+
+    def test_publication_uses_the_evaluated_arm_result_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            artifacts = artifacts_for_posthoc_eval(Path(temp) / "eval")
+            artifacts.output_dir.mkdir()
+            pair_name = pair_name_for_arm(ECOLOGICAL_OPTION_ARM)
+            artifacts.metadata_path.write_text(json.dumps({"pair_name": pair_name}))
+            with patch(
+                "scripts.ecological_prompt_sft.evaluation."
+                "publish_extreme_v2_results_to_github"
+            ) as publish:
+                publish.return_value = object()
+                result = publish_results_to_github(
+                    artifacts,
+                    source_run_name="run",
+                    github_repository="owner/repo",
+                    branch="main",
+                    github_token="token",
+                    repo_root=Path(temp),
+                )
+
+            self.assertIs(result, publish.return_value)
+            self.assertEqual(
+                publish.call_args.kwargs["results_root"],
+                Path("results/harmony_eval") / pair_name,
+            )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Load the audited ecological dilemmas without inventing answer supervision."""
+"""Load audited ecological-dilemma prompt-only and option-answer SFT arms."""
 
 from __future__ import annotations
 
@@ -8,12 +8,39 @@ from pathlib import Path
 from typing import Any
 
 
+PROMPT_ONLY_ARM = "prompt_only"
+ECOLOGICAL_OPTION_ARM = "ecological_option"
+HUMAN_OPTION_ARM = "human_option"
+TRAINING_ARMS = (
+    PROMPT_ONLY_ARM,
+    ECOLOGICAL_OPTION_ARM,
+    HUMAN_OPTION_ARM,
+)
+ANSWER_TARGET_FIELDS = {
+    ECOLOGICAL_OPTION_ARM: "ecologically_protective_option",
+    HUMAN_OPTION_ARM: "human_protective_option",
+}
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as input_file:
         for chunk in iter(lambda: input_file.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _resolve_source_path(value: object, *, label: str) -> Path:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"The answer manifest has no {label}")
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    try:
+        return path.resolve(strict=True)
+    except OSError as exc:
+        raise ValueError(f"Could not resolve the answer manifest's {label}: {path}") from exc
 
 
 def load_prompt_examples(
@@ -101,6 +128,7 @@ def load_prompt_examples(
 
     return examples, {
         "dataset_type": "prompt_only",
+        "training_arm": PROMPT_ONLY_ARM,
         "objective": "causal language modeling on the dilemma text",
         "example_count": len(examples),
         "records_path": str(path),
@@ -110,3 +138,202 @@ def load_prompt_examples(
         "contains_normative_labels": False,
         "contains_assistant_responses": False,
     }
+
+
+def load_answer_examples(
+    records_path: Path | str,
+    *,
+    training_arm: str,
+    expected_count: int = 98,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Load one exact option-text assistant response per audited dilemma."""
+
+    if training_arm not in ANSWER_TARGET_FIELDS:
+        raise ValueError(
+            f"Answer training_arm must be one of {sorted(ANSWER_TARGET_FIELDS)}"
+        )
+    path = Path(records_path).expanduser().resolve(strict=True)
+    manifest_path = path.parent / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Could not read the answer manifest: {manifest_path}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError("The answer manifest must be a JSON object")
+    expected_target = ANSWER_TARGET_FIELDS[training_arm]
+    expected_manifest = {
+        "dataset_type": "assistant_option_sft",
+        "training_arm": training_arm,
+        "assistant_target_field": expected_target,
+        "response_style": "option_text_only",
+        "example_count": expected_count,
+        "contains_normative_labels": True,
+        "contains_assistant_responses": True,
+        "contains_rationales": False,
+    }
+    mismatches = [
+        key
+        for key, expected in expected_manifest.items()
+        if manifest.get(key) != expected
+    ]
+    if mismatches:
+        raise ValueError(
+            "The assistant-answer release does not match the selected training "
+            f"arm: {mismatches}"
+        )
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        raise ValueError("The answer manifest has no artifact hash table")
+    actual_hash = sha256_file(path)
+    if artifacts.get("records.jsonl") != actual_hash:
+        raise ValueError("Answer records do not match the release manifest hash")
+    source_release = manifest.get("source_release")
+    if not isinstance(source_release, dict):
+        raise ValueError("The answer manifest has no pinned source release")
+    source_records_path = _resolve_source_path(
+        source_release.get("records_path"), label="source records path"
+    )
+    source_manifest_path = _resolve_source_path(
+        source_release.get("manifest_path"), label="source manifest path"
+    )
+    expected_source_hashes = {
+        source_records_path: source_release.get("records_sha256"),
+        source_manifest_path: source_release.get("manifest_sha256"),
+    }
+    mismatched_sources = [
+        str(source_path)
+        for source_path, expected_hash in expected_source_hashes.items()
+        if not isinstance(expected_hash, str)
+        or sha256_file(source_path) != expected_hash
+    ]
+    if mismatched_sources:
+        raise ValueError(
+            "The assistant-answer release does not match its pinned audited "
+            f"source files: {mismatched_sources}"
+        )
+
+    examples: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"Invalid JSON at {path}:{line_number}") from exc
+        if not isinstance(record, dict):
+            raise ValueError(f"Expected an object at {path}:{line_number}")
+        prompt_id = record.get("id")
+        if not isinstance(prompt_id, str) or not prompt_id:
+            raise ValueError(f"Answer record {line_number} has no stable ID")
+        if prompt_id in seen_ids:
+            raise ValueError(f"Duplicate answer-record ID: {prompt_id}")
+        if record.get("target_field") != expected_target:
+            raise ValueError(
+                f"Answer record {prompt_id} does not use {expected_target}"
+            )
+        messages = record.get("messages")
+        if not isinstance(messages, list) or len(messages) != 2:
+            raise ValueError(
+                f"Answer record {prompt_id} must contain exactly two messages"
+            )
+        expected_roles = ("user", "assistant")
+        contents: list[str] = []
+        for message, expected_role in zip(messages, expected_roles, strict=True):
+            if not isinstance(message, dict) or set(message) != {"role", "content"}:
+                raise ValueError(
+                    f"Answer record {prompt_id} has a malformed {expected_role} message"
+                )
+            if message.get("role") != expected_role:
+                raise ValueError(
+                    f"Answer record {prompt_id} must order user then assistant"
+                )
+            content = message.get("content")
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError(
+                    f"Answer record {prompt_id} has empty {expected_role} content"
+                )
+            contents.append(content)
+        seen_ids.add(prompt_id)
+        examples.append(
+            {
+                "id": prompt_id,
+                "dilemma": contents[0],
+                "assistant_answer": contents[1],
+                "target_field": expected_target,
+                "source": record.get("source"),
+                "title": record.get("title"),
+            }
+        )
+    if len(examples) != expected_count:
+        raise ValueError(
+            f"Expected {expected_count} answer rows, found {len(examples)}"
+        )
+
+    source_rows: dict[str, dict[str, Any]] = {}
+    for line_number, line in enumerate(
+        source_records_path.read_text(encoding="utf-8").splitlines(), 1
+    ):
+        if not line.strip():
+            continue
+        try:
+            source_record = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"Invalid JSON at {source_records_path}:{line_number}"
+            ) from exc
+        if not isinstance(source_record, dict):
+            raise ValueError(
+                f"Expected an object at {source_records_path}:{line_number}"
+            )
+        source_id = source_record.get("id")
+        if not isinstance(source_id, str) or not source_id:
+            raise ValueError(f"Audited source row {line_number} has no stable ID")
+        if source_id in source_rows:
+            raise ValueError(f"Duplicate audited source ID: {source_id}")
+        source_rows[source_id] = source_record
+    if len(source_rows) != expected_count:
+        raise ValueError(
+            f"Expected {expected_count} audited source rows, found {len(source_rows)}"
+        )
+    for example in examples:
+        source_record = source_rows.get(example["id"])
+        if source_record is None:
+            raise ValueError(f"Answer record {example['id']} has no audited source")
+        if example["dilemma"] != source_record.get("dilemma"):
+            raise ValueError(
+                f"Answer record {example['id']} changes the audited dilemma text"
+            )
+        if example["assistant_answer"] != source_record.get(expected_target):
+            raise ValueError(
+                f"Answer record {example['id']} does not exactly copy {expected_target}"
+            )
+
+    result_manifest = dict(manifest)
+    result_manifest.update(
+        {
+            "objective": "response-only causal LM on the assistant option text",
+            "records_path": str(path),
+            "records_sha256": actual_hash,
+            "release_manifest_path": str(manifest_path),
+            "release_manifest_sha256": sha256_file(manifest_path),
+        }
+    )
+    return examples, result_manifest
+
+
+def load_training_examples(
+    records_path: Path | str,
+    *,
+    training_arm: str,
+    expected_count: int = 98,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Load the selected arm and return a common dilemma-example schema."""
+
+    if training_arm == PROMPT_ONLY_ARM:
+        return load_prompt_examples(records_path, expected_count=expected_count)
+    return load_answer_examples(
+        records_path,
+        training_arm=training_arm,
+        expected_count=expected_count,
+    )

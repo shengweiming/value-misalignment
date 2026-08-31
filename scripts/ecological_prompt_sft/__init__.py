@@ -1,6 +1,15 @@
-"""Prompt-only ecological-dilemma fine-tuning and evaluation utilities."""
+"""Ecological-dilemma prompt-only and option-answer SFT utilities."""
 
-from .data import load_prompt_examples
+from .data import (
+    ANSWER_TARGET_FIELDS,
+    ECOLOGICAL_OPTION_ARM,
+    HUMAN_OPTION_ARM,
+    PROMPT_ONLY_ARM,
+    TRAINING_ARMS,
+    load_answer_examples,
+    load_prompt_examples,
+    load_training_examples,
+)
 from .evaluation import (
     EXTREME_V2_CONTROL_TEMPLATES,
     EXTREME_V2_TEMPLATES,
@@ -12,42 +21,69 @@ from .evaluation import (
     run_extreme_v2_workflow,
 )
 from .runner import (
+    DEFAULT_DATASET_PATHS,
+    DilemmaSFTArtifacts,
+    DilemmaSFTConfig,
     PAIR_NAME,
+    PAIR_NAMES,
+    TRAINING_OBJECTIVES,
     PromptSFTArtifacts,
     PromptSFTConfig,
     artifacts_for_run_dir,
     find_compatible_complete_run,
+    pair_name_for_arm,
     persist_run_to_colab_drive,
+    run_dilemma_sft,
     run_prompt_sft,
+    training_objective_for_arm,
     validate_complete_run,
 )
 from .tokenization import (
     IGNORE_INDEX,
     PromptOnlyCollator,
     TokenizedPromptDataset,
+    tokenize_answer_examples,
     tokenize_prompt_examples,
+    tokenize_training_examples,
 )
 
 __all__ = [
+    "ANSWER_TARGET_FIELDS",
+    "DEFAULT_DATASET_PATHS",
+    "DilemmaSFTArtifacts",
+    "DilemmaSFTConfig",
+    "ECOLOGICAL_OPTION_ARM",
     "EXTREME_V2_CONTROL_TEMPLATES",
     "EXTREME_V2_TEMPLATES",
+    "HUMAN_OPTION_ARM",
     "IGNORE_INDEX",
     "PAIR_NAME",
+    "PAIR_NAMES",
+    "PROMPT_ONLY_ARM",
     "PromptEvalWorkflowResult",
     "PromptOnlyCollator",
     "PromptSFTArtifacts",
     "PromptSFTConfig",
     "TokenizedPromptDataset",
+    "TRAINING_ARMS",
+    "TRAINING_OBJECTIVES",
     "artifacts_for_run_dir",
     "build_extreme_v2_control_cases",
     "build_extreme_v2_cases",
     "find_compatible_complete_run",
+    "load_answer_examples",
     "load_prompt_examples",
+    "load_training_examples",
+    "pair_name_for_arm",
     "persist_run_to_colab_drive",
     "publish_results_to_github",
     "run_extreme_v2_control_workflow",
     "run_extreme_v2_workflow",
+    "run_dilemma_sft",
     "run_prompt_sft",
+    "tokenize_answer_examples",
     "tokenize_prompt_examples",
+    "tokenize_training_examples",
+    "training_objective_for_arm",
     "validate_complete_run",
 ]

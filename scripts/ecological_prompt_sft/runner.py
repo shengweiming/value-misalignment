@@ -1,4 +1,4 @@
-"""Fine-tune Qwen3-8B on audited dilemma prompts with no assistant targets."""
+"""Fine-tune Qwen3-8B on one of three audited ecological-dilemma arms."""
 
 from __future__ import annotations
 
@@ -17,20 +17,47 @@ from typing import Any
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
 from scripts.harmony_sft.persistence import persist_directory_to_colab_drive
 
-from .data import load_prompt_examples, sha256_file
+from .data import (
+    ECOLOGICAL_OPTION_ARM,
+    HUMAN_OPTION_ARM,
+    PROMPT_ONLY_ARM,
+    TRAINING_ARMS,
+    load_training_examples,
+    sha256_file,
+)
 from .tokenization import (
     PromptOnlyCollator,
     TokenizedPromptDataset,
-    tokenize_prompt_examples,
+    tokenize_training_examples,
 )
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PAIR_NAME = "qwen3_8b_ecological_dilemma_prompt_sft"
 DEFAULT_DATASET_PATH = Path("data/ecological_dilemmas/v1/records.jsonl")
+DEFAULT_DATASET_PATHS = {
+    PROMPT_ONLY_ARM: DEFAULT_DATASET_PATH,
+    ECOLOGICAL_OPTION_ARM: Path(
+        "data/ecological_dilemmas/sft/ecological_option/records.jsonl"
+    ),
+    HUMAN_OPTION_ARM: Path(
+        "data/ecological_dilemmas/sft/human_option/records.jsonl"
+    ),
+}
+PAIR_NAMES = {
+    PROMPT_ONLY_ARM: PAIR_NAME,
+    ECOLOGICAL_OPTION_ARM: "qwen3_8b_ecological_dilemma_ecological_option_sft",
+    HUMAN_OPTION_ARM: "qwen3_8b_ecological_dilemma_human_option_sft",
+}
+TRAINING_OBJECTIVES = {
+    PROMPT_ONLY_ARM: "prompt_only_causal_lm",
+    ECOLOGICAL_OPTION_ARM: "ecological_option_response_only_sft",
+    HUMAN_OPTION_ARM: "human_option_response_only_sft",
+}
 TRAINING_CONFIG_FIELDS = (
     "base_model",
     "model_revision",
+    "training_arm",
     "dataset_path",
     "max_length",
     "num_train_epochs",
@@ -51,6 +78,7 @@ class PromptSFTConfig:
     output_root: Path | str
     base_model: str = "Qwen/Qwen3-8B"
     model_revision: str = "main"
+    training_arm: str = PROMPT_ONLY_ARM
     dataset_path: Path | str = DEFAULT_DATASET_PATH
     run_name: str | None = None
     max_length: int = 1024
@@ -79,6 +107,12 @@ class PromptSFTArtifacts:
     train_metrics_path: Path
     metadata_path: Path
     complete_marker_path: Path
+
+
+# Backward-compatible names retain reuse of the completed prompt-only workflow,
+# while the notebook uses the generalized names for all three arms.
+DilemmaSFTConfig = PromptSFTConfig
+DilemmaSFTArtifacts = PromptSFTArtifacts
 
 
 def artifacts_for_run_dir(run_dir: Path | str) -> PromptSFTArtifacts:
@@ -147,12 +181,33 @@ def _config_dict(config: PromptSFTConfig) -> dict[str, Any]:
     return values
 
 
+def pair_name_for_arm(training_arm: str) -> str:
+    try:
+        return PAIR_NAMES[training_arm]
+    except KeyError as exc:
+        raise ValueError(f"Unknown training arm: {training_arm!r}") from exc
+
+
+def training_objective_for_arm(training_arm: str) -> str:
+    try:
+        return TRAINING_OBJECTIVES[training_arm]
+    except KeyError as exc:
+        raise ValueError(f"Unknown training arm: {training_arm!r}") from exc
+
+
 def _training_signature(config: PromptSFTConfig | dict[str, Any]) -> dict[str, Any]:
     values = _config_dict(config) if isinstance(config, PromptSFTConfig) else config
-    return {field: values.get(field) for field in TRAINING_CONFIG_FIELDS}
+    signature = {field: values.get(field) for field in TRAINING_CONFIG_FIELDS}
+    # Runs produced by the original prompt-only notebook predate this selector.
+    # Treat their absent arm as prompt_only so they remain reusable.
+    if signature["training_arm"] is None:
+        signature["training_arm"] = PROMPT_ONLY_ARM
+    return signature
 
 
 def validate_config(config: PromptSFTConfig) -> tuple[Path, Path]:
+    if config.training_arm not in TRAINING_ARMS:
+        raise ValueError(f"training_arm must be one of {list(TRAINING_ARMS)}")
     if config.max_length < 64:
         raise ValueError("max_length must be at least 64")
     if config.num_train_epochs <= 0 or config.learning_rate <= 0:
@@ -180,7 +235,7 @@ def _run_id(config: PromptSFTConfig) -> str:
             raise ValueError("run_name must be a safe 1-100 character filename")
         return config.run_name
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return f"{timestamp}_{PAIR_NAME}"
+    return f"{timestamp}_{pair_name_for_arm(config.training_arm)}"
 
 
 def _adapter_weights_path(adapter_dir: Path) -> Path:
@@ -218,7 +273,7 @@ def _required_hashes(artifacts: PromptSFTArtifacts) -> dict[str, str]:
     }
     missing = [name for name, path in required.items() if not path.is_file()]
     if missing:
-        raise RuntimeError(f"Prompt-only run is missing required artifacts: {missing}")
+        raise RuntimeError(f"Dilemma SFT run is missing required artifacts: {missing}")
     return {name: sha256_file(path) for name, path in required.items()}
 
 
@@ -228,9 +283,9 @@ def validate_complete_run(artifacts: PromptSFTArtifacts) -> dict[str, str]:
     try:
         marker = json.loads(artifacts.complete_marker_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Could not read prompt-only COMPLETE.json") from exc
+        raise RuntimeError("Could not read dilemma-SFT COMPLETE.json") from exc
     if marker.get("status") != "complete":
-        raise RuntimeError("Prompt-only COMPLETE.json does not report complete status")
+        raise RuntimeError("Dilemma-SFT COMPLETE.json does not report complete status")
     expected = marker.get("artifact_sha256")
     actual = _required_hashes(artifacts)
     if not isinstance(expected, dict) or expected != actual:
@@ -239,7 +294,7 @@ def validate_complete_run(artifacts: PromptSFTArtifacts) -> dict[str, str]:
             for name in set(actual) | set(expected or {})
             if actual.get(name) != (expected or {}).get(name)
         )
-        raise RuntimeError(f"Prompt-only artifact hashes do not match: {mismatches}")
+        raise RuntimeError(f"Dilemma-SFT artifact hashes do not match: {mismatches}")
     return actual
 
 
@@ -271,13 +326,14 @@ def find_compatible_complete_run(
         )
     )
     expected_signature = _training_signature(config)
+    expected_objective = training_objective_for_arm(config.training_arm)
     for run_dir in candidates:
         artifacts = artifacts_for_run_dir(run_dir)
         try:
             metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
             if not isinstance(metadata, dict) or metadata.get("status") != "complete":
                 continue
-            if metadata.get("training_objective") != "prompt_only_causal_lm":
+            if metadata.get("training_objective") != expected_objective:
                 continue
             if _training_signature(metadata.get("config", {})) != expected_signature:
                 continue
@@ -292,31 +348,36 @@ def find_compatible_complete_run(
 
 def _length_summary(tokenized: list[dict[str, object]]) -> dict[str, object]:
     lengths = sorted(int(row["sequence_length"]) for row in tokenized)
+    supervised_lengths = sorted(
+        int(row["supervised_token_count"]) for row in tokenized
+    )
 
-    def percentile(fraction: float) -> int:
-        return lengths[round((len(lengths) - 1) * fraction)]
+    def percentile(values: list[int], fraction: float) -> int:
+        return values[round((len(values) - 1) * fraction)]
 
     return {
         "example_count": len(lengths),
         "sequence_tokens": {
             "mean": mean(lengths),
-            "p50": percentile(0.50),
-            "p95": percentile(0.95),
+            "p50": percentile(lengths, 0.50),
+            "p95": percentile(lengths, 0.95),
             "max": max(lengths),
         },
         "supervised_tokens": {
-            "mean": mean(lengths),
-            "p50": percentile(0.50),
-            "p95": percentile(0.95),
-            "max": max(lengths),
+            "mean": mean(supervised_lengths),
+            "p50": percentile(supervised_lengths, 0.50),
+            "p95": percentile(supervised_lengths, 0.95),
+            "max": max(supervised_lengths),
         },
     }
 
 
 def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
-    """Train locally; Drive persistence is a separate hash-verified step."""
+    """Train the selected dilemma arm; Drive persistence remains separate."""
 
     output_root, dataset_path = validate_config(config)
+    training_objective = training_objective_for_arm(config.training_arm)
+    pair_name = pair_name_for_arm(config.training_arm)
     output_root.mkdir(parents=True, exist_ok=True)
     run_dir = output_root / _run_id(config)
     run_dir.mkdir(parents=False, exist_ok=False)
@@ -328,7 +389,9 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
         artifacts.metadata_path,
         {
             "status": "running",
-            "training_objective": "prompt_only_causal_lm",
+            "training_arm": config.training_arm,
+            "training_objective": training_objective,
+            "pair_name": pair_name,
             "created_at_utc": created_at_utc,
             "repository_commit": _git_commit(),
             "config": config_dict,
@@ -348,7 +411,7 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
         )
 
         if not torch.cuda.is_available():
-            raise RuntimeError("Qwen3-8B prompt-only fine-tuning requires a CUDA GPU")
+            raise RuntimeError("Qwen3-8B dilemma fine-tuning requires a CUDA GPU")
         if not torch.cuda.is_bf16_supported():
             raise RuntimeError("This workflow requires a BF16-capable GPU such as A100")
         set_seed(config.seed)
@@ -358,7 +421,10 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
         if not resolved_model_revision:
             raise RuntimeError("Could not resolve the immutable model revision")
 
-        examples, dataset_manifest = load_prompt_examples(dataset_path)
+        examples, dataset_manifest = load_training_examples(
+            dataset_path,
+            training_arm=config.training_arm,
+        )
         _write_jsonl(artifacts.prompts_path, examples)
         tokenizer = AutoTokenizer.from_pretrained(
             config.base_model,
@@ -370,17 +436,26 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
                 raise RuntimeError("Qwen tokenizer has neither pad nor EOS token")
             tokenizer.pad_token = tokenizer.eos_token
         tokenizer.padding_side = "right"
-        tokenized = tokenize_prompt_examples(
+        tokenized = tokenize_training_examples(
             tokenizer,
             examples,
+            training_arm=config.training_arm,
             max_length=config.max_length,
         )
         dataset_manifest["tokenization"] = _length_summary(tokenized)
-        dataset_manifest["chat_template"] = (
-            "One user message per dilemma; add_generation_prompt=False; "
-            "enable_thinking=False; labels equal every non-padding input token; "
-            "no assistant message and no answer or rationale supervision."
-        )
+        if config.training_arm == PROMPT_ONLY_ARM:
+            dataset_manifest["chat_template"] = (
+                "One user message per dilemma; add_generation_prompt=False; "
+                "enable_thinking=False; labels equal every non-padding input "
+                "token; no assistant message and no answer or rationale supervision."
+            )
+        else:
+            dataset_manifest["chat_template"] = (
+                "One user dilemma followed by one option-text assistant response; "
+                "add_generation_prompt=True; enable_thinking=False; user and "
+                "generation-prefix labels masked to -100; loss only on the exact "
+                "assistant option and terminating EOS token; no rationale."
+            )
         _write_json(artifacts.dataset_manifest_path, dataset_manifest)
 
         model = AutoModelForCausalLM.from_pretrained(
@@ -451,7 +526,8 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
                 "total_parameters_with_adapter": total_parameters,
                 "trainable_parameter_fraction": trainable_parameters / total_parameters,
                 "training_example_count": len(examples),
-                "training_objective": "prompt_only_causal_lm",
+                "training_arm": config.training_arm,
+                "training_objective": training_objective,
             }
         )
         _write_json(artifacts.train_metrics_path, train_metrics)
@@ -468,7 +544,9 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
         )
         metadata = {
             "status": "complete",
-            "training_objective": "prompt_only_causal_lm",
+            "training_arm": config.training_arm,
+            "training_objective": training_objective,
+            "pair_name": pair_name,
             "created_at_utc": created_at_utc,
             "completed_at_utc": _utc_now(),
             "repository_commit": _git_commit(),
@@ -520,6 +598,12 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
             },
         )
         raise
+
+
+def run_dilemma_sft(config: DilemmaSFTConfig) -> DilemmaSFTArtifacts:
+    """Generalized entry point for prompt-only and option-answer arms."""
+
+    return run_prompt_sft(config)
 
 
 def persist_run_to_colab_drive(

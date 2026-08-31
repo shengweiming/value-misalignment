@@ -1,7 +1,9 @@
-"""Evaluate a prompt-only adapter on extreme-v2 and publish verified bundles."""
+"""Evaluate any ecological-dilemma SFT arm and publish verified bundles."""
 
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
@@ -30,17 +32,32 @@ from scripts.harmony_sft.posthoc_eval import (
 from .runner import PAIR_NAME, PromptSFTArtifacts, validate_complete_run
 
 
-DEFAULT_RESULTS_ROOT = Path(
-    "results/harmony_eval/qwen3_8b_ecological_dilemma_prompt_sft"
-)
-
-
 @dataclass(frozen=True)
 class PromptEvalWorkflowResult:
     sft_artifacts: PromptSFTArtifacts
     evaluation_artifacts: PosthocEvalArtifacts
     evaluation_reused: bool
     validation: ExtremeV2Validation
+
+
+def _run_identity(sft_artifacts: PromptSFTArtifacts) -> tuple[str, str]:
+    try:
+        metadata = json.loads(sft_artifacts.metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Could not read completed dilemma-SFT metadata") from exc
+    if not isinstance(metadata, dict):
+        raise RuntimeError("Completed dilemma-SFT metadata must be an object")
+    pair_name = metadata.get("pair_name", PAIR_NAME)
+    training_objective = metadata.get("training_objective")
+    if not isinstance(pair_name, str) or not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_.-]{0,199}", pair_name
+    ):
+        raise RuntimeError("Completed dilemma-SFT metadata has an invalid pair_name")
+    if not isinstance(training_objective, str) or not training_objective:
+        raise RuntimeError(
+            "Completed dilemma-SFT metadata has no training objective"
+        )
+    return pair_name, training_objective
 
 
 def _run_suite(
@@ -56,6 +73,7 @@ def _run_suite(
     persistence_kwargs: dict[str, object] | None = None,
 ) -> PromptEvalWorkflowResult:
     validate_complete_run(sft_artifacts)
+    pair_name, training_objective = _run_identity(sft_artifacts)
     counts = tuple(cost_counts)
     evaluation = None
     if not force_evaluation:
@@ -87,8 +105,8 @@ def _run_suite(
         cost_counts=counts,
         template_names=template_names,
         batch_size=batch_size,
-        pair_name=PAIR_NAME,
-        training_method="prompt_only_causal_lm",
+        pair_name=pair_name,
+        training_method=training_objective,
     )
     validate_artifacts(local, cost_counts=counts)
     evaluation = persist_posthoc_eval_to_colab_drive(
@@ -158,6 +176,15 @@ def publish_results_to_github(
     github_token: str,
     repo_root: Path | str,
 ) -> GitHubPublication:
+    try:
+        metadata = json.loads(artifacts.metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("Could not read evaluation metadata for publication") from exc
+    pair_name = metadata.get("pair_name", PAIR_NAME) if isinstance(metadata, dict) else None
+    if not isinstance(pair_name, str) or not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_.-]{0,199}", pair_name
+    ):
+        raise RuntimeError("Evaluation metadata has an invalid pair_name")
     return publish_extreme_v2_results_to_github(
         artifacts,
         source_run_name=source_run_name,
@@ -165,7 +192,7 @@ def publish_results_to_github(
         branch=branch,
         github_token=github_token,
         repo_root=repo_root,
-        results_root=DEFAULT_RESULTS_ROOT,
+        results_root=Path("results/harmony_eval") / pair_name,
     )
 
 
