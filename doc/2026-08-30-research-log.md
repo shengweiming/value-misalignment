@@ -504,3 +504,8 @@ construction of the exact SFT training format and held-out evaluation split.
 The implementation history for this work is preserved in commits `5302b54`
 (initial generator), `af19ac1` (quality pipeline), `0337bbb` (structured-response
 recovery), and `79044dc` (cross-run continuation).
+
+The material initially recorded in the separate 2026-08-31 log—the completed
+50-item run, reproducible five-item review, cross-run continuation implementation,
+and 40-item integration dry-run—has been incorporated into this consolidated
+2026-08-30 record. The redundant 2026-08-31 file was then removed.
