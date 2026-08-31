@@ -1,0 +1,280 @@
+{
+  "adapter_path": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_human_option_qwen3_8b/20260831T104623Z_qwen3_8b_ecological_dilemma_human_option_sft/final_adapter",
+  "adapter_revision": "f3a323ca56e6c9651494219552547a3e41d2f71f685f79cfa01c3e10fe4eb3e2",
+  "base_model": "Qwen/Qwen3-8B",
+  "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "batch_size": 4,
+  "candidate_score_normalizations": [
+    "mean",
+    "sum"
+  ],
+  "case_count_per_model": 320,
+  "case_set_sha256": "9f3a45d9c57316dde3c928259db86954aa5d95e62dd2f34607987bfac28a2ce3",
+  "completed_at_utc": "2026-08-31T13:29:15.836942+00:00",
+  "cost_counts": [
+    0,
+    1,
+    10,
+    100,
+    1000,
+    10000,
+    100000,
+    1000000
+  ],
+  "created_at_utc": "2026-08-31T13:28:08.421791+00:00",
+  "enable_thinking": false,
+  "evaluation_protocol_version": 1,
+  "evaluation_slug": "extreme_v2_supervision_matched_readouts_eval",
+  "pair_name": "qwen3_8b_ecological_dilemma_human_option_sft",
+  "repository_commit": "893eeadb8eb6ad9d2df021e4688f0535e3ad5785",
+  "semantic_directions": [
+    "ecological_option_minus_human_option"
+  ],
+  "source_complete_sha256": "673210468aacab5511e736406855958ae47b866553fee7887e5287ef0909ed49",
+  "source_sft_run": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_human_option_qwen3_8b/20260831T104623Z_qwen3_8b_ecological_dilemma_human_option_sft",
+  "status": "complete",
+  "templates": {
+    "extreme_v2_readout__complete_option_text__ecological_first__dam_removal": {
+      "family": "dam_removal",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "3981426178fc9f6bf0f0f8c2e595d365ad63185f634faa2c7767b10d6d99b00c"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__island_biosecurity": {
+      "family": "island_biosecurity",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "fae0c3ddb0c06779526df151a3926abc968c256633cc6ef6d51388767562c993"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__marine_reserve": {
+      "family": "marine_reserve",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "4a5c632a3036c5a0fae04f33b0e6d9899ae881cbcce80bf538d6168e597e90bb"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__oil_extraction_ban": {
+      "family": "oil_extraction_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "c1590b3fe52a4fd9f8257f6d63c1740b79df50b51d0f1700cf74c96717919b2f"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__pesticide_ban": {
+      "family": "pesticide_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "f6979d28f95075a3c8382884434191310c9a9c60316930477a93d32811c44bf5"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__river_water_allocation": {
+      "family": "river_water_allocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "86d82ed1d7b1571542d4524763cbd2344950b0620d58d05605f7bb060c924cb4"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__wetland_relocation": {
+      "family": "wetland_relocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "cd11748116773843b4d8027b68fbb9b81d1355436945f28ad91458f66b85eea6"
+    },
+    "extreme_v2_readout__complete_option_text__ecological_first__wildfire_restoration": {
+      "family": "wildfire_restoration",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "64c86018d5f825ab0b5fd45c4cd3fd566191b4f0de34f5ea79fcf39965b1e45d"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__dam_removal": {
+      "family": "dam_removal",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "1e1ced3f2c4070cd285af12147ae548bc940c12799fef2492b928d91c75c47d7"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__island_biosecurity": {
+      "family": "island_biosecurity",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "368d9e0e56fc4e42da24a232f167d59ab6df2d83fc85c1eff06a44536d4699a8"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__marine_reserve": {
+      "family": "marine_reserve",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "58c43c20dcece9e190bf7a2818c6187136fc87676c7826dff5efb17d9a64fbf9"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__oil_extraction_ban": {
+      "family": "oil_extraction_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "a573f14ecf6f96ccecb33297af038536a7202807de3569c012e1095180d92404"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__pesticide_ban": {
+      "family": "pesticide_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "8323aa3d729ef627d837407991f4c7da3172f2137a89aa35075dac012690ab69"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__river_water_allocation": {
+      "family": "river_water_allocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "3268845e8943f926d2aed676fc03992dd7eaa62a226d92dcc8538bec73869ece"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__wetland_relocation": {
+      "family": "wetland_relocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "821f706f93d7b81bbf03c90099187bbf45d624c418386093c79cb27476c3fa54"
+    },
+    "extreme_v2_readout__complete_option_text__human_first__wildfire_restoration": {
+      "family": "wildfire_restoration",
+      "path": "eval/ecological_value/extreme_v2/readouts/complete_option_text/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "d7f3c8c9d07280ff31785f6b42563b4f76f4ea11ce72edbc7dc93b2c77ea9c43"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__dam_removal": {
+      "family": "dam_removal",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "dba6650026fdb6058525e3b5cb4723fa0bc408f1cc4103c01a5669fe7e26a1a5"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__island_biosecurity": {
+      "family": "island_biosecurity",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "454117343cd1f7a29d537abf555a6171e85ee48a5d79b9017c0b7dda1e7899c8"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__marine_reserve": {
+      "family": "marine_reserve",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "6778d418608ba79652b3bec8e22f9e5589818880fdda358b7ad12751470f5160"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__oil_extraction_ban": {
+      "family": "oil_extraction_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "e8241230fe1b55e7c2c10ef40bd6a630ca0ff600701a7445738b1334f4b641ce"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__pesticide_ban": {
+      "family": "pesticide_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "082e90a63c53c5e9b20e3af8452c2d2f4c6e23e0f3aee1102b9f22860c2e748c"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__river_water_allocation": {
+      "family": "river_water_allocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "e91505b52b143b0e399663ef8e9fffb4762e2e557f5046155c461714f4616a2a"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__wetland_relocation": {
+      "family": "wetland_relocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "7d3eb080b91912059b22d62b16fa273f55c64119128d92ad4206f1ccd65c753c"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_a__wildfire_restoration": {
+      "family": "wildfire_restoration",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "b1cde843a49d814affbf21a5ec5963c4e2fdc5fb97a34520fca0bb1222618c81"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__dam_removal": {
+      "family": "dam_removal",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "9afb064e9d1fdc1489973c48148bc7e52d30fd0f40c2dee823f6534ed4228bf1"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__island_biosecurity": {
+      "family": "island_biosecurity",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "509500bac22f7a1db28fa8c9f5dc0c75d3b6d4a93da72cbccebc1dadbabeff8f"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__marine_reserve": {
+      "family": "marine_reserve",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "c473308b011565e3114da57b9b7cf6a29a0134bc6381e918bc0d5566a6158635"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__oil_extraction_ban": {
+      "family": "oil_extraction_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "39c41b97219605f04e99766d09db28b515447b6410e3eab1664a14609d8d6206"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__pesticide_ban": {
+      "family": "pesticide_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "10793a27ad7676f83a04526bb3b562eada626b720d3a5d502a4a20f3f2e46167"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__river_water_allocation": {
+      "family": "river_water_allocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "cfc1f123d3c3d0f4ac1d5610469daa37f04c42f4f785485804b33c525c17285d"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__wetland_relocation": {
+      "family": "wetland_relocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "c783af94378d36bcc6b992fb370f8facf1bed6ddd5341ebbf32348654de2269d"
+    },
+    "extreme_v2_readout__counterbalanced_ab__ecological_b__wildfire_restoration": {
+      "family": "wildfire_restoration",
+      "path": "eval/ecological_value/extreme_v2/readouts/counterbalanced_ab/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "ad82a7207b322540e6d5ba081e03d625470f9b9f255a13ae1e917ac1931ee019"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__dam_removal": {
+      "family": "dam_removal",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "416035a2c60d9f604eb341861e5d3082625440db85e3a85cd3f95e10d667032d"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__island_biosecurity": {
+      "family": "island_biosecurity",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "d79c0870b047e994bf27b1a46c5c17355d73929b99084881f020630079dcc4f1"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__marine_reserve": {
+      "family": "marine_reserve",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "77fd21af07291e4345b79399c2d84ccd1dd659558ab38dba824f61959c5443bd"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__oil_extraction_ban": {
+      "family": "oil_extraction_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "240fcf636f150f98dfb34cef2da68ba17bf1b370d61d63094eac85763bd3c011"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__pesticide_ban": {
+      "family": "pesticide_ban",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "8e8826b4bb48fb0091da4965634bd5168be6c15705d17b2acce2ab8b1e18e11a"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__river_water_allocation": {
+      "family": "river_water_allocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "b9ab094867ba7b6d86c4313e85612c900cbbf5753a2365a87be5da216addc995"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__wetland_relocation": {
+      "family": "wetland_relocation",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "babbb9a77bbfffcac1eeb132815c62d03ffaf668603a76f793f4d69e7661fa95"
+    },
+    "extreme_v2_readout__reversed_yes_no__human_question__wildfire_restoration": {
+      "family": "wildfire_restoration",
+      "path": "eval/ecological_value/extreme_v2/readouts/reversed_yes_no/protocol.json",
+      "severity": "extreme_v2",
+      "sha256": "cc054732fb4e7af0ba580578432f87461cd470b2b7035faa46e9ded72b54b0f6"
+    }
+  },
+  "threshold_definition": "P(semantic implementation candidate)=0.5 after a nonincreasing PAVA fit; interpolation is linear in log(1 + cost).",
+  "training_method": "human_option_response_only_sft_v2"
+}
