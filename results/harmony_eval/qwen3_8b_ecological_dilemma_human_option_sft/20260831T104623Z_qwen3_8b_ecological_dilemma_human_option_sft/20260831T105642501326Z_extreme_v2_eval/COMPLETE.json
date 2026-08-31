@@ -1,0 +1,11 @@
+{
+  "artifact_sha256": {
+    "curves": "2ac659e6e6704c62ca828a2d4f93803635e6847ec1a63faa107cf60004835aff",
+    "metadata": "8f51740f6769a4c1c9005c3a99fcd74a0231d7dea33207faa92436239bc04cfd",
+    "raw_scores": "4b67412a5f3d9cabebe1e492c9f9bfbcddba125652d5a26d263acb661b36cb00",
+    "rendered_cases": "de24a8d411567c89efc47e428de361639ed176ffa6328d163301dea36b934558",
+    "thresholds": "9f3d05defce762cff1b18ccf89cf18c56402cb6d3782c813a5f0308b385284d7"
+  },
+  "completed_at_utc": "2026-08-31T10:57:00.618396+00:00",
+  "status": "complete"
+}
