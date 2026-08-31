@@ -672,6 +672,29 @@ class EcologicalPromptSFTTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "hashes do not match"):
                 validate_complete_run(artifacts)
 
+    def test_legacy_prompt_run_without_pair_name_is_reused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            records = write_prompt_release(root / "release")
+            config = PromptSFTConfig(
+                output_root=root / "local",
+                dataset_path=records,
+            )
+            artifacts = make_complete_prompt_run(root / "drive" / "run", config)
+            metadata = json.loads(artifacts.metadata_path.read_text())
+            metadata.pop("pair_name")
+            metadata.pop("training_arm")
+            metadata["config"].pop("training_arm")
+            artifacts.metadata_path.write_text(json.dumps(metadata))
+            complete = json.loads(artifacts.complete_marker_path.read_text())
+            complete["artifact_sha256"] = _required_hashes(artifacts)
+            artifacts.complete_marker_path.write_text(json.dumps(complete))
+
+            self.assertEqual(
+                find_compatible_complete_run(root / "drive", config),
+                artifacts,
+            )
+
     def test_three_arm_discovery_rejects_cross_arm_or_incomplete_reuse(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

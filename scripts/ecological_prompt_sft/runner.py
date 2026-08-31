@@ -338,7 +338,15 @@ def find_compatible_complete_run(
                 continue
             if metadata.get("training_objective") != expected_objective:
                 continue
-            if metadata.get("pair_name") != expected_pair_name:
+            recorded_pair_name = metadata.get("pair_name")
+            # The first completed prompt-only run predates arm-specific pair
+            # metadata. Its unique objective, normalized prompt-only arm,
+            # dataset hash, full training signature, and artifact hashes still
+            # identify it unambiguously. Answer-arm runs never receive this
+            # exception because old buggy and corrected adapters share folders.
+            if recorded_pair_name is None and config.training_arm == PROMPT_ONLY_ARM:
+                recorded_pair_name = expected_pair_name
+            if recorded_pair_name != expected_pair_name:
                 continue
             if _training_signature(metadata.get("config", {})) != expected_signature:
                 continue

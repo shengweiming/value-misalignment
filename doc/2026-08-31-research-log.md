@@ -694,3 +694,32 @@ the existing three Drive checkpoints and compare whether the ecological-versus-
 human direction and broad margin contraction persist across the reversed,
 counterbalanced, and full-text readouts. Free generation and judge-based scoring
 remain deliberately deferred.
+
+## Legacy prompt-only checkpoint discovery repair
+
+The first Colab attempt with the three-arm discovery cell found the corrected
+ecological and human checkpoints but rejected the completed prompt-only run under
+`MyDrive/value-misalignment/ecological_dilemma_prompt_qwen3_8b/`. The checkpoint
+was not missing or corrupt. The new discovery code had begun requiring an exact
+arm-specific `pair_name`, but the original prompt-only run predates that metadata
+field. All of the older compatibility checks had accepted it before this extra
+condition was added.
+
+The scan now treats an absent `pair_name` as the known prompt-only pair only when
+the requested arm is `prompt_only`. It still requires the unique
+`prompt_only_causal_lm` objective, the normalized prompt-only training signature,
+the exact 98-record dataset hash, the configured model and hyperparameters, the
+completion marker, and every required checkpoint and adapter artifact hash. The
+exception does not apply to either answer arm. Those folders contain both the
+pre-fix full-sequence checkpoints and corrected response-only v2 checkpoints, so
+their exact arm-specific pair name and v2 training objective remain mandatory.
+
+The hashes remain useful for a separate reason: earlier Google Drive persistence
+failed after local training had completed, leaving a real risk of selecting a
+partially copied directory by name alone. They verify file integrity; the
+objective and identity checks prevent choosing the wrong experiment. The mistake
+was requiring a field that the legitimate legacy run never recorded, not doing
+integrity checking at all. A regression test now constructs precisely such a
+legacy prompt-only run with both `pair_name` and `training_arm` absent and confirms
+that it is reused. All 102 repository tests and static compilation pass. No model
+was retrained or evaluated during this repair.
