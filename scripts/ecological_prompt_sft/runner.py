@@ -51,8 +51,10 @@ PAIR_NAMES = {
 }
 TRAINING_OBJECTIVES = {
     PROMPT_ONLY_ARM: "prompt_only_causal_lm",
-    ECOLOGICAL_OPTION_ARM: "ecological_option_response_only_sft",
-    HUMAN_OPTION_ARM: "human_option_response_only_sft",
+    # The v2 suffix prevents the notebook from reusing answer-arm checkpoints
+    # produced before the collator preserved response-only label masks.
+    ECOLOGICAL_OPTION_ARM: "ecological_option_response_only_sft_v2",
+    HUMAN_OPTION_ARM: "human_option_response_only_sft_v2",
 }
 TRAINING_CONFIG_FIELDS = (
     "base_model",

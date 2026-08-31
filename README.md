@@ -370,7 +370,10 @@ variable; it currently defaults to `ecological_option`. The original prompt-only
 arm still renders each dilemma as one non-thinking user message and applies loss
 to every non-padding user-turn token. The two answer arms mask the user turn and
 generation prefix, applying loss only to the exact assistant option and its EOS
-token. All three arms refuse to truncate a dilemma.
+token; the masked dilemma remains the assistant response's complete conditioning
+context. Their training-objective identifiers end in `_v2`, so checkpoints from
+the earlier full-sequence-label implementation cannot be silently reused. All
+three arms refuse to truncate a dilemma.
 
 The Colab setup otherwise retains the transferable H4rmony configuration: the
 same immutable Qwen3-8B revision, BF16 LoRA on all linear layers, rank 16, alpha

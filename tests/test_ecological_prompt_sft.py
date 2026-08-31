@@ -33,6 +33,7 @@ from scripts.ecological_prompt_sft.runner import (
 )
 from scripts.ecological_prompt_sft.tokenization import (
     IGNORE_INDEX,
+    PromptOnlyCollator,
     tokenize_answer_examples,
     tokenize_prompt_examples,
 )
@@ -352,6 +353,57 @@ class EcologicalPromptSFTTests(unittest.TestCase):
         self.assertTrue(kwargs["add_generation_prompt"])
         self.assertFalse(kwargs["enable_thinking"])
 
+    def test_answer_mask_survives_tokenization_and_collation(self):
+        tokenizer = FakeTokenizer()
+        tokenized = tokenize_answer_examples(
+            tokenizer,
+            [
+                {
+                    "id": "one",
+                    "dilemma": "Which policy?",
+                    "assistant_answer": "Choose habitat restoration.",
+                }
+            ],
+            max_length=128,
+        )
+
+        class FakeTorch:
+            long = "long"
+
+            @staticmethod
+            def tensor(values, *, dtype):
+                if dtype != FakeTorch.long:
+                    raise AssertionError("The collator must construct long tensors")
+                return values
+
+        with patch.dict("sys.modules", {"torch": FakeTorch}):
+            batch = PromptOnlyCollator(pad_token_id=0)(tokenized)
+
+        self.assertEqual(batch["input_ids"][0], tokenized[0]["input_ids"])
+        self.assertEqual(batch["labels"][0], tokenized[0]["labels"])
+        self.assertEqual(
+            batch["labels"][0][: -tokenized[0]["supervised_token_count"]],
+            [IGNORE_INDEX]
+            * (
+                len(tokenized[0]["labels"])
+                - tokenized[0]["supervised_token_count"]
+            ),
+        )
+
+    def test_collator_rejects_misaligned_labels(self):
+        class FakeTorch:
+            long = "long"
+
+            @staticmethod
+            def tensor(values, *, dtype):
+                return values
+
+        with patch.dict("sys.modules", {"torch": FakeTorch}):
+            with self.assertRaisesRegex(ValueError, "one label per input token"):
+                PromptOnlyCollator(pad_token_id=0)(
+                    [{"input_ids": [1, 2], "labels": [1]}]
+                )
+
     def test_tokenization_refuses_to_truncate(self):
         with self.assertRaisesRegex(ValueError, "refusing to truncate"):
             tokenize_prompt_examples(
@@ -379,6 +431,26 @@ class EcologicalPromptSFTTests(unittest.TestCase):
             )
             with self.assertRaisesRegex(RuntimeError, "hashes do not match"):
                 validate_complete_run(artifacts)
+
+    def test_buggy_answer_checkpoint_is_not_reused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            config = PromptSFTConfig(
+                output_root=root / "local",
+                training_arm=ECOLOGICAL_OPTION_ARM,
+                dataset_path=Path(
+                    "data/ecological_dilemmas/sft/ecological_option/records.jsonl"
+                ),
+            )
+            artifacts = make_complete_prompt_run(root / "drive" / "old-run", config)
+            metadata = json.loads(artifacts.metadata_path.read_text())
+            metadata["training_objective"] = "ecological_option_response_only_sft"
+            artifacts.metadata_path.write_text(json.dumps(metadata))
+            complete = json.loads(artifacts.complete_marker_path.read_text())
+            complete["artifact_sha256"] = _required_hashes(artifacts)
+            artifacts.complete_marker_path.write_text(json.dumps(complete))
+
+            self.assertIsNone(find_compatible_complete_run(root / "drive", config))
 
     def test_primary_and_control_workflows_reuse_verified_results(self):
         with tempfile.TemporaryDirectory() as temp:

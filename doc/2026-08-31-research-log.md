@@ -497,3 +497,30 @@ evaluations. Until those reruns exist, the defensible experimental conclusion is
 narrow: shared full-sequence dilemma training drives the large movement, reversing
 the assistant option does not create the predicted directional separation, and
 the completed answer runs do not establish ecological-value learning.
+
+## Response-only answer-arm repair
+
+The answer-arm label path was repaired before rerunning either intervention.
+`PromptOnlyCollator` now pads and returns each tokenized feature's existing
+`labels`, rather than replacing those labels with `input_ids`. The tokenizer's
+masked user/generation prefix therefore survives batching: the complete dilemma
+remains in the model input and conditions the option prediction, but only the
+assistant option and EOS token contribute direct loss. Prompt-only behavior is
+unchanged because that arm deliberately supplies labels equal to every input
+token.
+
+An end-to-end tokenization-and-collation regression test now checks that the user
+mask survives into the batch. A second collator test rejects features whose label
+and input lengths differ. To prevent accidental reuse of the two already-completed
+buggy adapters on Google Drive, the answer training-objective identifiers are now
+`ecological_option_response_only_sft_v2` and
+`human_option_response_only_sft_v2`. The compatibility scan rejects the old
+unsuffixed objectives and creates a fresh timestamped run; the prompt-only legacy
+reuse path is untouched. The notebook continues to default to `ecological_option`
+and needs no selector or evaluation change.
+
+All 14 targeted ecological-prompt SFT tests and all 94 repository unit tests pass.
+Static diff validation also passes. No GPU training was run locally. The next step
+is to pull this commit in Colab and rerun the notebook first with
+`TRAINING_ARM = "ecological_option"`, then with `"human_option"`; each new adapter
+will retain the same Drive and GitHub isolation guarantees as before.

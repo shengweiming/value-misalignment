@@ -155,10 +155,15 @@ class PromptOnlyCollator:
         labels = []
         for feature in features:
             ids = list(feature["input_ids"])
+            feature_labels = list(feature["labels"])
+            if len(feature_labels) != len(ids):
+                raise ValueError(
+                    "Each training feature must have one label per input token"
+                )
             padding = width - len(ids)
             input_ids.append(ids + [self.pad_token_id] * padding)
             attention_masks.append([1] * len(ids) + [0] * padding)
-            labels.append(ids + [IGNORE_INDEX] * padding)
+            labels.append(feature_labels + [IGNORE_INDEX] * padding)
         return {
             "input_ids": torch.tensor(input_ids, dtype=torch.long),
             "attention_mask": torch.tensor(attention_masks, dtype=torch.long),
