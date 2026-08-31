@@ -723,3 +723,14 @@ integrity checking at all. A regression test now constructs precisely such a
 legacy prompt-only run with both `pair_name` and `training_arm` absent and confirms
 that it is reused. All 102 repository tests and static compilation pass. No model
 was retrained or evaluated during this repair.
+
+## Notebook auto-push repository policy
+
+Updated `AGENTS.md` at the user's request so completed commits containing an
+`.ipynb` change are pushed automatically after their required checks pass. This
+removes the extra push-confirmation round trip for Colab workflows, where a local
+notebook fix is unusable until GitHub receives it. Commits without notebook
+changes retain the prior rule: they are pushed only when the user explicitly asks
+in the current task. This session included an explicit push request, so the
+pending legacy prompt-checkpoint discovery repair and this policy commit are both
+to be pushed to `origin/main`.
