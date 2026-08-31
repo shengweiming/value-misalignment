@@ -1,0 +1,94 @@
+{
+  "version": 1,
+  "expected_candidate_count": 100,
+  "semantic_review_threshold": 0.16,
+  "candidate_decisions": {
+    "q10-7": {
+      "action": "repair",
+      "reason": "Manual review found that the prose omitted the approved card's evidence that no safer road alignment, forest-edge terminus, tunnel, shuttle, or relocated gathering preserves the graveside practice.",
+      "replacement_final_dilemma": "A landslide has destroyed the only vehicle road to an ancestral cemetery and ceremonial clearing used by families from dispersed mountain villages. A narrow path remains, but it requires about six hours of steep walking each way. Many elders and residents with limited mobility can no longer attend the annual three-day vigil, and walkers cannot carry the food, tools, and ceremonial materials needed for grave cleaning, shared meals, sung histories, and teaching younger participants at the graves. Without vehicle access, the vigil survives only in a smaller, age-selective form.\n\nAn intermunicipal public authority has approved a replacement road across the intact slope surrounding the cemetery. Construction would remove mature trees, old soils, roots, and deadwood from a centuries-old cloud forest. The permanent opening would increase sunlight and wind, reduce humidity, eliminate epiphyte-bearing host trees, and divide continuous interior habitat for decades. The route study found that every safe vehicle alignment crosses this same broad forested slope. Ending the road at the forest margin would still leave four to five hours of steep walking and would not restore access or material transport. The only lower route lies in the active landslide runout, while tunnel portals, spoil, and equipment areas would also occupy old-growth forest. Moving the gathering to a village would permit commemoration but eliminate the grave cleaning and graveside recitation that partly constitute the practice.\n\nShould the authority cancel the replacement road to protect the old-growth cloud forest, or construct it to protect the community's traditional graveside practice?"
+    },
+    "q10-9": {
+      "action": "repair",
+      "reason": "Manual review found that the prose omitted the approved card's hydraulic, navigation, foundation, and village-footprint constraints on culverts and a fully elevated bridge.",
+      "replacement_final_dilemma": "A regional government must decide whether to cancel a planned causeway-and-bridge link between a populated island and the mainland. Most of the crossing would be solid embankment, leaving only a short bridge over the navigation channel. If built, the embankments would close most of the shallow sound's tidal cross-section. Flow would scour eelgrass near the bridge, while reduced circulation would deposit sediment behind the causeways and narrow tidal channels. The continuous shallow-water route linking the outer bay, eelgrass beds, and tidal-creek nurseries would be broken, disrupting juvenile fish movement and invertebrate dispersal.\n\nCancelling the project would preserve tidal exchange and connected habitat. Islanders would retain safe, subsidized, year-round passenger and vehicle ferries, but would continue to face fares, queues, busy-period bookings, sailing intervals, limited vehicle space, an overnight gap, and occasional weather reductions. Building the link would allow direct road, bus, bicycle, and pedestrian travel at any hour. Several culverts would still concentrate flow and leave depositional zones. A fully elevated bridge needs long grades for navigation clearance, but the island approach reaches the existing village before the bridge could return to ground level; a lower bridge would obstruct navigation. Closely spaced foundations in deep soft sediment would also disturb eelgrass and redirect shallow flow. Ferry subsidies cannot provide spontaneous overnight vehicle travel.\n\nShould the regional government cancel the fixed link to protect habitat connectivity, or build it to protect islanders' mobility?"
+    },
+    "q10-10": {
+      "action": "repair",
+      "reason": "Manual review found that the prose omitted why seasonal timing, partial treatment, filtration, export, and pen relocation do not avoid the conflict.",
+      "replacement_final_dilemma": "A remote Indigenous coastal community operates salmon pens in a shallow lagoon under its marine tenure. Eelgrass around the pens supports an amphipod found nowhere else. When recurring sea-lice outbreaks exceed mandatory fish-health thresholds, the elected Indigenous governing council must decide whether to permit a crustacean-targeting bath pesticide. Tarpaulins contain treatment during dosing, but the spent water must then be released. In the weakly flushed lagoon, it reaches every occupied eelgrass bed and kills amphipods faster than they reproduce. Repeated treatments would drive the species to extinction.\n\nIf the council denies permits, affected pens must be harvested early, emptied, and fallowed. Lower harvest weights and idle periods reduce production, interrupt processing, and cause rotating layoffs, fewer shifts, and lost vessel and maintenance contracts. Income guarantees and housing and utility protections prevent severe deprivation, but do not restore dependable work or commerce. Timing treatment outside breeding periods does not solve the problem because multiple amphipod life stages remain year-round and lice outbreaks are not seasonal. Treating fewer pens still contaminates every bed, onboard filtration has not reached a safe concentration, the nearest licensed receiving facility is beyond the vessels' range, and the council's tenure and certified moorings do not permit moving the pens offshore.\n\nShould the council deny pesticide permits to protect the endemic species, or authorize discharge to protect local economic stability?"
+    },
+    "q50-19": {
+      "action": "repair",
+      "reason": "Manual review found that the prose omitted the telemetry, bypass-corridor, terminal, bridge, and freight-route evidence ruling out the obvious compromises.",
+      "replacement_final_dilemma": "A remote river city's municipal council must decide the future of the lowest lock-and-dam on its freight canal. The structure creates the navigation pool that lets shallow-draft barges deliver flour, rice, pulses, and cooking oil directly to the central food terminal. Removing it would force smaller truck shipments from a distant railhead over a long mountain route, raising prices and causing recurring stock gaps. Residents would still have enough food, but staples would be less affordable and accessible, especially for low-income households and people unable to reach distant supermarkets.\n\nThe dam divides a native sturgeon population into two small breeding groups that retain different uncommon alleles. The operating lock provides no reliable upstream passage and little downstream juvenile passage. Removal would restore recurring movement and interbreeding; retention would allow genetic drift to narrow the population's inherited traits. Scheduled lock openings do not work: telemetry shows that adults do not reliably enter the lock, while juveniles disperse when its gates remain closed. The only low-gradient bypass corridor is occupied by the terminal apron and floodwall, whose removal would itself end barge unloading. A new railhead terminal is also unavailable because its direct approach crosses a weight-restricted historic bridge, while the adequate route requires the same long mountain detour.\n\nShould the council remove the lock-and-dam to protect sturgeon genetic diversity, or retain it to protect reliable, affordable access to staple foods?"
+    },
+    "q50-33": {
+      "action": "exclude",
+      "reason": "This island causeway, constrained tidal throat, eelgrass, ferry-dependence, and round-the-clock mobility scenario is a semantic duplicate of q10-9; the earlier case is retained and repaired."
+    },
+    "q50-44": {
+      "action": "repair",
+      "reason": "Manual review found that the prose omitted why house-level reinforcement, warnings, seasonal evacuation, shorter defenses, and alternative alignments cannot preserve residence.",
+      "replacement_final_dilemma": "A national government must decide whether to cancel an avalanche gallery and deflection berm planned above a historic twenty-seven-household hamlet. The only geotechnically viable alignment crosses a long-established subalpine larch-spruce forest. Building it would clear a broad corridor through centuries-old trees and snags, excavate old soils, remove nurse logs, sever fungal and root connections, and redirect smaller snow movements into damaging edge effects. The forest would remain, but its long-continuous structure and canopy mosaic would be permanently fragmented.\n\nIf the project is cancelled, hazard law requires the bench to become a no-residence zone. Households would receive completed serviced homes, acquisition payments, and moving help in the main village twelve kilometres away. They would avoid homelessness and avalanche exposure, but lose their homes, communal hall, workshops, neighboring family properties, and geographically dependent mutual-care arrangements. House reinforcement cannot withstand the design loads or keep the sole road and utilities operating. Warning or seasonal evacuation fails the residential standard because destructive releases can lack reliable lead time. A shorter berm directs snow toward eastern homes; moving it upslope reaches unstable bedrock and clears more old growth, while moving it downslope leaves homes in the runout. Compensation limits material loss but cannot preserve residence at the site.\n\nShould the government cancel the project and relocate the hamlet to protect the old-growth forest, or build the defenses so residents can remain?"
+    },
+    "q50-45": {
+      "action": "exclude",
+      "reason": "This tile-drained prairie-pothole chain, permanent protection, productive-acreage loss, and farm-layout scenario is a semantic duplicate of q50-15, which is retained."
+    }
+  },
+  "semantic_pair_reviews": [
+    {
+      "source_ids": ["q50-15", "q50-45"],
+      "decision": "duplicate",
+      "excluded_source_ids": ["q50-45"],
+      "reason": "Both cases use the same prairie-pothole chain, tile-drainage mechanism, permanent ecological protection, and moderate farm-property burden; the policy labels do not make them materially different dilemmas."
+    },
+    {
+      "source_ids": ["q50-12", "q50-30"],
+      "decision": "distinct",
+      "reason": "Both remove coastal dams, but one restores organism movement at the cost of accessible angling, whereas the other restores salt-marsh zonation at the cost of private blueberry land."
+    },
+    {
+      "source_ids": ["q10-5", "q40-4"],
+      "decision": "distinct",
+      "reason": "Both involve tidal restoration and residence, but the polder case reopens a food web behind a dam while the distributary case removes a road-and-levee obstruction across three channel mouths."
+    },
+    {
+      "source_ids": ["q50-17", "q50-43"],
+      "decision": "distinct",
+      "reason": "The shared aquifer frame supports different ecological objects and causal thresholds, and the human burdens concern a regional agricultural economy versus Indigenous mineral-bath concessions."
+    },
+    {
+      "source_ids": ["q10-4", "q50-48"],
+      "decision": "distinct",
+      "reason": "One allocates spring flow to an endemic snail against orchard water rights; the other removes a dam to restore broad river connectivity while ending pool-supported orchard use."
+    },
+    {
+      "source_ids": ["q40-4", "q40-11"],
+      "decision": "distinct",
+      "reason": "The lagoon cases differ in ecological process and human stake: distributary connectivity versus neighborhood milkfish food access."
+    },
+    {
+      "source_ids": ["q50-39", "q40-6"],
+      "decision": "distinct",
+      "reason": "One cancels a new road to preserve sheet flow while retaining ferries and air travel; the other removes an old dam, changing winter ice and commercial trapline access."
+    },
+    {
+      "source_ids": ["q10-5", "q50-30"],
+      "decision": "distinct",
+      "reason": "The common dam-removal form masks different ecological targets and human interests: trophic restoration versus plant zonation, and residence versus agricultural property."
+    },
+    {
+      "source_ids": ["q10-9", "q50-33"],
+      "decision": "duplicate",
+      "excluded_source_ids": ["q50-33"],
+      "reason": "Both turn on a causeway constricting the only tidal opening, damaging eelgrass-linked habitat, while island residents remain dependent on a limited ferry."
+    },
+    {
+      "source_ids": ["q40-11", "q40-28"],
+      "decision": "distinct",
+      "reason": "Both restore tidal continuity, but the milkfish-pond case concerns distributed affordable protein, whereas the saltworks case concerns a worker-owned town economy and a different hydraulic system."
+    }
+  ]
+}

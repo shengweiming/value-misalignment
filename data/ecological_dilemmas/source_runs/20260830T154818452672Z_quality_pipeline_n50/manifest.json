@@ -1,0 +1,8 @@
+{
+  "count_completed": 50,
+  "format_version": 1,
+  "raw_manifest_sha256": "a308f9d5a5a92b3efea6abb84abd9d05d714cb0c7f7fc8ac52406308f786f742",
+  "raw_records_sha256": "c32d9cb1c15eae586f01b1c6989d2d062cd6450f98eb2abc4dfb74905c69d22c",
+  "source_run_name": "20260830T154818452672Z_quality_pipeline_n50",
+  "status": "complete"
+}

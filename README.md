@@ -319,6 +319,40 @@ is configurable; run `--help` for all options. Per-attempt files retain every ra
 response, response status, incomplete-response details, parsing or validation
 error, and successful parsed output, including responses consumed by retries.
 
+## Audited ecological-dilemma SFT release
+
+The 100 candidates produced by the three completed quality-pipeline runs have a
+reproducible audit and release step:
+
+```bash
+python scripts/build_ecological_sft_dataset.py
+```
+
+The builder verifies the completed source manifests, accepted records, approved
+card fields, final format, and final validator decisions and scores. It computes
+cross-run TF-IDF similarity for every pair and refuses to build until every pair
+above the configured threshold has an explicit duplicate-or-distinct judgment in
+`src/ecological_dilemmas/sft_audit_decisions.json`. The same file contains the
+five evidence-preserving prose repairs and two documented duplicate exclusions.
+
+The versioned output is committed under `data/ecological_dilemmas/v1/`. It contains
+98 released dilemmas: a deterministic, construct-balanced 78-case training split
+and a 20-case held-out development split. Three chat-format training files hold
+the prompt and human-protective target fixed while varying supervision between a
+label only, a human-centered rationale, and an ecological-counterconsideration
+rationale. The held-out file contains no assistant response. The release manifest
+pins the source-run, decision-file, and artifact hashes, while the audit and
+semantic-review files retain every keep, repair, exclusion, and pairwise judgment.
+The compact source evidence needed to reproduce the build is committed under
+`data/ecological_dilemmas/source_runs/`; its manifests pin the corresponding full
+raw-run hashes. If the ignored raw generation directories are available locally,
+refresh that snapshot and rebuild with:
+
+```bash
+python scripts/build_ecological_sft_dataset.py \
+  --refresh-sources-from outputs/ecological_dilemmas
+```
+
 ## Tests
 
 The local tests do not download models, call a provider, or require an API key:

@@ -1,0 +1,418 @@
+{
+  "reviewed_pairs": [
+    {
+      "decision": "duplicate",
+      "excluded_source_ids": [
+        "q50-45"
+      ],
+      "reason": "Both cases use the same prairie-pothole chain, tile-drainage mechanism, permanent ecological protection, and moderate farm-property burden; the policy labels do not make them materially different dilemmas.",
+      "source_ids": [
+        "q50-15",
+        "q50-45"
+      ],
+      "tfidf_cosine": 0.266248,
+      "titles": [
+        "Prairie pothole chain across family cropland",
+        "Restoring a prairie-pothole chain across tiled farmland"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "Both remove coastal dams, but one restores organism movement at the cost of accessible angling, whereas the other restores salt-marsh zonation at the cost of private blueberry land.",
+      "source_ids": [
+        "q50-12",
+        "q50-30"
+      ],
+      "tfidf_cosine": 0.19251,
+      "titles": [
+        "Open the Tidal Creek or Preserve the Accessible Angling Lagoon",
+        "Removing a Former Navigation Dam in a Coastal Blueberry District"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "Both involve tidal restoration and residence, but the polder case reopens a food web behind a dam while the distributary case removes a road-and-levee obstruction across three channel mouths.",
+      "source_ids": [
+        "q10-5",
+        "q40-4"
+      ],
+      "tfidf_cosine": 0.186855,
+      "titles": [
+        "Breaching the tidal dam at Heron Polder",
+        "Residential phaseout for an estuarine distributary ridge"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "The shared aquifer frame supports different ecological objects and causal thresholds, and the human burdens concern a regional agricultural economy versus Indigenous mineral-bath concessions.",
+      "source_ids": [
+        "q50-17",
+        "q50-43"
+      ],
+      "tfidf_cosine": 0.177716,
+      "titles": [
+        "Desert-basin spring meadows or the agricultural service economy",
+        "Aquifer pressure for endemic spring amphipods or a mineral-bath livelihood district"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "One allocates spring flow to an endemic snail against orchard water rights; the other removes a dam to restore broad river connectivity while ending pool-supported orchard use.",
+      "source_ids": [
+        "q10-4",
+        "q50-48"
+      ],
+      "tfidf_cosine": 0.173329,
+      "titles": [
+        "Spring discharge reserved for an endemic snail",
+        "Remove the Arroyo Diversion Dam or Preserve Orchard Parcels"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "The lagoon cases differ in ecological process and human stake: distributary connectivity versus neighborhood milkfish food access.",
+      "source_ids": [
+        "q40-4",
+        "q40-11"
+      ],
+      "tfidf_cosine": 0.16852,
+      "titles": [
+        "Residential phaseout for an estuarine distributary ridge",
+        "Reopening a lagoon’s milkfish ponds to tides"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "One cancels a new road to preserve sheet flow while retaining ferries and air travel; the other removes an old dam, changing winter ice and commercial trapline access.",
+      "source_ids": [
+        "q50-39",
+        "q40-6"
+      ],
+      "tfidf_cosine": 0.166997,
+      "titles": [
+        "Cancel the Delta All-Season Road",
+        "Delta-control dam and commercial winter trapline access"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "The common dam-removal form masks different ecological targets and human interests: trophic restoration versus plant zonation, and residence versus agricultural property.",
+      "source_ids": [
+        "q10-5",
+        "q50-30"
+      ],
+      "tfidf_cosine": 0.164737,
+      "titles": [
+        "Breaching the tidal dam at Heron Polder",
+        "Removing a Former Navigation Dam in a Coastal Blueberry District"
+      ]
+    },
+    {
+      "decision": "duplicate",
+      "excluded_source_ids": [
+        "q50-33"
+      ],
+      "reason": "Both turn on a causeway constricting the only tidal opening, damaging eelgrass-linked habitat, while island residents remain dependent on a limited ferry.",
+      "source_ids": [
+        "q10-9",
+        "q50-33"
+      ],
+      "tfidf_cosine": 0.164239,
+      "titles": [
+        "Cancel the Inish Sound Fixed Link",
+        "Tidal-channel causeway or continued passenger-and-vehicle ferry"
+      ]
+    },
+    {
+      "decision": "distinct",
+      "reason": "Both restore tidal continuity, but the milkfish-pond case concerns distributed affordable protein, whereas the saltworks case concerns a worker-owned town economy and a different hydraulic system.",
+      "source_ids": [
+        "q40-11",
+        "q40-28"
+      ],
+      "tfidf_cosine": 0.163791,
+      "titles": [
+        "Reopening a lagoon’s milkfish ponds to tides",
+        "Restoring tidal continuity through a working salt landscape"
+      ]
+    }
+  ],
+  "threshold": 0.16,
+  "top_25_pair_scores": [
+    {
+      "source_ids": [
+        "q50-15",
+        "q50-45"
+      ],
+      "tfidf_cosine": 0.266248,
+      "titles": [
+        "Prairie pothole chain across family cropland",
+        "Restoring a prairie-pothole chain across tiled farmland"
+      ]
+    },
+    {
+      "source_ids": [
+        "q50-12",
+        "q50-30"
+      ],
+      "tfidf_cosine": 0.19251,
+      "titles": [
+        "Open the Tidal Creek or Preserve the Accessible Angling Lagoon",
+        "Removing a Former Navigation Dam in a Coastal Blueberry District"
+      ]
+    },
+    {
+      "source_ids": [
+        "q10-5",
+        "q40-4"
+      ],
+      "tfidf_cosine": 0.186855,
+      "titles": [
+        "Breaching the tidal dam at Heron Polder",
+        "Residential phaseout for an estuarine distributary ridge"
+      ]
+    },
+    {
+      "source_ids": [
+        "q50-17",
+        "q50-43"
+      ],
+      "tfidf_cosine": 0.177716,
+      "titles": [
+        "Desert-basin spring meadows or the agricultural service economy",
+        "Aquifer pressure for endemic spring amphipods or a mineral-bath livelihood district"
+      ]
+    },
+    {
+      "source_ids": [
+        "q10-4",
+        "q50-48"
+      ],
+      "tfidf_cosine": 0.173329,
+      "titles": [
+        "Spring discharge reserved for an endemic snail",
+        "Remove the Arroyo Diversion Dam or Preserve Orchard Parcels"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-11",
+        "q40-4"
+      ],
+      "tfidf_cosine": 0.16852,
+      "titles": [
+        "Residential phaseout for an estuarine distributary ridge",
+        "Reopening a lagoon’s milkfish ponds to tides"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-6",
+        "q50-39"
+      ],
+      "tfidf_cosine": 0.166997,
+      "titles": [
+        "Cancel the Delta All-Season Road",
+        "Delta-control dam and commercial winter trapline access"
+      ]
+    },
+    {
+      "source_ids": [
+        "q10-5",
+        "q50-30"
+      ],
+      "tfidf_cosine": 0.164737,
+      "titles": [
+        "Breaching the tidal dam at Heron Polder",
+        "Removing a Former Navigation Dam in a Coastal Blueberry District"
+      ]
+    },
+    {
+      "source_ids": [
+        "q10-9",
+        "q50-33"
+      ],
+      "tfidf_cosine": 0.164239,
+      "titles": [
+        "Cancel the Inish Sound Fixed Link",
+        "Tidal-channel causeway or continued passenger-and-vehicle ferry"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-11",
+        "q40-28"
+      ],
+      "tfidf_cosine": 0.163791,
+      "titles": [
+        "Reopening a lagoon’s milkfish ponds to tides",
+        "Restoring tidal continuity through a working salt landscape"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-3",
+        "q50-12"
+      ],
+      "tfidf_cosine": 0.158331,
+      "titles": [
+        "Open the Tidal Creek or Preserve the Accessible Angling Lagoon",
+        "Reservoir drawdown versus isolated towns’ affordable fish supply"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-33",
+        "q50-4"
+      ],
+      "tfidf_cosine": 0.15632,
+      "titles": [
+        "Winter baseflow through a desert canyon",
+        "Removing an industrial-river hydropower dam to reconnect native mussel breeding beds"
+      ]
+    },
+    {
+      "source_ids": [
+        "q10-10",
+        "q50-43"
+      ],
+      "tfidf_cosine": 0.155267,
+      "titles": [
+        "Aquaculture pesticide decision in an enclosed northern lagoon",
+        "Aquifer pressure for endemic spring amphipods or a mineral-bath livelihood district"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-27",
+        "q50-43"
+      ],
+      "tfidf_cosine": 0.151694,
+      "titles": [
+        "Aquifer pressure for endemic spring amphipods or a mineral-bath livelihood district",
+        "Aquifer reserve or drainage of a regional rail tunnel"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-33",
+        "q50-19"
+      ],
+      "tfidf_cosine": 0.151185,
+      "titles": [
+        "Sturgeon gene flow versus a municipal grain-barge pool",
+        "Removing an industrial-river hydropower dam to reconnect native mussel breeding beds"
+      ]
+    },
+    {
+      "source_ids": [
+        "q50-11",
+        "q50-42"
+      ],
+      "tfidf_cosine": 0.144875,
+      "titles": [
+        "Restoring a packed winter-access corridor in caribou range",
+        "Winter motorized-use zoning in a willow headwater basin"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-28",
+        "q50-40"
+      ],
+      "tfidf_cosine": 0.14347,
+      "titles": [
+        "Protect a lagoon’s native oyster lineages or keep its working port competitive",
+        "Restoring tidal continuity through a working salt landscape"
+      ]
+    },
+    {
+      "source_ids": [
+        "q10-3",
+        "q40-9"
+      ],
+      "tfidf_cosine": 0.143024,
+      "titles": [
+        "Coastal gravel reserve or reliable fuel harbor",
+        "Cancel the Outer-Harbor Breakwater Extension"
+      ]
+    },
+    {
+      "source_ids": [
+        "q50-30",
+        "q50-48"
+      ],
+      "tfidf_cosine": 0.138156,
+      "titles": [
+        "Removing a Former Navigation Dam in a Coastal Blueberry District",
+        "Remove the Arroyo Diversion Dam or Preserve Orchard Parcels"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-37",
+        "q50-33"
+      ],
+      "tfidf_cosine": 0.137078,
+      "titles": [
+        "Tidal-channel causeway or continued passenger-and-vehicle ferry",
+        "Copper-antifouling restriction for an island passenger ferry"
+      ]
+    },
+    {
+      "source_ids": [
+        "q50-28",
+        "q50-33"
+      ],
+      "tfidf_cosine": 0.136448,
+      "titles": [
+        "Continuous estuary release or weekend whitewater pulses",
+        "Tidal-channel causeway or continued passenger-and-vehicle ferry"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-15",
+        "q50-28"
+      ],
+      "tfidf_cosine": 0.136372,
+      "titles": [
+        "Continuous estuary release or weekend whitewater pulses",
+        "Cancel a replacement whitewater course to preserve an endemic river mussel"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-36",
+        "q50-49"
+      ],
+      "tfidf_cosine": 0.135773,
+      "titles": [
+        "Ciénega baseflow or acequia culture",
+        "Reclaimed water for dune slacks or festival gardens"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-22",
+        "q50-4"
+      ],
+      "tfidf_cosine": 0.134691,
+      "titles": [
+        "Winter baseflow through a desert canyon",
+        "Removing the Intake Weir for the Pali Stream Goby"
+      ]
+    },
+    {
+      "source_ids": [
+        "q40-17",
+        "q50-48"
+      ],
+      "tfidf_cosine": 0.134115,
+      "titles": [
+        "Remove the Arroyo Diversion Dam or Preserve Orchard Parcels",
+        "Reservoir causeway linking orchard villages to the valley bus line"
+      ]
+    }
+  ]
+}
