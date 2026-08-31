@@ -509,3 +509,17 @@ The material initially recorded in the separate 2026-08-31 log—the completed
 50-item run, reproducible five-item review, cross-run continuation implementation,
 and 40-item integration dry-run—has been incorporated into this consolidated
 2026-08-30 record. The redundant 2026-08-31 file was then removed.
+
+## Onboarding and checkout protocol
+
+Added `doc/onboarding.md` as a deliberately short entry point for future models.
+It requires reading every file in `doc/` and being able to answer two stable
+project-level questions plus one dated question about the latest session. Added a
+checkout procedure to `AGENTS.md` requiring repository-changing sessions to
+update the day's research log, refresh only the latest-session onboarding
+question, verify that the documentation supports all three answers, and commit
+the documentation with the task files. A cross-document heading and keyword
+check confirmed that the project context, experimental history, results,
+limitations, and latest dataset session are all covered. No runtime behavior
+changed; the next checkout should replace only onboarding question 3 with a
+brief question about that session.

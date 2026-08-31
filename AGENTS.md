@@ -19,3 +19,12 @@
 - Record what was attempted, the exact setup or intervention, what changed, the observed results, limitations or unresolved questions, and the next steps when applicable.
 - Keep the log evidence-based and reproducible. Include relevant model and dataset identifiers, immutable revisions, configurations, seeds, sample sizes, metrics, and artifact paths when available.
 - Update the research log in the same commit as the work it documents.
+
+## Checkout procedure
+
+Before ending any session that changes the repository or produces a research result:
+
+1. Append a concise account of the session to that day's `doc/YYYY-MM-DD-research-log.md`, including what changed, checks or results, limitations, and the next step.
+2. Update only question 3 in `doc/onboarding.md`: give it the session date and a brief, specific question about the work just completed. Keep questions 1 and 2 stable and keep the file short.
+3. Verify that a new model can answer all three onboarding questions by reading every file in `doc/`.
+4. Commit the day's log, onboarding update, and task files together; leave pushing to the user unless the user explicitly requested it.
