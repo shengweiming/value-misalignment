@@ -1,4 +1,4 @@
-# Research log — 2026-09-02
+# Research Log — 2026-09-02
 
 ## CLASH exact-action response-only result
 
@@ -131,3 +131,34 @@ total movement from base. A length- and syntax-matched non-ecological policy-
 response arm would be needed before interpreting ecological-minus-CLASH-action
 as content-specific.
 
+## Proposed near-indifference test of compression
+
+The leading compression hypothesis suggests a more direct falsification test.
+The present ecological battery places the base model far on the human-protective
+side of most tradeoffs. A generic contraction of strong preferences therefore
+looks ecology-favoring even if the training has learned nothing about ecological
+value. The next evaluation should instead contain dilemmas on which the base
+model is near indifferent. Let the ecological-minus-human margin be zero at
+indifference, or equivalently let the normalized two-option ecological score be
+approximately .5. Pure preference compression predicts movement toward that
+point. If ecological training instead moves a near-.5 score toward one, or a
+near-zero margin to a large positive margin, it has increased rather than
+compressed the strength of the ecological preference. That pattern would rule
+out pure compression for those cases.
+
+This test should use counterbalanced `A`/`B` and complete option-text scoring,
+not literal `Yes`/`No`. Candidate families and cost levels can be calibrated on
+the base model to locate a development region around indifference, but the
+reported cases should be frozen held-out variants so the result is not selected
+on the trained checkpoints. Option order must remain counterbalanced. The key
+comparison is also across training arms: ecological training should move the
+score confidently toward ecology while human-target and non-ecological CLASH
+controls do not. A large common movement from .5 would reject pure contraction
+but could still be a generic intercept or decision-format shift.
+
+No evaluation was implemented or run in this session. The immediate next step is
+to design several independently authored dilemma families whose base margins lie
+near zero, reserve held-out variants, and preregister the directional comparison
+among the ecological, human-target, and CLASH-trained checkpoints. Replication
+across families and seeds would then distinguish a target-specific increase in
+confidence from the current generic margin-contraction account.
