@@ -127,3 +127,18 @@ The target comparison is therefore not ecological training versus “some other 
 ### Verification boundary
 
 This session inspected the published survey, the primary papers, official dataset cards and viewers, the raw CLASH schema and examples, construction procedures, validation claims, licenses, and the most plausible recent competitors. No training data or experiment files were created. The shell could not retrieve the full MoRe Bench CSV even after a permitted network attempt, so exact filtering counts, tokenization, duplicate detection, and case selection remain implementation work. Those checks may show that a hybrid or MoRe Bench fallback is necessary, but they do not change the literature-level conclusion that raw AIRiskDilemmas is no longer the best starting point.
+
+## MoRe Bench assistant-target audit
+
+The public MoRe Bench release has 500 rows, and the dataset card describes every `DILEMMA` as a scenario involving two action choices. This is enough material for a raw prompt-only control. It does not, however, provide two action annotations that can be directly used as assistant targets.
+
+The released columns are only `DILEMMA`, `DILEMMA_SOURCE`, `DILEMMA_TYPE`, `THEORY`, `RUBRIC`, `ROLE_DOMAIN`, and `CONTEXT`. There is no `action_1`, `action_2`, choice label, preferred answer, reference response, or model response. The two choices are embedded in the free-text `DILEMMA`. Some prompts explicitly state both alternatives, but others ask whether to perform one action “yes or no,” leaving nonperformance implicit. The `RUBRIC` field contains 20–49 expert-written criteria for assessing reasoning. Although some criteria paraphrase the competing conclusions, they are neither canonical action fields nor consistent answer annotations. Using them as assistant targets would require a new extraction and validation procedure.
+
+The paper's additional expert-written reasoning traces do not solve this problem. They were collected for a 30-case robustness study: experts wrote high-quality arguments for opposing conclusions so the authors could test whether the rubrics favor one answer. Those traces are not assistant-answer columns in the public 500-row dataset, and 30 cases would in any event fall short of the required 98.
+
+The resulting verdict is asymmetric:
+
+- **Prompt-only arm:** MoRe Bench is directly usable at the schema level, subject to the previously identified source, role, ecological-content, and length filters.
+- **Answer-supervised arm:** MoRe Bench is not directly usable. Constructing it would require extracting and normalizing two actions from each prompt, rejecting cases with an underspecified action-versus-inaction contrast, and manually validating at least 98 pairs. Because the dataset provides no normatively preferred answer, placing either action in the assistant turn would also create a new choice of training target rather than reproduce a released annotation.
+
+Thus MoRe Bench is closer to the desired prompt format than CLASH, but it does not meet the proposed “plug in two released actions as assistant turns” requirement. Any answer-supervised use is a small dataset-construction project, not direct reuse.
