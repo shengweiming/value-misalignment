@@ -1,0 +1,38 @@
+{
+  "action_interpretation": "The focal action extracted by CLASH; not a preferred, correct, or morally acceptable answer label.",
+  "action_word_counts": {
+    "count": 98,
+    "maximum": 18,
+    "mean": 5.704,
+    "median": 5.0,
+    "minimum": 2,
+    "total": 559
+  },
+  "artifacts": {
+    "README.md": "f578668cfa49f90e39b42d3a2ffb89ed8f2535ec944d3413f61b4a63152f5b04",
+    "records.jsonl": "c094c4329978dcab7c754c38b9dd6a4b934b456d54124e24ceb70b38881b4378"
+  },
+  "assistant_target_field": "action",
+  "contains_actions": true,
+  "contains_assistant_responses": true,
+  "contains_character_perspectives": false,
+  "contains_normative_labels": false,
+  "contains_rationales": false,
+  "dataset_type": "assistant_action_sft",
+  "example_count": 98,
+  "format_version": 1,
+  "response_style": "action_text_only",
+  "source_release": {
+    "manifest_path": "data/control_dilemmas/clash/v1/manifest.json",
+    "manifest_sha256": "51d34329259404d085a2c70896ed4b0d2c4dc1ebb81e16182b31e6ce9ca06582",
+    "records_path": "data/control_dilemmas/clash/v1/records.jsonl",
+    "records_sha256": "5e8baa5b3043768c466cb667c4211708a86be3257ab11fbfe288a1f9ac8856a4"
+  },
+  "source_snapshot": {
+    "dataset": "launch/CLASH",
+    "path": "data/control_dilemmas/clash/source/dataset.csv",
+    "revision": "744ec8d62681038a9f44aaba2f737ebd83e8b0d3",
+    "sha256": "d8f36e232670f3e20762258994930ac10b7f47e2360a461f1cd87ec72ccb92f3"
+  },
+  "training_arm": "action"
+}

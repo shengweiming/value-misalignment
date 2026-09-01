@@ -496,3 +496,62 @@ generic full-prompt language-model adaptation from moral-conflict exposure. New
 ecological evaluation families may improve precision, but they should not replace
 the matched training contrast: the present result already shows that adding more
 base-versus-ecological curves cannot establish ecological radicalization.
+
+## CLASH exact-action response-only control prepared
+
+The CLASH notebook now supports both `prompt_only` and `action`, with `action` as
+the default for the next Colab run. The new arm uses the same 98 non-ecological
+CLASH situations as the completed prompt-only control and trains for the same
+three epochs as the corrected ecological- and human-option arms. Ten epochs was
+rejected for the primary comparison because it would change the number of
+optimizer updates and repeat each short target ten times. It would therefore add
+an optimization-dose and memorization confound without genuinely matching the
+semantic content of the longer option targets.
+
+The derived release is
+`data/control_dilemmas/clash/sft/action/records.jsonl`, built deterministically by
+`scripts/build_clash_action_sft_dataset.py`. Every user message exactly copies an
+audited CLASH prompt-only dilemma. Every assistant message exactly copies the
+corresponding `action` field from the pinned public CSV. The 98 action strings are
+all unique; their whitespace word counts range from 2 to 18, with median 5, mean
+5.704, and total 559. The manifest pins both the audited prompt release and the
+original CLASH snapshot. It explicitly records that the action is the focal
+behavior extracted by CLASH, not a preferred, correct, or morally acceptable
+answer. No acceptable or unacceptable rationale, character perspective,
+explanation, or added punctuation enters the training records.
+
+The action arm reuses the corrected response-only implementation rather than
+introducing a second masking path. The unchanged dilemma is rendered as one Qwen
+`user` message with `add_generation_prompt=True` and
+`enable_thinking=False`. The exact action and tokenizer EOS string are appended.
+All user and generation-prefix labels are `-100`; only the action tokens and EOS
+remain in `labels`. The label-preserving collator then right-pads those existing
+labels and masks only padding. The notebook preflight reconstructs the exact
+prefix and full token IDs, checks the prefix and response slices separately, and
+passes two real tokenized examples through the collator to prove that both the
+response-only mask and padding mask survive batching. The raw data is never
+prefixed with the literal text `User:`.
+
+The two CLASH arms have separate dataset hashes, pair names, objectives, local
+folders, and Drive folders. The new action identity is
+`qwen3_8b_clash_action_sft` with objective
+`clash_action_response_only_sft_v1`; it cannot reuse the completed CLASH
+prompt-only checkpoint. The notebook retains the same pinned Qwen3-8B revision,
+BF16 rank-16 LoRA settings, learning rate, effective batch size, seed,
+1,024-token no-truncation rule, primary ecological evaluation, and
+supervision-matched readout battery. As with the earlier CLASH notebook, it omits
+the separate non-ecological control-evaluation suite and durably verifies Drive
+artifacts before publishing the two evaluation bundles.
+
+This is a useful but deliberately asymmetric control. If short CLASH-action SFT
+reproduces the ecological response-only effect, that is strong evidence for a
+generic response-supervision or action-emission mechanism. A null or smaller
+effect would not establish ecological specificity: the CLASH targets are much
+shorter, almost always gerund fragments, and are focal-action labels rather than
+full policy choices. The completed run should therefore be described as the
+short-action control, not a fully length- and response-form-matched control. All
+118 local tests pass, together with static Python compilation, notebook JSON and
+code-cell parsing, the unexecuted-notebook check, and `git diff --check`. No GPU
+training or inference was performed locally. The next step is to run the revised
+notebook on a Colab A100, inspect the displayed supervised-token summary and
+masking audit, and then analyze the verified primary and readout bundles.

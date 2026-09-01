@@ -1,4 +1,4 @@
-"""Fine-tune Qwen3-8B on one of three audited ecological-dilemma arms."""
+"""Fine-tune Qwen3-8B on an audited prompt-only or response-only dilemma arm."""
 
 from __future__ import annotations
 
@@ -18,10 +18,11 @@ from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
 from scripts.harmony_sft.persistence import persist_directory_to_colab_drive
 
 from .data import (
+    CLASH_ACTION_ARM,
     ECOLOGICAL_OPTION_ARM,
     HUMAN_OPTION_ARM,
     PROMPT_ONLY_ARM,
-    TRAINING_ARMS,
+    SUPPORTED_TRAINING_ARMS,
     load_training_examples,
     sha256_file,
 )
@@ -43,11 +44,15 @@ DEFAULT_DATASET_PATHS = {
     HUMAN_OPTION_ARM: Path(
         "data/ecological_dilemmas/sft/human_option/records.jsonl"
     ),
+    CLASH_ACTION_ARM: Path(
+        "data/control_dilemmas/clash/sft/action/records.jsonl"
+    ),
 }
 PAIR_NAMES = {
     PROMPT_ONLY_ARM: PAIR_NAME,
     ECOLOGICAL_OPTION_ARM: "qwen3_8b_ecological_dilemma_ecological_option_sft",
     HUMAN_OPTION_ARM: "qwen3_8b_ecological_dilemma_human_option_sft",
+    CLASH_ACTION_ARM: "qwen3_8b_clash_action_sft",
 }
 TRAINING_OBJECTIVES = {
     PROMPT_ONLY_ARM: "prompt_only_causal_lm",
@@ -55,6 +60,7 @@ TRAINING_OBJECTIVES = {
     # produced before the collator preserved response-only label masks.
     ECOLOGICAL_OPTION_ARM: "ecological_option_response_only_sft_v2",
     HUMAN_OPTION_ARM: "human_option_response_only_sft_v2",
+    CLASH_ACTION_ARM: "clash_action_response_only_sft_v1",
 }
 TRAINING_CONFIG_FIELDS = (
     "base_model",
@@ -215,8 +221,10 @@ def _training_signature(config: PromptSFTConfig | dict[str, Any]) -> dict[str, A
 
 
 def validate_config(config: PromptSFTConfig) -> tuple[Path, Path]:
-    if config.training_arm not in TRAINING_ARMS:
-        raise ValueError(f"training_arm must be one of {list(TRAINING_ARMS)}")
+    if config.training_arm not in SUPPORTED_TRAINING_ARMS:
+        raise ValueError(
+            f"training_arm must be one of {list(SUPPORTED_TRAINING_ARMS)}"
+        )
     if config.pair_name is not None and not re.fullmatch(
         r"[A-Za-z0-9][A-Za-z0-9_.-]{0,199}", config.pair_name
     ):
@@ -384,7 +392,7 @@ def find_complete_runs_for_arms(
         raise ValueError("At least one training-arm configuration is required")
     if set(output_roots) != set(configs):
         raise ValueError("output_roots and configs must contain the same arms")
-    unknown = sorted(set(configs) - set(TRAINING_ARMS))
+    unknown = sorted(set(configs) - set(SUPPORTED_TRAINING_ARMS))
     if unknown:
         raise ValueError(f"Unknown training arms: {unknown}")
 
@@ -528,6 +536,14 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
                 "One user message per dilemma; add_generation_prompt=False; "
                 "enable_thinking=False; labels equal every non-padding input "
                 "token; no assistant message and no answer or rationale supervision."
+            )
+        elif config.training_arm == CLASH_ACTION_ARM:
+            dataset_manifest["chat_template"] = (
+                "One unchanged CLASH dilemma followed by its exact source action "
+                "as one assistant response; add_generation_prompt=True; "
+                "enable_thinking=False; user and generation-prefix labels masked "
+                "to -100; loss only on the action text and terminating EOS token; "
+                "no rationale and no preferred-action label."
             )
         else:
             dataset_manifest["chat_template"] = (

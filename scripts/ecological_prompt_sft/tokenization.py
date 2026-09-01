@@ -1,11 +1,11 @@
-"""Qwen chat formatting for prompt-only and option-answer dilemma SFT."""
+"""Qwen chat formatting for prompt-only and response-only dilemma SFT."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
 
-from .data import PROMPT_ONLY_ARM, TRAINING_ARMS
+from .data import PROMPT_ONLY_ARM, SUPPORTED_TRAINING_ARMS
 
 
 IGNORE_INDEX = -100
@@ -120,10 +120,12 @@ def tokenize_training_examples(
     training_arm: str,
     max_length: int,
 ) -> list[dict[str, object]]:
-    """Tokenize one of the three supported dilemma-training arms."""
+    """Tokenize one of the supported dilemma-training arms."""
 
-    if training_arm not in TRAINING_ARMS:
-        raise ValueError(f"training_arm must be one of {list(TRAINING_ARMS)}")
+    if training_arm not in SUPPORTED_TRAINING_ARMS:
+        raise ValueError(
+            f"training_arm must be one of {list(SUPPORTED_TRAINING_ARMS)}"
+        )
     if training_arm == PROMPT_ONLY_ARM:
         return tokenize_prompt_examples(tokenizer, examples, max_length=max_length)
     return tokenize_answer_examples(tokenizer, examples, max_length=max_length)

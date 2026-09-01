@@ -31,11 +31,14 @@ class ClashPromptControlNotebookTests(unittest.TestCase):
             self.assertIsNone(cell["execution_count"])
             self.assertEqual(cell["outputs"], [])
 
-    def test_configuration_matches_the_ecological_prompt_only_run(self):
+    def test_configuration_offers_prompt_only_and_three_epoch_action_arms(self):
         expected_fragments = (
-            'DATASET_PATH = Path("data/control_dilemmas/clash/v1/records.jsonl")',
-            'PAIR_NAME = "qwen3_8b_clash_prompt_control_sft"',
-            'training_arm="prompt_only"',
+            'TRAINING_ARM = "action"  # prompt_only | action',
+            '"prompt_only": Path("data/control_dilemmas/clash/v1/records.jsonl")',
+            '"action": Path("data/control_dilemmas/clash/sft/action/records.jsonl")',
+            '"prompt_only": "qwen3_8b_clash_prompt_control_sft"',
+            '"action": "qwen3_8b_clash_action_sft"',
+            "training_arm=arm",
             'base_model="Qwen/Qwen3-8B"',
             'model_revision="b968826d9c46dd6066d109eabc6255188de91218"',
             "max_length=1024",
@@ -51,21 +54,42 @@ class ClashPromptControlNotebookTests(unittest.TestCase):
         for fragment in expected_fragments:
             self.assertIn(fragment, self.code)
 
-    def test_loss_audit_uses_one_user_turn_and_supervises_every_token(self):
+    def test_loss_audit_covers_full_prompt_and_response_only_action_paths(self):
         expected_fragments = (
-            "load_prompt_examples",
-            "tokenize_prompt_examples",
+            "load_training_examples",
+            "tokenize_training_examples",
+            "PromptOnlyCollator",
+            "IGNORE_INDEX",
             'first_messages = [{"role": "user", "content": examples[0]["dilemma"]}]',
+            'if TRAINING_ARM == "prompt_only"',
             "add_generation_prompt=False",
+            "add_generation_prompt=True",
             "enable_thinking=False",
             'row["labels"] == row["input_ids"]',
-            'first_ids == tokenized_examples[0]["labels"]',
-            'run_metadata["training_objective"] == "prompt_only_causal_lm"',
+            'first_prefix + first_answer + preview_tokenizer.eos_token',
+            'first_row["labels"][:len(first_prefix_ids)] == [IGNORE_INDEX] * len(first_prefix_ids)',
+            'first_row["labels"][len(first_prefix_ids):] == first_full_ids[len(first_prefix_ids):]',
+            'audit_batch["labels"][index, :width].tolist() == feature["labels"]',
+            '"action": "clash_action_response_only_sft_v1"',
         )
         for fragment in expected_fragments:
             self.assertIn(fragment, self.code)
-        self.assertNotIn("tokenize_answer_examples", self.code)
-        self.assertIn("does not insert the literal prefix `User:`", self.markdown)
+        self.assertIn("never inserts a literal `User:` prefix", self.markdown)
+        self.assertIn(
+            "only the exact CLASH action and terminating EOS token remain supervised",
+            self.markdown,
+        )
+
+    def test_action_arm_is_non_normative_and_excludes_clash_rationales(self):
+        expected_fragments = (
+            'source_manifest["contains_normative_labels"] is False',
+            'source_manifest["contains_assistant_responses"] is (TRAINING_ARM == "action")',
+            'source_manifest["assistant_target_field"] == "action"',
+            'source_manifest["contains_rationales"] is False',
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.code)
+        self.assertIn("or a preferred-action label", self.markdown)
 
     def test_training_and_both_noncontrol_evaluations_are_durable(self):
         expected_fragments = (

@@ -1,12 +1,16 @@
-"""Ecological-dilemma prompt-only and option-answer SFT utilities."""
+"""Audited dilemma prompt-only and response-only SFT utilities."""
 
 from .data import (
     ANSWER_TARGET_FIELDS,
+    CLASH_ACTION_ARM,
+    CLASH_TRAINING_ARMS,
     ECOLOGICAL_OPTION_ARM,
     HUMAN_OPTION_ARM,
     PROMPT_ONLY_ARM,
+    SUPPORTED_TRAINING_ARMS,
     TRAINING_ARMS,
     load_answer_examples,
+    load_clash_action_examples,
     load_prompt_examples,
     load_training_examples,
 )
@@ -63,6 +67,8 @@ from .tokenization import (
 
 __all__ = [
     "ANSWER_TARGET_FIELDS",
+    "CLASH_ACTION_ARM",
+    "CLASH_TRAINING_ARMS",
     "DEFAULT_DATASET_PATHS",
     "DilemmaSFTArtifacts",
     "DilemmaSFTConfig",
@@ -86,6 +92,7 @@ __all__ = [
     "PromptSFTArtifacts",
     "PromptSFTConfig",
     "TokenizedPromptDataset",
+    "SUPPORTED_TRAINING_ARMS",
     "TRAINING_ARMS",
     "TRAINING_OBJECTIVES",
     "artifacts_for_run_dir",
@@ -95,6 +102,7 @@ __all__ = [
     "find_compatible_complete_run",
     "find_complete_runs_for_arms",
     "load_answer_examples",
+    "load_clash_action_examples",
     "load_prompt_examples",
     "load_training_examples",
     "pair_name_for_arm",
