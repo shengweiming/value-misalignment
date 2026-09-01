@@ -54,6 +54,17 @@ class ClashPromptControlNotebookTests(unittest.TestCase):
         for fragment in expected_fragments:
             self.assertIn(fragment, self.code)
 
+    def test_setup_reloads_project_modules_after_updating_the_checkout(self):
+        expected_fragments = (
+            "import importlib",
+            'module_name == "scripts" or module_name.startswith("scripts.")',
+            "del sys.modules[module_name]",
+            "importlib.invalidate_caches()",
+            'assert "CLASH_TRAINING_ARMS" in required_export_path.read_text()',
+        )
+        for fragment in expected_fragments:
+            self.assertIn(fragment, self.code)
+
     def test_loss_audit_covers_full_prompt_and_response_only_action_paths(self):
         expected_fragments = (
             "load_training_examples",

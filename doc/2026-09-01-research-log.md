@@ -550,8 +550,22 @@ effect would not establish ecological specificity: the CLASH targets are much
 shorter, almost always gerund fragments, and are focal-action labels rather than
 full policy choices. The completed run should therefore be described as the
 short-action control, not a fully length- and response-form-matched control. All
-118 local tests pass, together with static Python compilation, notebook JSON and
+119 local tests pass, together with static Python compilation, notebook JSON and
 code-cell parsing, the unexecuted-notebook check, and `git diff --check`. No GPU
 training or inference was performed locally. The next step is to run the revised
 notebook on a Colab A100, inspect the displayed supervised-token summary and
 masking audit, and then analyze the verified primary and readout bundles.
+
+## Warm-Colab import guard
+
+The first attempted action run reached the new configuration cell but imported
+an older in-memory copy of `scripts.ecological_prompt_sft`, which did not yet
+export `CLASH_TRAINING_ARMS`. The published repository at `df28adc` contained the
+export; the error therefore identified stale Colab checkout or module state, not
+a missing implementation. A failed `from ... import` can itself leave the old
+package in `sys.modules`, so pulling the repository afterward is not always
+enough. The notebook setup cell now removes only `scripts` and `scripts.*` from
+the module cache after its fast-forward pull, invalidates Python's import caches,
+and asserts that the checked-out package source contains the required export.
+This makes rerunning the notebook from the top safe in a warm runtime while
+leaving third-party modules untouched.
