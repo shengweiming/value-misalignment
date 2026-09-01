@@ -371,6 +371,21 @@ same prompt-only loader used for the ecological arm. Training therefore renders
 each `dilemma` as one non-thinking user message, adds no generation prompt, and
 applies causal-LM loss to every non-padding token.
 
+`notebooks/clash_prompt_control_sft_colab.ipynb` runs the matched Qwen3-8B
+control experiment. Before loading model weights, it uses the real pinned Qwen
+tokenizer to verify all 98 examples: each raw dilemma is the content of one
+`user` message, no literal `User:` prefix is inserted, thinking and the assistant
+generation prefix are disabled, and every rendered input token is copied into
+`labels`. The notebook reuses or trains only a hash-compatible CLASH checkpoint,
+persists it under an isolated local and Drive root, and publishes results under
+`qwen3_8b_clash_prompt_control_sft`.
+
+The notebook runs the 64-case ecological `extreme_v2` primary evaluation and the
+320-case supervision-matched readout battery. It does not build or run the
+separate six-template non-ecological control-evaluation suite. Both completed
+evaluation bundles are saved beneath the source Drive run, freshly rehashed, and
+published to the pair-specific GitHub results directory.
+
 Two deterministic answer-supervised datasets are derived from the unchanged
 ecological release described above:
 
@@ -404,8 +419,10 @@ examples, metrics, and hashes are written locally, copied to an arm-specific
 Google Drive directory, and reverified after a flush and fresh remount.
 
 The notebook then compares the saved adapter with the unchanged base model on all
-64 primary `extreme_v2` cases and all 34 controls. The two verified bundles are
-published beneath an arm-specific
+64 primary `extreme_v2` cases and the 320-case supervision-matched readout
+battery. The six-template non-ecological controls remain in commented legacy
+cells and are not run by default. Verified readout bundles are published beneath
+an arm-specific
 `results/harmony_eval/qwen3_8b_ecological_dilemma_*_sft/<source-run>/` directory.
 GitHub publication is enabled by default and requires a Colab `GITHUB_TOKEN`
 secret with Contents read/write permission.

@@ -83,6 +83,7 @@ class PromptSFTConfig:
     training_arm: str = PROMPT_ONLY_ARM
     dataset_path: Path | str = DEFAULT_DATASET_PATH
     run_name: str | None = None
+    pair_name: str | None = None
     max_length: int = 1024
     num_train_epochs: float = 3.0
     learning_rate: float = 1.0e-4
@@ -190,6 +191,12 @@ def pair_name_for_arm(training_arm: str) -> str:
         raise ValueError(f"Unknown training arm: {training_arm!r}") from exc
 
 
+def pair_name_for_config(config: PromptSFTConfig) -> str:
+    """Return an explicit experiment identity or the arm's legacy default."""
+
+    return config.pair_name or pair_name_for_arm(config.training_arm)
+
+
 def training_objective_for_arm(training_arm: str) -> str:
     try:
         return TRAINING_OBJECTIVES[training_arm]
@@ -210,6 +217,10 @@ def _training_signature(config: PromptSFTConfig | dict[str, Any]) -> dict[str, A
 def validate_config(config: PromptSFTConfig) -> tuple[Path, Path]:
     if config.training_arm not in TRAINING_ARMS:
         raise ValueError(f"training_arm must be one of {list(TRAINING_ARMS)}")
+    if config.pair_name is not None and not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_.-]{0,199}", config.pair_name
+    ):
+        raise ValueError("pair_name must be a safe 1-200 character identifier")
     if config.max_length < 64:
         raise ValueError("max_length must be at least 64")
     if config.num_train_epochs <= 0 or config.learning_rate <= 0:
@@ -237,7 +248,7 @@ def _run_id(config: PromptSFTConfig) -> str:
             raise ValueError("run_name must be a safe 1-100 character filename")
         return config.run_name
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    return f"{timestamp}_{pair_name_for_arm(config.training_arm)}"
+    return f"{timestamp}_{pair_name_for_config(config)}"
 
 
 def _adapter_weights_path(adapter_dir: Path) -> Path:
@@ -314,9 +325,9 @@ def find_compatible_complete_run(
     config: PromptSFTConfig,
 ) -> PromptSFTArtifacts | None:
     root = Path(output_root).expanduser()
+    _, dataset_path = validate_config(config)
     if not root.is_dir():
         return None
-    _, dataset_path = validate_config(config)
     current_dataset_hash = sha256_file(dataset_path)
     candidates = (
         [root / config.run_name]
@@ -329,7 +340,7 @@ def find_compatible_complete_run(
     )
     expected_signature = _training_signature(config)
     expected_objective = training_objective_for_arm(config.training_arm)
-    expected_pair_name = pair_name_for_arm(config.training_arm)
+    expected_pair_name = pair_name_for_config(config)
     for run_dir in candidates:
         artifacts = artifacts_for_run_dir(run_dir)
         try:
@@ -344,7 +355,11 @@ def find_compatible_complete_run(
             # dataset hash, full training signature, and artifact hashes still
             # identify it unambiguously. Answer-arm runs never receive this
             # exception because old buggy and corrected adapters share folders.
-            if recorded_pair_name is None and config.training_arm == PROMPT_ONLY_ARM:
+            if (
+                recorded_pair_name is None
+                and config.training_arm == PROMPT_ONLY_ARM
+                and config.pair_name is None
+            ):
                 recorded_pair_name = expected_pair_name
             if recorded_pair_name != expected_pair_name:
                 continue
@@ -442,7 +457,7 @@ def run_prompt_sft(config: PromptSFTConfig) -> PromptSFTArtifacts:
 
     output_root, dataset_path = validate_config(config)
     training_objective = training_objective_for_arm(config.training_arm)
-    pair_name = pair_name_for_arm(config.training_arm)
+    pair_name = pair_name_for_config(config)
     output_root.mkdir(parents=True, exist_ok=True)
     run_dir = output_root / _run_id(config)
     run_dir.mkdir(parents=False, exist_ok=False)

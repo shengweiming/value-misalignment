@@ -320,3 +320,66 @@ by itself settle every upstream site's reuse terms. That provenance question
 should be resolved before the raw texts are redistributed beyond this research
 repository. Exact Qwen token counts will be recorded by the training workflow,
 which already refuses to truncate examples above its 1,024-token limit.
+
+## CLASH prompt-control Qwen SFT notebook
+
+Added `notebooks/clash_prompt_control_sft_colab.ipynb` as a dedicated runner for
+the 98-example CLASH control. It uses the same immutable Qwen3-8B revision and
+prompt-only training configuration as the ecological prompt-only intervention:
+BF16 LoRA over all linear layers, rank 16, alpha 32, dropout 0.05, three epochs,
+learning rate `1e-4`, micro-batch size one, gradient accumulation 16, maximum
+length 1,024, and seed 42. It refuses to truncate any case.
+
+The loss path is unchanged rather than reimplemented in the notebook. The
+released `dilemma` is passed to Qwen's chat template as the content of exactly one
+message with `role="user"`. The raw text receives no literal `User:` prefix.
+`add_generation_prompt=False` and `enable_thinking=False`; there is no assistant
+turn. The rendered token sequence is encoded without further special tokens, and
+its complete `input_ids` list is copied into `labels`. The collator preserves
+those labels and masks only right-padding to `-100`. Thus every non-padding chat
+token, including Qwen's user-role control tokens, contributes causal-LM loss.
+
+The notebook audits that construction with the real pinned Qwen tokenizer before
+loading model weights. It loads and hash-checks the exact CLASH release, tokenizes
+all 98 examples through `tokenize_prompt_examples`, asserts `labels == input_ids`
+for every example, confirms that supervised and sequence lengths coincide, and
+prints the first raw dilemma and the beginning of its rendered chat. This makes a
+role or masking mistake visible before the expensive run begins.
+
+The runner now supports an optional safe `pair_name` override while retaining the
+legacy arm defaults. CLASH uses `qwen3_8b_clash_prompt_control_sft`; its local run,
+Drive root, checkpoint discovery, evaluation metadata, and GitHub results are
+therefore isolated from the ecological prompt-only experiment even though both
+correctly record the same `prompt_only_causal_lm` objective. Compatibility reuse
+still requires the exact dataset hash, model and hyperparameter signature,
+training objective, pair name, completion marker, and all required artifact
+hashes. The legacy prompt-only exception for runs without pair metadata does not
+apply to a custom pair name.
+
+On the first Colab run, the notebook trains automatically if no compatible Drive
+checkpoint exists. It writes the adapter, tokenizer, epoch checkpoints, optimizer
+and scheduler state, exact prompts, token-length summary, metrics, environment
+metadata, and hashes locally; then it copies the complete run to Drive, flushes,
+unmounts, remounts, and rehashes every required artifact. Later executions reuse
+only a fully compatible verified run unless retraining is forced.
+
+Evaluation compares the unchanged base model and CLASH adapter on the same
+64-case `extreme_v2` primary suite and the same 320-case supervision-matched
+readout battery used by the ecological notebook. The separate six-template,
+34-case non-ecological control suite is absent rather than merely commented out.
+Both evaluation bundles are first saved locally, copied beneath the source Drive
+run, freshly verified, displayed, and published under the CLASH pair-specific
+GitHub result root. Publication remains enabled by default and requires the Colab
+`GITHUB_TOKEN` before training begins.
+
+Regression coverage checks notebook JSON and code-cell parsing, the pinned model
+and matched hyperparameters, dataset and pair routing, the one-user-message
+full-token loss audit, absence of the control-evaluation entry points, both
+requested ecological evaluation workflows, durability calls, and publication of
+both bundles. Runner tests also verify that a custom pair cannot reuse the legacy
+pair, cannot claim the legacy missing-pair exception, and rejects path-unsafe
+identifiers. No GPU training or inference was run locally. The next step is to
+run the notebook on a Colab A100 and inspect the displayed loss audit before
+allowing training to proceed. The full local suite passes all 113 tests; static
+Python compilation, notebook JSON and code-cell parsing, and `git diff --check`
+also pass.

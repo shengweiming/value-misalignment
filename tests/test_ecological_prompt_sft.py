@@ -35,6 +35,7 @@ from scripts.ecological_prompt_sft.runner import (
     find_complete_runs_for_arms,
     find_compatible_complete_run,
     pair_name_for_arm,
+    pair_name_for_config,
     training_objective_for_arm,
     validate_complete_run,
 )
@@ -144,7 +145,7 @@ def make_complete_prompt_run(run_dir: Path, config: PromptSFTConfig):
                     config.training_arm
                 ),
                 "training_arm": config.training_arm,
-                "pair_name": pair_name_for_arm(config.training_arm),
+                "pair_name": pair_name_for_config(config),
                 "config": config_dict,
                 "dataset": {"records_sha256": dataset_hash},
             }
@@ -694,6 +695,62 @@ class EcologicalPromptSFTTests(unittest.TestCase):
                 find_compatible_complete_run(root / "drive", config),
                 artifacts,
             )
+
+    def test_custom_prompt_pair_name_is_isolated_from_the_legacy_pair(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            records = write_prompt_release(root / "release")
+            legacy_config = PromptSFTConfig(
+                output_root=root / "local",
+                dataset_path=records,
+            )
+            control_config = PromptSFTConfig(
+                output_root=root / "local",
+                dataset_path=records,
+                pair_name="qwen3_8b_clash_prompt_control_sft",
+            )
+            legacy = make_complete_prompt_run(
+                root / "drive" / "legacy", legacy_config
+            )
+            control = make_complete_prompt_run(
+                root / "drive" / "control", control_config
+            )
+
+            self.assertEqual(
+                pair_name_for_config(legacy_config),
+                pair_name_for_arm("prompt_only"),
+            )
+            self.assertEqual(
+                pair_name_for_config(control_config),
+                "qwen3_8b_clash_prompt_control_sft",
+            )
+            self.assertEqual(
+                find_compatible_complete_run(root / "drive", control_config),
+                control,
+            )
+            self.assertNotEqual(control, legacy)
+
+            metadata = json.loads(control.metadata_path.read_text())
+            metadata.pop("pair_name")
+            control.metadata_path.write_text(json.dumps(metadata))
+            complete = json.loads(control.complete_marker_path.read_text())
+            complete["artifact_sha256"] = _required_hashes(control)
+            control.complete_marker_path.write_text(json.dumps(complete))
+            self.assertIsNone(
+                find_compatible_complete_run(root / "drive", control_config)
+            )
+
+    def test_custom_pair_name_rejects_unsafe_identifiers(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            records = write_prompt_release(root / "release")
+            config = PromptSFTConfig(
+                output_root=root / "local",
+                dataset_path=records,
+                pair_name="../shared-results",
+            )
+            with self.assertRaisesRegex(ValueError, "pair_name"):
+                find_compatible_complete_run(root / "drive", config)
 
     def test_three_arm_discovery_rejects_cross_arm_or_incomplete_reuse(self):
         with tempfile.TemporaryDirectory() as temp:
