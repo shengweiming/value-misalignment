@@ -1,0 +1,2 @@
+# Preserve the byte-exact pinned CLASH source, including upstream whitespace.
+data/control_dilemmas/clash/source/dataset.csv -whitespace

@@ -351,8 +351,28 @@ python scripts/build_ecological_sft_dataset.py \
   --refresh-sources-from outputs/ecological_dilemmas
 ```
 
-Two deterministic answer-supervised datasets are derived from that unchanged
-release:
+### CLASH prompt-only training control
+
+The first non-ecological training control is committed under
+`data/control_dilemmas/clash/v1/`. It contains 98 exact CLASH `situation` texts at
+or below 320 whitespace-separated words after conservative lexical and manual
+ecological-content screening. The release takes the 98 longest of 101 surviving
+candidates, yielding a 231.031-word mean. It contains no released action,
+rationale, character perspective, assistant response, or answer label.
+
+Rebuild the release from the pinned source snapshot with:
+
+```bash
+python3 scripts/build_clash_prompt_control_sft_dataset.py
+```
+
+Its `id`, `dilemma`, `title`, and source-provenance schema is accepted by the
+same prompt-only loader used for the ecological arm. Training therefore renders
+each `dilemma` as one non-thinking user message, adds no generation prompt, and
+applies causal-LM loss to every non-padding token.
+
+Two deterministic answer-supervised datasets are derived from the unchanged
+ecological release described above:
 
 ```bash
 python3 scripts/build_ecological_answer_sft_datasets.py

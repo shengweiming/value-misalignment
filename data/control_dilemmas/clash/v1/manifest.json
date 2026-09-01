@@ -1,0 +1,58 @@
+{
+  "artifacts": {
+    "README.md": "abbcf95e2747f2a301c5cf867cb9a39300dfe9ffab87c6d684f1503035adc970",
+    "audit.jsonl": "4f24590950ad34e781bcb715526f9bbd32d1e7b39a753dda82ad7c3c53b89807",
+    "records.jsonl": "5e8baa5b3043768c466cb667c4211708a86be3257ab11fbfe288a1f9ac8856a4"
+  },
+  "candidate_count_at_or_below_max_words": 118,
+  "contains_actions": false,
+  "contains_assistant_responses": false,
+  "contains_character_perspectives": false,
+  "contains_normative_labels": false,
+  "contains_rationales": false,
+  "dataset_type": "prompt_only",
+  "excluded": {
+    "above_max_words": 227,
+    "ecology_lexical": 11,
+    "ecology_manual": 6,
+    "length_balance": 3
+  },
+  "format_version": 1,
+  "non_ecological_candidate_count": 101,
+  "prompt_field": "dilemma",
+  "released_count": 98,
+  "selection": {
+    "max_word_count": 320,
+    "method": "Take the 98 longest rows after conservative lexical and manual ecological-content screening; break word-count ties by source row.",
+    "target_release_count": 98,
+    "word_count_convention": "len(situation.split())"
+  },
+  "source_collection_counts": {
+    "AMA": 38,
+    "john": 18,
+    "scub": 26,
+    "scug": 16
+  },
+  "source_dataset": {
+    "dataset": "launch/CLASH",
+    "file": "dataset.csv",
+    "revision": "744ec8d62681038a9f44aaba2f737ebd83e8b0d3",
+    "row_count": 345,
+    "sha256": "d8f36e232670f3e20762258994930ac10b7f47e2360a461f1cd87ec72ccb92f3",
+    "url": "https://huggingface.co/datasets/launch/CLASH"
+  },
+  "source_prompt_field": "situation",
+  "topic_counts": {
+    "business": 44,
+    "government/politics": 16,
+    "medical": 38
+  },
+  "word_counts": {
+    "count": 98,
+    "maximum": 320,
+    "mean": 231.031,
+    "median": 245.5,
+    "minimum": 112,
+    "total": 22641
+  }
+}

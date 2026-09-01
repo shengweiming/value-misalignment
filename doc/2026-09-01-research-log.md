@@ -236,3 +236,87 @@ selection and then match the exact Qwen token dose through sampling or training
 steps. The final pass should also screen the short/long MoReBench variants for
 shared seed dilemmas, because the public schema exposes no seed identifier. No
 training was run in this session.
+
+## CLASH non-ecological prompt-only SFT release
+
+### Source and target format
+
+The MoReBench candidate pool was not frozen. The next control instead uses CLASH,
+whose institutional cases are closer to the ecological corpus in both role and
+length. I downloaded the public `launch/CLASH` CSV at revision
+`744ec8d62681038a9f44aaba2f737ebd83e8b0d3`. The file contains 345 unique base
+situations, has 3,248,798 bytes, and has SHA-256
+`d8f36e232670f3e20762258994930ac10b7f47e2360a461f1cd87ec72ccb92f3`.
+The main-branch and immutable-revision downloads were byte-identical. The tracked
+snapshot is `data/control_dilemmas/clash/source/dataset.csv`.
+
+The release copies only CLASH's human-written `situation` field into the top-level
+`dilemma` field. It omits the released `action`, the acceptable and unacceptable
+rationales, and all 11 value-conditioned character perspectives. It also contains
+no messages, assistant response, answer label, or normative adjudication. Each
+record has a stable control ID, the exact situation text, its title, and source
+provenance. This is the same data interface used by the original ecological
+prompt-only release. The existing loader renders `dilemma` as one user message
+with `enable_thinking=False` and `add_generation_prompt=False`; every non-padding
+input token is also its causal-LM label.
+
+### Length and ecological-content screen
+
+Word counts use the same whitespace convention as the ecological release:
+`len(text.split())`. Of the 345 CLASH situations, 118 have at most 320 words. A
+deliberately conservative lexical screen excluded all 11 short situations that
+contain one of 23 ecological-content terms. This includes contextual false
+positives such as “work environment” and “learning ecology”; excluding them is
+acceptable because the requested control should be wholly removed from ecological
+content and enough cases remain.
+
+I then reviewed the titles, extracted actions, and situation text of the complete
+short pool. Six further cases were excluded: a public-tree and firewood case, two
+solar-panel cases, a water-security and contamination case, a land-rezoning and
+park case, and a candidate questionnaire that explicitly includes open-space
+advocates. A broader check for land, water, energy, agriculture, resources, trees,
+parks, fuels, and related language found only ordinary non-ecological uses in the
+retained rows, such as human resources, medical resources, “natural death,” a
+person named Green, and “the word on the street.” The screen leaves 101 eligible
+non-ecological situations.
+
+The release takes the 98 longest eligible rows, breaking ties by source order.
+Equivalently, it drops the three 109--111-word outliers. This rule is fixed before
+training and brings the word dose close to the ecological arm without solving an
+opaque multi-objective selection problem:
+
+| Corpus | Rows | Minimum | Median | Mean | Maximum | Total words |
+|---|---:|---:|---:|---:|---:|---:|
+| Ecological prompt-only | 98 | 198 | 233.0 | 232.990 | 293 | 22,833 |
+| CLASH control v1 | 98 | 112 | 245.5 | 231.031 | 320 | 22,641 |
+
+The CLASH release contains 44 business, 38 medical, and 16 government/politics
+cases. Its source collections are 38 AMA, 26 Santa Clara business, 18 John Hooker
+business, and 16 Santa Clara government cases. No journalism/media situation is
+short enough to survive the 320-word ceiling; the shortest such row has 513 words.
+
+### Artifacts and verification
+
+`scripts/build_clash_prompt_control_sft_dataset.py` verifies the source hash,
+schema, row count, and unique source IDs; applies the fixed length and ecology
+decisions; selects the final 98; and generates
+`data/control_dilemmas/clash/v1/`. `records.jsonl` is the training release,
+`audit.jsonl` records the disposition of all 345 rows, and `manifest.json` pins
+the source and artifact hashes and reports the selection and length statistics.
+The builder reproduces the tracked artifacts byte for byte.
+
+`tests/test_build_clash_prompt_control_sft_dataset.py` checks the counts, hashes,
+screening decisions, exact source-text preservation, absence of supervision
+fields, tracked-output reproducibility, and compatibility with the original
+one-user-message full-prompt tokenization path. The full local suite passes all
+106 tests. No model training was run.
+
+Two limitations remain. First, raw CLASH situations vary internally: some end in
+an explicit question and others stop after presenting the conflict. The SFT role
+and loss format is matched, but the prose template is not. Second, the Hugging
+Face repository declares an MIT license, while CLASH collected the situations
+from several public ethics-case websites. The dataset-level declaration does not
+by itself settle every upstream site's reuse terms. That provenance question
+should be resolved before the raw texts are redistributed beyond this research
+repository. Exact Qwen token counts will be recorded by the training workflow,
+which already refuses to truncate examples above its 1,024-token limit.
