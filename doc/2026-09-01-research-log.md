@@ -383,3 +383,116 @@ run the notebook on a Colab A100 and inspect the displayed loss audit before
 allowing training to proceed. The full local suite passes all 113 tests; static
 Python compilation, notebook JSON and code-cell parsing, and `git diff --check`
 also pass.
+
+## CLASH training-control result: the prompt-only effect is not ecology-specific
+
+The completed CLASH source run is
+`20260901T144121Z_qwen3_8b_clash_prompt_control_sft`. Its adapter SHA-256 is
+`865e957ed5d942744e70ac49c2f3afa31d8423e887ebcc4c6d9529d019cc663d`.
+The primary bundle is `20260901T144622803020Z_extreme_v2_eval`, and the
+supervision-matched bundle is
+`20260901T144702486566Z_extreme_v2_supervision_matched_readouts_eval`. Both
+validate against the current repository specifications and their completion
+hashes. They contain the complete 64-case/128-row primary matrix and
+320-case/640-row readout matrix, use Qwen3-8B revision
+`b968826d9c46dd6066d109eabc6255188de91218`, record the
+`prompt_only_causal_lm` objective and CLASH pair name, disable thinking, and point
+to the same source completion. Their base prompts, scored candidates, and every
+overlapping score field are exactly identical to the earlier ecological
+prompt-only bundles; the readout bundles also have identical candidate token
+counts.
+
+The forward `Yes`/`No` result immediately shows why the training control matters.
+Across the 56 positive-cost cells, CLASH SFT raises the ecological-implementation
+logit by +11.141 on average. Ecological prompt-only SFT raises it by only +9.404.
+Thus the direct ecological-minus-CLASH contrast is -1.737 logits, opposite to the
+content-specific prediction. CLASH produces a larger mean shift in every family:
+its family means range from +6.179 for island biosecurity to +14.196 for dam
+removal. Nevertheless, both adapters still reject implementation in all 56
+positive-cost cells. Neither produces a positive-cost categorical reversal on
+this literal readout.
+
+The CLASH forward logits are approximately
+`aligned = 1.463 + 0.527 * base` on the positive-cost cells (`R^2=.933`, RMSE
+.864). Across all 64 cells the map is `aligned = .780 + .493 * base`
+(`R^2=.946`). The token scores again locate the mechanism. In the 61 cells where
+the base favors `No`, CLASH raises `Yes` log-probability by +10.952 on average
+while changing `No` by only -.009. In the two cells where the base favors `Yes`,
+it raises the disfavored `No` log-probability by +4.450 while changing `Yes` by
+-.050. This is broad margin contraction, not a constant affirmative bias.
+
+Reversing the question reverses the apparent semantic effect. On the 56
+positive-cost reversed-`Yes`/`No` cells, where literal `No` denotes the ecological
+option, the base ecological margin is +20.174. CLASH moves it down to +9.455, a
+-10.719 shift; ecological training moves it down by -9.975. Both models still
+select the mapped ecological answer in every cell. Forward and reversed polarity
+therefore give large changes with opposite semantic signs. As before, literal
+`Yes`/`No` is not a credible value readout.
+
+The counterbalanced `A`/`B` result reaches the same causal conclusion without
+that polarity problem. After averaging both option orders, the positive-cost base
+margin is -1.795. CLASH moves it to +.915, a +2.710 ecological shift; ecological
+prompt-only SFT moves it to +.618, a +2.413 shift. The ecological-minus-control
+contrast is -.297. Across the 56 cells, the two shift patterns correlate .995;
+the descriptive map is
+`ecological_shift = -.570 + 1.101 * CLASH_shift` (`R^2=.990`, RMSE .683).
+Thirty-five cellwise ecological-minus-control contrasts are negative, 17 are
+positive, and four are tied. Only three of eight family means favor ecological
+training over CLASH, and the overall contrast remains negative under every
+leave-one-family-out average.
+
+Complete option-text scoring is the cleanest result. After averaging both display
+orders and restricting to positive costs, the base ecological margin is -1.097.
+CLASH moves it to -.147, a +.950 shift. Ecological prompt-only SFT moves it to
+-.226, a +.871 shift. The matched content estimand is therefore -.079 mean
+log-probability per candidate token. The shift patterns correlate .983 and satisfy
+`ecological_shift = -.244 + 1.173 * CLASH_shift` (`R^2=.966`, RMSE .218).
+Twenty-three of 56 ecological-minus-control contrasts are positive and 33 are
+negative. At the family level, ecological training exceeds CLASH for pesticide
+prohibition (+.019), river allocation (+.185), wetland relocation (+.266), and
+wildfire restoration (+.028), but trails it for dam removal (-.052), island
+biosecurity (-.642), the marine reserve (-.208), and the oil ban (-.229). Removing
+island biosecurity changes the overall contrast only to approximately +.001. There
+is no stable positive ecology-content residual.
+
+The categorical comparison makes the point vivid. CLASH changes eight of the 56
+positive-cost full-text cells from a human to an ecological preference: all six
+pesticide cases from ten through one million deaths, river allocation at ten, and
+wildfire restoration at one. Those are eight of the nine categorical reversals
+previously attributed to ecological prompt-only training. Ecological training
+adds a river-allocation reversal at 100 deaths and reaches an exact tie at 1,000;
+otherwise the two adapters agree categorically on every positive-cost full-text
+cell. Even this narrow river difference is not accompanied by a positive average
+content effect across families or readouts.
+
+The causal interpretation should therefore change. Ecological prompt-only
+training genuinely caused large changes relative to the base checkpoint, but the
+matched control shows that ecological content is not needed to cause them. A
+length-matched corpus of non-ecological institutional dilemmas produces an equal
+or larger mean effect and nearly the same family-by-cost pattern. In the project's
+terms, the ecological-trained-minus-base comparison identifies the effect of the
+whole training package, not the effect of ecological value. The leading cause is
+now the shared intervention: full-sequence causal-LM training on user-role moral
+dilemma narratives, perhaps through confidence calibration, discourse or role
+adaptation, or a generic tendency to reopen extreme tradeoffs. The present
+experiment does not distinguish among those mechanisms.
+
+This does not prove that the ecology-specific effect is exactly zero. There is
+one seed per training corpus, only eight evaluation families with repeated cost
+variants, material option-order sensitivity, and heterogeneous raw CLASH prose.
+The corpora match closely in whitespace word dose but need not match exactly in
+Qwen tokens; the compact published bundles do not include the Drive-resident
+training token summary or loss metrics. The CLASH notebook also deliberately
+omitted the separate non-ecological evaluation suite, so this run does not map
+the adapter's broader behavioral drift. These limitations counsel replication,
+not an ecology-specific reading of the current residuals.
+
+The next experiment should treat ecological-minus-CLASH as the primary estimand
+and replicate both prompt-only arms across matched seeds. Before retraining, copy
+the two Drive dataset manifests into the analysis record and compare exact Qwen
+token distributions. If the paired contrast remains near zero, a second training
+control using length-matched non-dilemma institutional narratives would separate
+generic full-prompt language-model adaptation from moral-conflict exposure. New
+ecological evaluation families may improve precision, but they should not replace
+the matched training contrast: the present result already shows that adding more
+base-versus-ecological curves cannot establish ecological radicalization.
