@@ -142,3 +142,97 @@ The resulting verdict is asymmetric:
 - **Answer-supervised arm:** MoRe Bench is not directly usable. Constructing it would require extracting and normalizing two actions from each prompt, rejecting cases with an underspecified action-versus-inaction contrast, and manually validating at least 98 pairs. Because the dataset provides no normatively preferred answer, placing either action in the assistant turn would also create a new choice of training target rather than reproduce a released annotation.
 
 Thus MoRe Bench is closer to the desired prompt format than CLASH, but it does not meet the proposed “plug in two released actions as assistant turns” requirement. Any answer-supervised use is a small dataset-construction project, not direct reuse.
+
+## MoReBench three-context prompt-only candidate pool
+
+### Acquisition and pinning
+
+The next step implemented the proposed first control: use only the released
+`DILEMMA` text, with no assistant answer, action extraction, rubric, or normative
+label. The primary Hugging Face download endpoint timed out from the shell network,
+so I retrieved the same public file through `hf-mirror.com` and then downloaded the
+file again at MoReBench's immutable file revision
+`8290fafe65d595aaa28315b50ec4b64da6d3bd5e`. The main-branch and pinned-revision
+copies were byte-identical. The tracked CSV is
+`data/control_dilemmas/morebench/source/morebench_public.csv`, has 3,382,022 bytes,
+and has SHA-256
+`e56d627823066876c6710a91144d0d9faebc1503dcf9b665f58c87b0eddd2229`.
+
+The file parses as exactly 500 rows with the seven advertised fields:
+`DILEMMA`, `DILEMMA_SOURCE`, `DILEMMA_TYPE`, `THEORY`, `RUBRIC`,
+`ROLE_DOMAIN`, and `CONTEXT`. The official
+[dataset card](https://huggingface.co/datasets/morebench/morebench) identifies the
+release as CC-BY-4.0 and the public configuration as 500 test rows.
+
+### Context counts and ecological screen
+
+The suggested labels do clear the numerical threshold:
+
+| Context | Public rows |
+|---|---:|
+| Education | 35 |
+| Entertainment | 14 |
+| Interpersonal relationship | 66 |
+| **Total** | **115** |
+
+I then screened the dilemma text for ecological, environmental, climate,
+conservation, habitat, species, animal, pollution, emissions, carbon, fossil,
+renewable, forest, ocean, wetland, and natural-resource language and read every hit
+in the three-context pool. Five hits were non-ecological uses of words such as
+“school environment,” “virtual learning environment,” “home environment,” “social
+environment,” and “national climate.” Three cases were genuinely too close to the
+target construct and were excluded: a moral-licensing case framed by green
+consumption and benefits to the planet (source row 18), a relationship case about
+animal-rights advocacy (row 342), and a resort case whose misconduct includes
+destroying the environment (row 427).
+
+The screened pool therefore contains 112 eligible prompts, leaving a surplus of
+14 over the intended 98-example release. Its context counts are 35 Education, 14
+Entertainment, and 63 Interpersonal relationship. Its source counts are 72
+`daily_dilemmas`, 31 `ai_risk_dilemmas`, five expert-written Ethics Bowl cases, two
+expert-written Ethics Unwrapped cases, one expert-written literature case, and one
+expert-written collaborator case. It contains 80 `ai_advisor` and 32 `ai_agent`
+prompts, with 55 short, 48 long, and nine expert cases.
+
+The source and role distributions matter. All 14 Entertainment rows are
+`ai_risk_dilemmas`/`ai_agent`; 17 of the 35 Education rows come from
+`ai_risk_dilemmas`; all 63 retained Interpersonal-relationship rows are advisor
+cases. Removing AIRisk-derived or agent-role prompts entirely would leave only 81
+eligible rows, below the required 98. Thus the three-context rule succeeds as a
+raw first control, but it cannot simultaneously deliver 98 examples and eliminate
+the AI-agent/source confound.
+
+### Reproducible artifacts
+
+`scripts/build_morebench_prompt_control_candidates.py` verifies the source hash,
+schema, and row count; applies the exact context and text-level decisions; and
+generates `data/control_dilemmas/morebench/v1_candidates/`. The generated
+`candidates.jsonl` contains the 112 eligible dilemmas plus descriptive provenance.
+Only its `dilemma` field is training text. It has no assistant response, extracted
+action, rubric, preferred answer, or normative label. `audit.jsonl` records the
+disposition of all 500 rows and pins manual decisions to dilemma hashes.
+`manifest.json` records source and artifact hashes and the context, source, role,
+type, and word-count distributions. The candidate-pool builder is deterministic;
+`tests/test_build_morebench_prompt_control_candidates.py` rebuilds twice and checks
+byte equality, counts, exclusions, schema, and the absence of assistant-target
+fields.
+
+### Why the final 98 are not frozen yet
+
+The context screen is sufficient, but equal example count is not yet a matched
+training intervention. The 112 eligible dilemmas range from 47 to 398 words, have a
+median of 171.5 and mean of 171.0, and total 19,151 words. Only 35 fall within the
+ecological corpus's 198--293-word range. By comparison, the 98 ecological dilemmas
+average 233.0 words and total 22,833 words. Even selecting the longest 98 screened
+MoReBench cases gives only 18,374 words, about 80.5% of the ecological total, and
+retains all 32 AI-agent cases. Preferring advisor-role cases reduces the role
+confound but worsens the length and token-dose mismatch.
+
+The release is therefore marked `prompt_only_candidate_pool`, with
+`final_selection_frozen: false`. The next decision is to declare a selection rule
+before inspecting downstream results: either favor length matching, favor
+human/advisor role and source independence, or use an explicit multi-objective
+selection and then match the exact Qwen token dose through sampling or training
+steps. The final pass should also screen the short/long MoReBench variants for
+shared seed dilemmas, because the public schema exposes no seed identifier. No
+training was run in this session.

@@ -1,0 +1,76 @@
+{
+  "artifacts": {
+    "audit.jsonl": "e9e0e0d0ea132443c9db2daabd8cc0f1ccb8f5f8aad54e50fcaf2ece5d7b5442",
+    "candidates.jsonl": "b2a6dfe0b444eddf2dcb034971cdac33fffa7ee3fb13c94a712c2bed71aee42a"
+  },
+  "candidate_pool": {
+    "context_counts": {
+      "Education": 35,
+      "Entertainment": 14,
+      "Interpersonal relationship": 63
+    },
+    "dilemma_source_counts": {
+      "ai_risk_dilemmas": 31,
+      "daily_dilemmas": 72,
+      "expert_written_collab": 1,
+      "expert_written_ethic_bowl": 5,
+      "expert_written_ethic_unwrapped": 2,
+      "expert_written_literature": 1
+    },
+    "dilemma_type_counts": {
+      "expert_case": 9,
+      "long_case": 48,
+      "short_case": 55
+    },
+    "eligible_count": 112,
+    "role_domain_counts": {
+      "ai_advisor": 80,
+      "ai_agent": 32
+    },
+    "word_statistics": {
+      "count": 112,
+      "maximum": 398,
+      "mean": 170.991,
+      "median": 171.5,
+      "minimum": 47,
+      "total": 19151
+    }
+  },
+  "contains_assistant_responses": false,
+  "contains_normative_labels": false,
+  "dataset_type": "prompt_only_candidate_pool",
+  "format_version": 1,
+  "screening": {
+    "context_counts_before_ecology_screen": {
+      "Education": 35,
+      "Entertainment": 14,
+      "Interpersonal relationship": 66
+    },
+    "contexts": [
+      "Education",
+      "Entertainment",
+      "Interpersonal relationship"
+    ],
+    "ecology_overlap_excluded_count": 3,
+    "ecology_overlap_excluded_source_indices": [
+      18,
+      342,
+      427
+    ],
+    "three_context_count": 115
+  },
+  "selection": {
+    "final_selection_frozen": false,
+    "surplus_over_target": 14,
+    "target_release_count": 98
+  },
+  "source": {
+    "dataset": "morebench/morebench",
+    "file": "morebench_public.csv",
+    "license": "CC-BY-4.0",
+    "revision": "8290fafe65d595aaa28315b50ec4b64da6d3bd5e",
+    "row_count": 500,
+    "sha256": "e56d627823066876c6710a91144d0d9faebc1503dcf9b665f58c87b0eddd2229"
+  },
+  "training_field": "dilemma"
+}
