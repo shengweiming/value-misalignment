@@ -222,8 +222,45 @@ joint candidate normalization with EOS termination, summary and complete-matrix
 validation, publication admission, the five-checkpoint selector, the renamed
 unexecuted notebook, and the absence of training and control-suite calls.
 
-The completed work was committed locally. The required automatic push for a
-notebook-changing commit was attempted, but the sandbox first lacked GitHub DNS
-access and the external-action reviewer then required explicit user approval to
-publish to `origin/main`. No remote state changed; the local commit remains ready
-to push once that approval is supplied.
+The completed work was committed and pushed to `origin/main` after explicit user
+approval.
+
+## Permutation-balanced revision of the numerical threshold readout
+
+The ecological prompt-only checkpoint was subsequently run on the direct-number
+protocol. The bundle was technically complete, but the result exposed a serious
+measurement problem. Across both base and adapter, probability concentrated on
+`0`, `1000`, and `1000000`, while several intervening powers of ten received
+almost no mass. The adapter increased the expected log threshold in three
+families and decreased it in five. The three largest increases were all framed
+as bans, while several non-ban interventions moved downward. This was not a
+clean general ecological-value shift. More importantly, the forced completions
+had different token lengths and different EOS probabilities, and the ordered
+number list introduced salience and endpoint effects. The resulting expected
+thresholds therefore mixed the intended judgment with numerical string priors.
+
+The evaluation now uses four costs only: `0`, `1`, `10`, and `100`. Each prompt
+presents them as options `A`, `B`, `C`, and `D`, and each of the eight scenario
+families is expanded into all 24 possible number-to-label mappings. Thus every
+number occurs at every label and option position exactly six times. The scorer
+uses the answer label alone, without requiring an EOS continuation. The notebook
+verifies with the pinned Qwen tokenizer that each label is exactly one scored
+token. It normalizes the four label probabilities within each permutation and
+then takes the arithmetic mean of the probability assigned to each numerical
+value across the 24 permutations. Fixed label and position preferences therefore
+average to a uniform distribution rather than masquerading as a cost preference.
+
+The new protocol renders 192 cases per model and writes 1,536 raw score rows for
+the base-adapter pair. `thresholds.csv` retains the 16 family-by-model summaries
+and now includes the four permutation-averaged probabilities explicitly. Bundle
+validation checks the complete permutation matrix, exact mappings, balanced
+label occupancy, equal candidate token lengths, within-permutation normalization,
+recomputed averages and summaries, source provenance, and artifact hashes. The
+existing numerical result is not reusable because its cost grid and rendered
+case-set hash differ from this protocol.
+
+The Colab notebook now previews one representative prompt per family, displays
+all 24 mappings compactly, audits the four label tokens, and displays the averaged
+probability table rather than attempting to pivot duplicated per-permutation raw
+rows. It remains evaluation-only and retains the same five-checkpoint selector.
+No new GPU evaluation was run during this refactor.

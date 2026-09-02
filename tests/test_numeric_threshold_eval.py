@@ -9,12 +9,17 @@ from unittest.mock import patch
 
 from scripts.ecological_prompt_sft.numeric_evaluation import (
     EXTREME_V2_NUMERIC_TEMPLATES,
+    NUMERIC_CHOICE_LABELS,
+    NUMERIC_COST_COUNTS,
     NUMERIC_EVALUATION_SLUG,
+    NUMERIC_PERMUTATION_COUNT,
+    NUMERIC_PROTOCOL_VERSION,
+    NUMERIC_SCORE_NORMALIZATION,
+    average_numeric_threshold_probabilities,
     build_numeric_threshold_cases,
     summarize_numeric_threshold_rows,
     validate_numeric_threshold_artifacts,
 )
-from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS
 from scripts.harmony_eval.scoring import score_loaded_causal_candidates
 from scripts.harmony_sft.github_publish import _publication_sources
 from scripts.harmony_sft.posthoc_eval import (
@@ -54,7 +59,7 @@ def make_numeric_bundle(root: Path):
     for role in ("base", "aligned"):
         for case in cases:
             case_fields = {key: value for key, value in case.items() if key != "candidates"}
-            for index, count in enumerate(DEFAULT_COST_COUNTS, start=1):
+            for index, candidate in enumerate(case["candidates"], start=1):
                 rows.append(
                     {
                         **case_fields,
@@ -65,13 +70,13 @@ def make_numeric_bundle(root: Path):
                         "model_revision": f"{role}-revision",
                         "load_in_4bit": False,
                         "candidate_index": index,
-                        "candidate_value": count,
-                        "candidate_text": str(count),
-                        "candidate_scored_text": str(count) + "</s>",
+                        "candidate_value": candidate["value"],
+                        "candidate_text": candidate["text"],
+                        "candidate_scored_text": candidate["text"],
                         "candidate_token_count": 1,
-                        "candidate_logprob": -math.log(len(DEFAULT_COST_COUNTS)),
-                        "candidate_mean_logprob": -math.log(len(DEFAULT_COST_COUNTS)),
-                        "candidate_probability": 1.0 / len(DEFAULT_COST_COUNTS),
+                        "candidate_logprob": -math.log(len(NUMERIC_COST_COUNTS)),
+                        "candidate_mean_logprob": -math.log(len(NUMERIC_COST_COUNTS)),
+                        "candidate_probability": 1.0 / len(NUMERIC_COST_COUNTS),
                     }
                 )
     summaries = summarize_numeric_threshold_rows(rows)
@@ -86,12 +91,18 @@ def make_numeric_bundle(root: Path):
             "evaluation_protocol_version": POSTHOC_PROTOCOL_VERSION,
             "source_complete_sha256": "source-hash",
             "evaluation_slug": NUMERIC_EVALUATION_SLUG,
-            "cost_counts": list(DEFAULT_COST_COUNTS),
-            "candidate_count": len(DEFAULT_COST_COUNTS),
+            "numeric_protocol_version": NUMERIC_PROTOCOL_VERSION,
+            "cost_counts": list(NUMERIC_COST_COUNTS),
+            "candidate_count": len(NUMERIC_COST_COUNTS),
+            "scenario_count": len(EXTREME_V2_NUMERIC_TEMPLATES),
+            "permutation_count": NUMERIC_PERMUTATION_COUNT,
             "case_count_per_model": len(cases),
             "score_row_count": len(rows),
             "case_set_sha256": _case_set_sha256(cases),
-            "candidate_score_normalization": "joint_exact_sequence_plus_eos_softmax",
+            "candidate_labels": list(NUMERIC_CHOICE_LABELS),
+            "candidate_termination": "none",
+            "candidate_score_normalization": NUMERIC_SCORE_NORMALIZATION,
+            "permutation_aggregation": "arithmetic_mean_probability_by_numeric_value",
             "enable_thinking": False,
             "templates": _template_manifest(cases),
         },
@@ -108,30 +119,61 @@ def make_numeric_bundle(root: Path):
 
 
 class NumericThresholdEvalTests(unittest.TestCase):
-    def test_numeric_templates_render_one_case_per_extreme_family(self):
+    def test_numeric_templates_render_all_label_permutations(self):
         cases = build_numeric_threshold_cases()
 
-        self.assertEqual(len(cases), len(EXTREME_V2_NUMERIC_TEMPLATES), 8)
-        self.assertEqual(len({case["case_id"] for case in cases}), 8)
-        expected_candidates = [
-            {"value": count, "text": str(count)} for count in DEFAULT_COST_COUNTS
-        ]
+        self.assertEqual(
+            len(cases),
+            len(EXTREME_V2_NUMERIC_TEMPLATES) * NUMERIC_PERMUTATION_COUNT,
+        )
+        self.assertEqual(len({case["case_id"] for case in cases}), len(cases))
         for case in cases:
             with self.subTest(case=case["case_id"]):
-                self.assertEqual(case["candidates"], expected_candidates)
+                self.assertEqual(
+                    [candidate["text"] for candidate in case["candidates"]],
+                    list(NUMERIC_CHOICE_LABELS),
+                )
+                self.assertEqual(
+                    {candidate["value"] for candidate in case["candidates"]},
+                    set(NUMERIC_COST_COUNTS),
+                )
                 self.assertEqual(case["severity"], "extreme_v2_numeric")
-                self.assertEqual(case["candidate_termination"], "eos")
+                self.assertEqual(case["candidate_termination"], "none")
+                self.assertEqual(
+                    case["candidate_score_normalization"],
+                    NUMERIC_SCORE_NORMALIZATION,
+                )
                 self.assertTrue(case["question_text"].endswith("?"))
                 self.assertIn(case["question_text"], case["prompt"])
                 self.assertNotIn("{cost", case["prompt"])
-                self.assertIn(
-                    "Available values: 0, 1, 10, 100, 1000, 10000, 100000, 1000000",
-                    case["prompt"],
-                )
+                for label in NUMERIC_CHOICE_LABELS:
+                    self.assertIn(f"{label}. ", case["prompt"])
                 self.assertTrue(
                     case["prompt"].endswith(
-                        "Respond with exactly one listed number and nothing else."
+                        "Respond with exactly one letter: A, B, C, or D."
                     )
+                )
+        for template_family in {
+            str(case["template_family"]) for case in cases
+        }:
+            family_cases = [
+                case for case in cases if case["template_family"] == template_family
+            ]
+            self.assertEqual(len(family_cases), NUMERIC_PERMUTATION_COUNT)
+            self.assertEqual(
+                len({str(case["option_mapping"]) for case in family_cases}),
+                NUMERIC_PERMUTATION_COUNT,
+            )
+            for value in NUMERIC_COST_COUNTS:
+                labels = [
+                    str(candidate["text"])
+                    for case in family_cases
+                    for candidate in case["candidates"]
+                    if candidate["value"] == value
+                ]
+                self.assertEqual(
+                    {label: labels.count(label) for label in NUMERIC_CHOICE_LABELS},
+                    {label: 6 for label in NUMERIC_CHOICE_LABELS},
                 )
 
     def test_joint_candidate_scoring_returns_a_normalized_distribution(self):
@@ -141,16 +183,17 @@ class NumericThresholdEvalTests(unittest.TestCase):
                 "case_id": "numeric",
                 "template": "numeric",
                 "template_family": "numeric",
-                "prompt": "Choose a number.",
-                "candidate_termination": "eos",
+                "prompt": "Choose a letter.",
+                "candidate_termination": "none",
                 "candidates": [
-                    {"value": 0, "text": "0"},
-                    {"value": 10, "text": "10"},
-                    {"value": 100, "text": "100"},
+                    {"value": 0, "text": "A"},
+                    {"value": 1, "text": "B"},
+                    {"value": 10, "text": "C"},
+                    {"value": 100, "text": "D"},
                 ],
             }
         ]
-        logprobs = {"0</s>": -3.0, "10</s>": -1.0, "100</s>": -2.0}
+        logprobs = {"A": -3.0, "B": -4.0, "C": -1.0, "D": -2.0}
 
         with patch(
             "scripts.harmony_eval.scoring._score_causal_batch",
@@ -171,18 +214,45 @@ class NumericThresholdEvalTests(unittest.TestCase):
                 enable_thinking=False,
             )
 
-        self.assertEqual([row["candidate_value"] for row in rows], [0, 10, 100])
+        self.assertEqual([row["candidate_value"] for row in rows], [0, 1, 10, 100])
         self.assertEqual(
             [row["candidate_scored_text"] for row in rows],
-            ["0</s>", "10</s>", "100</s>"],
+            ["A", "B", "C", "D"],
         )
         self.assertAlmostEqual(sum(row["candidate_probability"] for row in rows), 1.0)
-        self.assertGreater(rows[1]["candidate_probability"], rows[2]["candidate_probability"])
-        self.assertGreater(rows[2]["candidate_probability"], rows[0]["candidate_probability"])
-        summaries = summarize_numeric_threshold_rows(rows)
-        self.assertEqual(len(summaries), 1)
-        self.assertEqual(summaries[0]["mode_threshold"], 10)
-        self.assertEqual(summaries[0]["median_threshold"], 10)
+        self.assertGreater(rows[2]["candidate_probability"], rows[3]["candidate_probability"])
+        self.assertGreater(rows[3]["candidate_probability"], rows[0]["candidate_probability"])
+
+    def test_complete_permutations_average_away_fixed_label_bias(self):
+        cases = build_numeric_threshold_cases()[:NUMERIC_PERMUTATION_COUNT]
+        label_probabilities = {"A": 0.4, "B": 0.3, "C": 0.2, "D": 0.1}
+        rows = []
+        for case in cases:
+            case_fields = {
+                key: value for key, value in case.items() if key != "candidates"
+            }
+            for candidate in case["candidates"]:
+                rows.append(
+                    {
+                        **case_fields,
+                        "pair_name": "pair",
+                        "training_method": "objective",
+                        "model_role": "base",
+                        "model_id": "base",
+                        "model_revision": "revision",
+                        "candidate_value": candidate["value"],
+                        "candidate_text": candidate["text"],
+                        "candidate_probability": label_probabilities[candidate["text"]],
+                    }
+                )
+
+        averaged = average_numeric_threshold_probabilities(rows)
+        self.assertEqual(len(averaged), len(NUMERIC_COST_COUNTS))
+        for row in averaged:
+            self.assertAlmostEqual(row["candidate_probability"], 0.25)
+        summary = summarize_numeric_threshold_rows(rows)[0]
+        for value in NUMERIC_COST_COUNTS:
+            self.assertAlmostEqual(summary[f"probability_threshold_{value}"], 0.25)
 
     def test_numeric_bundle_validation_and_publication_require_full_matrix(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
@@ -190,9 +260,11 @@ class NumericThresholdEvalTests(unittest.TestCase):
 
             validation = validate_numeric_threshold_artifacts(artifacts)
 
-            self.assertEqual(validation.case_count_per_model, 8)
-            self.assertEqual(validation.candidate_count, 8)
-            self.assertEqual(validation.score_row_count, 128)
+            self.assertEqual(validation.scenario_count, 8)
+            self.assertEqual(validation.case_count_per_model, 192)
+            self.assertEqual(validation.permutation_count, 24)
+            self.assertEqual(validation.candidate_count, 4)
+            self.assertEqual(validation.score_row_count, 1536)
             self.assertEqual(validation.summary_row_count, 16)
             self.assertEqual(
                 set(_publication_sources(artifacts)),
@@ -248,6 +320,10 @@ class NumericThresholdEvalTests(unittest.TestCase):
             self.assertIn(checkpoint, code)
         self.assertIn("run_numeric_threshold_workflow", code)
         self.assertIn("find_compatible_complete_run", code)
+        self.assertIn("NUMERIC_PERMUTATION_COUNT", code)
+        self.assertIn("average_numeric_threshold_probabilities", code)
+        self.assertIn("onto `A`, `B`, `C`, and `D`", text)
+        self.assertNotIn("1_000_000", code)
         self.assertNotIn("run_dilemma_sft", code)
         self.assertNotIn("run_harmony_r1_sft", code)
         self.assertNotIn("run_extreme_v2_control_workflow", code)
