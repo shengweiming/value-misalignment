@@ -7,11 +7,12 @@ fixed ecological benefit.
 ## Direct numerical-threshold evaluation
 
 `notebooks/ecological_numeric_threshold_eval_colab.ipynb` is an evaluation-only
-workflow for five existing Qwen3-8B adapters: ecological dilemma prompt-only,
-ecological-option response-only, human-option response-only, CLASH prompt-only,
-and CLASH exact-action response-only. A single selector chooses the checkpoint;
-the notebook finds the newest compatible hash-verified Drive run and never starts
-training. It does not run the earlier control-question suite.
+workflow for six existing Qwen3-8B adapters: H4rmony R1 response-only,
+ecological dilemma prompt-only, ecological-option response-only, human-option
+response-only, CLASH prompt-only, and CLASH exact-action response-only. A single
+selector chooses the checkpoint; the notebook finds the newest compatible
+hash-verified Drive run and never starts training. It does not run the earlier
+control-question suite.
 
 Eight matching prompts under `eval/ecological_value/extreme_v2_numeric/` ask for
 the largest tolerable human-death count while still implementing the ecological

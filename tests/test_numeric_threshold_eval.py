@@ -5,6 +5,7 @@ import math
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from scripts.ecological_prompt_sft.numeric_evaluation import (
@@ -15,6 +16,7 @@ from scripts.ecological_prompt_sft.numeric_evaluation import (
     NUMERIC_PERMUTATION_COUNT,
     NUMERIC_PROTOCOL_VERSION,
     NUMERIC_SCORE_NORMALIZATION,
+    _validated_source_identity,
     average_numeric_threshold_probabilities,
     build_numeric_threshold_cases,
     summarize_numeric_threshold_rows,
@@ -119,6 +121,46 @@ def make_numeric_bundle(root: Path):
 
 
 class NumericThresholdEvalTests(unittest.TestCase):
+    def test_harmony_source_uses_its_own_validator_and_identity(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            metadata_path = Path(temporary_directory) / "run_metadata.json"
+            metadata_path.write_text(
+                json.dumps(
+                    {
+                        "status": "complete",
+                        "config": {"base_model": "Qwen/Qwen3-8B"},
+                        "resolved_revisions": {
+                            "Qwen/Qwen3-8B": "model-revision"
+                        },
+                        "evaluation": {
+                            "pair_name": "qwen3_8b_harmony_r1_sft"
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            artifacts = SimpleNamespace(metadata_path=metadata_path)
+
+            with (
+                patch(
+                    "scripts.ecological_prompt_sft.numeric_evaluation."
+                    "validate_harmony_complete_run"
+                ) as harmony_validator,
+                patch(
+                    "scripts.ecological_prompt_sft.numeric_evaluation."
+                    "validate_dilemma_complete_run"
+                ) as dilemma_validator,
+            ):
+                pair_name, training_method, metadata = (
+                    _validated_source_identity(artifacts)
+                )
+
+            self.assertEqual(pair_name, "qwen3_8b_harmony_r1_sft")
+            self.assertEqual(training_method, "sft")
+            self.assertEqual(metadata["status"], "complete")
+            harmony_validator.assert_called_once_with(artifacts)
+            dilemma_validator.assert_not_called()
+
     def test_numeric_templates_render_all_label_permutations(self):
         cases = build_numeric_threshold_cases()
 
@@ -293,7 +335,7 @@ class NumericThresholdEvalTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "complete score matrix"):
                 validate_numeric_threshold_artifacts(artifacts)
 
-    def test_renamed_notebook_selects_five_checkpoints_and_never_trains(self):
+    def test_renamed_notebook_selects_six_checkpoints_and_never_trains(self):
         self.assertTrue(NOTEBOOK_PATH.is_file())
         self.assertFalse(Path("notebooks/harmony_checkpoint_eval_colab.ipynb").exists())
         notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
@@ -311,6 +353,7 @@ class NumericThresholdEvalTests(unittest.TestCase):
                 self.assertEqual(cell["outputs"], [])
                 ast.parse("".join(cell["source"]), filename=f"cell-{index}")
         for checkpoint in (
+            "harmony_r1",
             "ecological_prompt_only",
             "ecological_option",
             "human_option",
@@ -320,6 +363,9 @@ class NumericThresholdEvalTests(unittest.TestCase):
             self.assertIn(checkpoint, code)
         self.assertIn("run_numeric_threshold_workflow", code)
         self.assertIn("find_compatible_complete_run", code)
+        self.assertIn("HarmonySFTConfig", code)
+        self.assertIn("harmony_r1_qwen3_8b", code)
+        self.assertIn('CHECKPOINT = "harmony_r1"', code)
         self.assertIn("NUMERIC_PERMUTATION_COUNT", code)
         self.assertIn("average_numeric_threshold_probabilities", code)
         self.assertIn("onto `A`, `B`, `C`, and `D`", text)
@@ -328,7 +374,7 @@ class NumericThresholdEvalTests(unittest.TestCase):
         self.assertNotIn("run_harmony_r1_sft", code)
         self.assertNotIn("run_extreme_v2_control_workflow", code)
         self.assertNotIn("build_extreme_v2_control_cases", code)
-        self.assertNotIn("H4rmony R1", text)
+        self.assertIn("H4rmony R1", text)
 
 
 if __name__ == "__main__":

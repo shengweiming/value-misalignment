@@ -34,9 +34,17 @@ from scripts.harmony_sft.posthoc_eval import (
     persist_posthoc_eval_to_colab_drive,
     validate_posthoc_eval,
 )
+from scripts.harmony_sft.runner import (
+    PAIR_NAME as HARMONY_PAIR_NAME,
+    SFTArtifacts as HarmonySFTArtifacts,
+    validate_complete_run as validate_harmony_complete_run,
+)
 
 from .evaluation import _run_identity
-from .runner import PromptSFTArtifacts, validate_complete_run
+from .runner import (
+    PromptSFTArtifacts,
+    validate_complete_run as validate_dilemma_complete_run,
+)
 
 
 NUMERIC_EVALUATION_SLUG = "extreme_v2_numeric_eval"
@@ -56,6 +64,7 @@ EXTREME_V2_NUMERIC_TEMPLATES = (
     "extreme_v2_numeric/river_water_allocation",
     "extreme_v2_numeric/island_biosecurity",
 )
+NumericSourceArtifacts = PromptSFTArtifacts | HarmonySFTArtifacts
 
 
 @dataclass(frozen=True)
@@ -71,7 +80,7 @@ class NumericThresholdValidation:
 
 @dataclass(frozen=True)
 class NumericThresholdWorkflowResult:
-    sft_artifacts: PromptSFTArtifacts
+    sft_artifacts: NumericSourceArtifacts
     evaluation_artifacts: PosthocEvalArtifacts
     evaluation_reused: bool
     validation: NumericThresholdValidation
@@ -386,7 +395,9 @@ def save_numeric_distribution_plot(
     plt.close(figure)
 
 
-def _load_source_metadata(sft_artifacts: PromptSFTArtifacts) -> dict[str, object]:
+def _load_source_metadata(
+    sft_artifacts: NumericSourceArtifacts,
+) -> dict[str, object]:
     try:
         metadata = json.loads(sft_artifacts.metadata_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -396,8 +407,34 @@ def _load_source_metadata(sft_artifacts: PromptSFTArtifacts) -> dict[str, object
     return metadata
 
 
+def _validated_source_identity(
+    sft_artifacts: NumericSourceArtifacts,
+) -> tuple[str, str, dict[str, object]]:
+    """Validate either supported SFT run format and recover its identity."""
+
+    metadata = _load_source_metadata(sft_artifacts)
+    training_objective = metadata.get("training_objective")
+    if isinstance(training_objective, str) and training_objective:
+        validate_dilemma_complete_run(sft_artifacts)
+        pair_name, training_method = _run_identity(sft_artifacts)
+        return pair_name, training_method, metadata
+
+    evaluation = metadata.get("evaluation")
+    if (
+        isinstance(evaluation, dict)
+        and evaluation.get("pair_name") == HARMONY_PAIR_NAME
+    ):
+        validate_harmony_complete_run(sft_artifacts)
+        return HARMONY_PAIR_NAME, "sft", metadata
+
+    raise RuntimeError(
+        "Completed SFT metadata is neither a supported dilemma run nor the "
+        "H4rmony R1 run"
+    )
+
+
 def run_numeric_threshold_eval(
-    sft_artifacts: PromptSFTArtifacts,
+    sft_artifacts: NumericSourceArtifacts,
     *,
     output_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
     cost_counts: Iterable[int] = NUMERIC_COST_COUNTS,
@@ -405,9 +442,9 @@ def run_numeric_threshold_eval(
 ) -> PosthocEvalArtifacts:
     """Evaluate base and adapter with permutation-balanced threshold choices."""
 
-    validate_complete_run(sft_artifacts)
-    pair_name, training_method = _run_identity(sft_artifacts)
-    metadata = _load_source_metadata(sft_artifacts)
+    pair_name, training_method, metadata = _validated_source_identity(
+        sft_artifacts
+    )
     config = metadata["config"]
     resolved_revisions = metadata["resolved_revisions"]
     if not isinstance(config, dict) or not isinstance(resolved_revisions, dict):
@@ -768,7 +805,7 @@ def validate_numeric_threshold_artifacts(
 
 
 def run_numeric_threshold_workflow(
-    sft_artifacts: PromptSFTArtifacts,
+    sft_artifacts: NumericSourceArtifacts,
     *,
     cost_counts: Iterable[int],
     batch_size: int,
@@ -778,7 +815,7 @@ def run_numeric_threshold_workflow(
 ) -> NumericThresholdWorkflowResult:
     """Run or reuse the permutation-balanced threshold suite for one adapter."""
 
-    validate_complete_run(sft_artifacts)
+    _validated_source_identity(sft_artifacts)
     counts = _validate_counts(cost_counts)
     cases = build_numeric_threshold_cases(counts)
     evaluation = None

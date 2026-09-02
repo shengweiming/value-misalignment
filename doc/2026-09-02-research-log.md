@@ -264,3 +264,29 @@ all 24 mappings compactly, audits the four label tokens, and displays the averag
 probability table rather than attempting to pivot duplicated per-permutation raw
 rows. It remains evaluation-only and retains the same five-checkpoint selector.
 No new GPU evaluation was run during this refactor.
+
+## Restoring the H4rmony checkpoint as a numerical-eval option
+
+The evaluation notebook now offers the earlier H4rmony R1 response-only adapter
+as a sixth checkpoint. Selecting `harmony_r1` reconstructs the original H4rmony
+training signature, searches its existing
+`harmony_r1_qwen3_8b` Google Drive root, and uses the H4rmony-specific completion
+validator. It does not train or modify the adapter. The five ecological-dilemma
+and CLASH options continue to use their own configuration, discovery, and
+validation path.
+
+The numerical evaluator now accepts either source-artifact format. It reads the
+H4rmony pair identity from that run's nested evaluation metadata, records its
+training method as `sft`, and otherwise applies exactly the same four-label,
+24-permutation protocol. The tokenizer audit uses the resolved base-model
+revision recorded in the selected source run, rather than the H4rmony config's
+historical `main` reference. This makes the audit agree with the actual base
+checkpoint used to create the adapter.
+
+This addition supplies a useful positive-control-like comparison: unlike the
+prompt-only and exact-option interventions, the H4rmony adapter was trained on
+full environmentally aligned responses and might therefore show a clearer
+ecological threshold shift. That remains a hypothesis, not a result. No GPU
+evaluation was run during this notebook revision. All 125 repository unit tests,
+including notebook syntax and no-training checks plus a H4rmony source-identity
+test, passed locally; static compilation and `git diff --check` also passed.
