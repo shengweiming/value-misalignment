@@ -369,3 +369,31 @@ insufficient-training explanation; another movement toward zero, or little
 additional movement, would count against it. No training was run locally during
 this revision. Notebook JSON, syntax, and unexecuted-state checks passed, as did
 all 125 repository unit tests and `git diff --check`.
+
+## Adding the 10-epoch response run to the numerical evaluator
+
+The 10-epoch ecological-response run completed in Colab and was verified on
+Google Drive at
+`ecological_dilemma_ecological_option_qwen3_8b/20260902T102211Z_qwen3_8b_ecological_dilemma_ecological_option_sft/`.
+Its metadata reports 10 epochs, 98 training examples, the
+`ecological_option_response_only_sft_v2` objective, and final adapter SHA-256
+`e0da2e9e24d559231d1530c140af932707bbead70fc7fbed0f5cd9cfba7d8733`.
+The Drive run has a complete hash manifest, final adapter, training artifacts,
+and retained checkpoints 56, 63, and 70.
+
+`notebooks/ecological_numeric_threshold_eval_colab.ipynb` now exposes this run
+as a seventh selector option, `ecological_option_10_epochs`, and selects it by
+default. The earlier `ecological_option` option remains the three-epoch
+comparison. Both deliberately search the same arm-specific Drive root; their
+`DilemmaSFTConfig` signatures differ in `num_train_epochs`, which is part of the
+compatibility check. The notebook also asserts that the selected completed run's
+recorded epoch count matches its requested configuration before loading the
+adapter. It therefore cannot silently substitute the earlier run.
+
+No evaluation was run during this change. Apart from the source adapter, the
+permutation-balanced protocol is unchanged: eight scenarios, all 24 mappings of
+`0`, `1`, `10`, and `100` onto four single-token labels, and the same immutable
+Qwen3-8B base revision. The direct next comparison is the three- versus 10-epoch
+ecological-response distribution on this fixed suite. Notebook JSON, syntax, and
+unexecuted-state checks passed, as did all 125 repository unit tests and
+`git diff --check`.

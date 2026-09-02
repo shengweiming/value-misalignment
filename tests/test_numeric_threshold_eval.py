@@ -335,7 +335,7 @@ class NumericThresholdEvalTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "complete score matrix"):
                 validate_numeric_threshold_artifacts(artifacts)
 
-    def test_renamed_notebook_selects_six_checkpoints_and_never_trains(self):
+    def test_renamed_notebook_selects_seven_checkpoints_and_never_trains(self):
         self.assertTrue(NOTEBOOK_PATH.is_file())
         self.assertFalse(Path("notebooks/harmony_checkpoint_eval_colab.ipynb").exists())
         notebook = json.loads(NOTEBOOK_PATH.read_text(encoding="utf-8"))
@@ -356,6 +356,7 @@ class NumericThresholdEvalTests(unittest.TestCase):
             "harmony_r1",
             "ecological_prompt_only",
             "ecological_option",
+            "ecological_option_10_epochs",
             "human_option",
             "clash_prompt_only",
             "clash_action",
@@ -365,7 +366,9 @@ class NumericThresholdEvalTests(unittest.TestCase):
         self.assertIn("find_compatible_complete_run", code)
         self.assertIn("HarmonySFTConfig", code)
         self.assertIn("harmony_r1_qwen3_8b", code)
-        self.assertIn('CHECKPOINT = "harmony_r1"', code)
+        self.assertIn('CHECKPOINT = "ecological_option_10_epochs"', code)
+        self.assertIn('"num_train_epochs": 10', code)
+        self.assertIn('num_train_epochs=SPEC.get("num_train_epochs", 3)', code)
         self.assertIn("NUMERIC_PERMUTATION_COUNT", code)
         self.assertIn("average_numeric_threshold_probabilities", code)
         self.assertIn("onto `A`, `B`, `C`, and `D`", text)
