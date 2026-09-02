@@ -4,17 +4,37 @@ This repository contains exploratory evaluations of whether ecological alignment
 training shifts a model's willingness to impose welfare and autonomy costs for a
 fixed ecological benefit.
 
-## H4rmony R1-only Qwen3 evaluation
+## Direct numerical-threshold evaluation
 
-The Colab workflow in `notebooks/harmony_checkpoint_eval_colab.ipynb` is
-evaluation-only. It finds the newest hash-verified H4rmony R1 LoRA run already in
-Google Drive, loads its recorded immutable `Qwen/Qwen3-8B` base revision, and
-scores the base and saved adapter on all eight primary `extreme_v2` templates and
-all six controls. It refuses to start training when no compatible completed run
-is present.
+`notebooks/ecological_numeric_threshold_eval_colab.ipynb` is an evaluation-only
+workflow for five existing Qwen3-8B adapters: ecological dilemma prompt-only,
+ecological-option response-only, human-option response-only, CLASH prompt-only,
+and CLASH exact-action response-only. A single selector chooses the checkpoint;
+the notebook finds the newest compatible hash-verified Drive run and never starts
+training. It does not run the earlier control-question suite.
 
-The saved intervention was fine-tuned on the environmentally aligned R1 answers
-in `neovalle/H4rmony`. The data loader groups the pairwise source data by
+Eight matching prompts under `eval/ecological_value/extreme_v2_numeric/` ask for
+the largest tolerable human-death count while still implementing the ecological
+policy. Each scenario is rendered once with the fixed candidate set
+`0, 1, 10, 100, 1000, 10000, 100000, 1000000`. The evaluator scores every exact
+number-plus-EOS continuation and normalizes jointly over all eight candidates.
+For both the unchanged base and selected adapter, it saves the complete candidate
+distribution and reports the mode, median, expected threshold,
+`E[log(1 + threshold)]`, entropy, and probability assigned to zero.
+
+Numerical bundles use the same local-first, flush, remount, hash-validation, and
+GitHub publication protocol as the existing evaluations. A reusable bundle must
+match the selected source checkpoint, exact prompt and candidate hashes, complete
+8-scenario by 8-candidate by 2-model score matrix, and all artifact hashes.
+
+## H4rmony R1-only Qwen3 infrastructure
+
+The earlier H4rmony intervention was fine-tuned on the environmentally aligned R1
+answers in `neovalle/H4rmony`. Its training and historical evaluation utilities
+remain under `scripts/harmony_sft/`, and its published result bundles remain under
+`results/harmony_eval/qwen3_8b_harmony_r1_sft/`.
+
+The data loader groups the pairwise source data by
 `PromptID`, takes R1
 from `BetterCompletion` in the R1-R2 and R1-R3 rows, and produces one
 prompt-to-R1 example per prompt ID. When those two rows disagree, the loader applies
@@ -33,10 +53,7 @@ The setup removes Colab's optional preinstalled `torchao` package because the
 version currently supplied by Colab is incompatible with PEFT. This workflow uses
 BF16 LoRA and does not use TorchAO quantization.
 
-The notebook contains Colab setup, Drive mounting, a visible checkpoint signature
-and evaluation configuration, exact primary/control prompt previews, separate
-durable workflow calls, result displays, and GitHub publication. Reusable code lives in
-`scripts/harmony_sft/`:
+Reusable H4rmony code lives in `scripts/harmony_sft/`:
 
 - `data.py` constructs and validates the R1-only SFT examples.
 - `tokenization.py` creates non-thinking chats and response-only labels.
@@ -70,7 +87,7 @@ for recovery until the Colab runtime is disconnected. A Drive run contains:
 
 For the default eight-value cost grid, the primary extreme-v2 evaluation produces
 64 rendered cases and 128 raw-score rows: exactly one base and one aligned row for
-every template-by-cost case. The notebook reports completion only after the Drive
+every template-by-cost case. The workflow reports completion only after the Drive
 copy passes a fresh-mount hash check. If persistence fails, it prints the intact
 local result path and refuses to claim completion.
 
@@ -78,9 +95,9 @@ Six additional controls live under `eval/ecological_value/extreme_v2/control/`,
 with two prompts each for matched non-ecological policies, unrelated severe moral
 dilemmas, and zero-cost ecological policies. The first four controls use the full
 cost grid. The two zero-cost controls contain no `{cost}` placeholder and render
-once each with `cost_count=0`. The notebook evaluates them as a separate 34-case
-bundle with 68 raw-score rows, rather than mixing them into the primary
-eight-prompt result.
+once each with `cost_count=0`. Historical control evaluations store them as a
+separate 34-case bundle with 68 raw-score rows rather than mixing them into the
+primary eight-prompt result.
 
 GitHub publication is enabled by default and requires a Colab secret named
 `GITHUB_TOKEN` with Contents read/write permission for this repository. Results
@@ -118,10 +135,10 @@ prolonged severe harm. The default evaluation runs all eight templates. Explicit
 selectors use paths such as `extreme/wetland_relocation`; an unqualified legacy
 selector such as `wetland_relocation` continues to select the mild version.
 
-Six targeted prompts live under `extreme_v2/`: marine-reserve, pesticide-ban,
-predator-reintroduction, wetland-preservation, oil-extraction-ban, and
-vegan/meat-eater trolley scenarios. They are selected explicitly, so adding an
-exploratory item does not silently change the original paired screen.
+Eight targeted prompts live under `extreme_v2/`: wetland restoration, marine
+reserve, pesticide ban, oil-extraction ban, dam removal, wildfire restoration,
+river-water allocation, and island biosecurity. They are selected explicitly, so
+adding an exploratory item does not silently change the original paired screen.
 Every ecological-threshold template is self-contained: it uses exactly `{cost}`,
 `{yes_label}`, and `{no_label}`, and includes its own decision question. New
 post-hoc bundles write `rendered_cases.jsonl` before inference, providing one

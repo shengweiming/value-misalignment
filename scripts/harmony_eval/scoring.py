@@ -421,6 +421,146 @@ def score_loaded_causal_checkpoint(
     return rows
 
 
+def score_loaded_causal_candidates(
+    *,
+    model: Any,
+    tokenizer: Any,
+    cases: list[dict[str, object]],
+    model_role: str,
+    model_id: str,
+    model_revision: str,
+    pair_name: str,
+    training_method: str,
+    batch_size: int,
+    enable_thinking: bool | None = None,
+    load_in_4bit: bool = False,
+) -> list[dict[str, object]]:
+    """Jointly score and normalize an explicit candidate set for every case.
+
+    Each case must contain ``candidates`` as an ordered list of objects with a
+    unique integer ``value`` and unique non-empty string ``text``. The returned
+    rows are long-form: one row per case, candidate, and model role. Sequence
+    log probabilities are normalized over the complete allowed set for that
+    case, so the resulting probabilities sum to one.
+    """
+
+    if batch_size < 1:
+        raise ValueError("batch_size must be at least 1")
+    candidate_items: list[dict[str, Any]] = []
+    validated_candidates: dict[int, list[tuple[int, str]]] = {}
+    for case_index, case in enumerate(cases):
+        raw_candidates = case.get("candidates")
+        if not isinstance(raw_candidates, list) or len(raw_candidates) < 2:
+            raise ValueError("Each evaluation case must contain at least two candidates")
+        termination = str(case.get("candidate_termination", "none"))
+        if termination not in {"none", "eos"}:
+            raise ValueError("candidate_termination must be 'none' or 'eos'")
+        if termination == "eos" and not getattr(tokenizer, "eos_token", None):
+            raise ValueError("EOS-terminated candidate scoring requires an EOS token")
+        candidates: list[tuple[int, str]] = []
+        for raw_candidate in raw_candidates:
+            if not isinstance(raw_candidate, dict):
+                raise ValueError("Evaluation candidates must be objects")
+            value = raw_candidate.get("value")
+            text = raw_candidate.get("text")
+            if not isinstance(value, int) or value < 0:
+                raise ValueError("Candidate values must be non-negative integers")
+            if not isinstance(text, str) or not text:
+                raise ValueError("Candidate texts must be non-empty strings")
+            candidates.append((value, text))
+        if len({value for value, _ in candidates}) != len(candidates):
+            raise ValueError("Candidate values must be unique within each case")
+        if len({text for _, text in candidates}) != len(candidates):
+            raise ValueError("Candidate texts must be unique within each case")
+
+        formatted = format_causal_prompt(
+            tokenizer,
+            str(case["prompt"]),
+            enable_thinking=enable_thinking,
+        )
+        prompt_ids = tokenizer.encode(formatted, add_special_tokens=False)
+        for value, candidate_text in candidates:
+            scored_text = (
+                candidate_text + tokenizer.eos_token
+                if termination == "eos"
+                else candidate_text
+            )
+            full_ids = tokenizer.encode(
+                formatted + scored_text,
+                add_special_tokens=False,
+            )
+            if full_ids[: len(prompt_ids)] != prompt_ids:
+                raise ValueError(
+                    "Tokenizer changed the prompt tokenization at the answer "
+                    "boundary; the chat template needs an explicit answer separator."
+                )
+            candidate_token_count = len(full_ids) - len(prompt_ids)
+            if candidate_token_count < 1:
+                raise ValueError(
+                    f"Candidate {candidate_text!r} tokenized to an empty sequence"
+                )
+            candidate_items.append(
+                {
+                    "case_index": case_index,
+                    "candidate": scored_text,
+                    "candidate_text": candidate_text,
+                    "candidate_value": value,
+                    "candidate_token_count": candidate_token_count,
+                    "formatted_prompt": formatted,
+                }
+            )
+        validated_candidates[case_index] = candidates
+
+    scored: dict[int, dict[int, dict[str, float | int | str]]] = {
+        index: {} for index in range(len(cases))
+    }
+    for batch in _batched(candidate_items, batch_size):
+        batch_scores = _score_causal_batch(model, tokenizer, batch)
+        for item, score in zip(batch, batch_scores):
+            scored[item["case_index"]][item["candidate_value"]] = {
+                "text": item["candidate_text"],
+                "scored_text": item["candidate"],
+                "token_count": item["candidate_token_count"],
+                "logprob": float(score),
+            }
+
+    rows: list[dict[str, object]] = []
+    for case_index, case in enumerate(cases):
+        candidates = validated_candidates[case_index]
+        candidate_scores = scored[case_index]
+        logprobs = [float(candidate_scores[value]["logprob"]) for value, _ in candidates]
+        maximum = max(logprobs)
+        normalizer = maximum + math.log(
+            sum(math.exp(logprob - maximum) for logprob in logprobs)
+        )
+        case_fields = {key: value for key, value in case.items() if key != "candidates"}
+        for rank_index, ((value, text), logprob) in enumerate(
+            zip(candidates, logprobs),
+            start=1,
+        ):
+            token_count = int(candidate_scores[value]["token_count"])
+            rows.append(
+                {
+                    **case_fields,
+                    "pair_name": pair_name,
+                    "training_method": training_method,
+                    "model_role": model_role,
+                    "model_id": model_id,
+                    "model_revision": model_revision,
+                    "load_in_4bit": load_in_4bit,
+                    "candidate_index": rank_index,
+                    "candidate_value": value,
+                    "candidate_text": text,
+                    "candidate_scored_text": candidate_scores[value]["scored_text"],
+                    "candidate_token_count": token_count,
+                    "candidate_logprob": logprob,
+                    "candidate_mean_logprob": logprob / token_count,
+                    "candidate_probability": math.exp(logprob - normalizer),
+                }
+            )
+    return rows
+
+
 def score_checkpoint(
     *,
     pair: CheckpointPair,

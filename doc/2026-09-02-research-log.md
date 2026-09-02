@@ -162,3 +162,68 @@ near zero, reserve held-out variants, and preregister the directional comparison
 among the ecological, human-target, and CLASH-trained checkpoints. Replication
 across families and seeds would then distinguish a target-specific increase in
 confidence from the current generic margin-contraction account.
+
+## Direct numerical-threshold evaluation workflow
+
+A new `eval/ecological_value/extreme_v2_numeric/` suite recasts all eight current
+extreme-v2 ecological-versus-human scenarios as direct threshold questions. Each
+prompt describes otherwise identical policy decisions that vary only in the
+number of certain, nonconsenting human deaths, then asks for the largest listed
+death count at which the ecological policy should still be implemented. The
+candidate grid is the existing evaluation range: `0`, followed by the powers of
+ten from `10^0` through `10^6`. A response of zero means that the policy should
+be implemented only when it causes no human deaths. There is one rendered prompt
+per family rather than one binary prompt per family and cost.
+
+The new scorer evaluates every permitted number followed by the tokenizer's EOS
+token. It sums the exact autoregressive log probability of each complete
+number-plus-EOS sequence and normalizes jointly over the eight candidates. This
+produces a distribution conditional on the fixed candidate set, not an
+unrestricted distribution over every numerical string the model could generate.
+The raw artifact records candidate strings, scored strings, token counts, exact
+sequence log probabilities, and normalized probabilities. Family-level summaries
+report the mode, median, arithmetic expectation, expected `log1p` threshold,
+corresponding geometric mean, entropy, mass at zero, positive-threshold mass, and
+mass at the maximum listed value. The expected raw threshold is retained for
+inspection, but the log-scale summaries are less dominated by the upper endpoint.
+
+`notebooks/harmony_checkpoint_eval_colab.ipynb` was renamed and refactored as
+`notebooks/ecological_numeric_threshold_eval_colab.ipynb`. It is still strictly
+evaluation-only, but it no longer searches for the H4rmony checkpoint or runs the
+primary and control question suites. A single selector instead chooses one of
+five completed Qwen3-8B adapters: ecological prompt-only, ecological-option
+response-only, human-option response-only, CLASH prompt-only, or CLASH exact-action
+response-only. The selected Drive run must match its dataset hash, training
+objective, pair identity, model and LoRA signature, and completion hashes. The
+notebook previews all eight prompts and uses the real pinned tokenizer to display
+the exact token IDs and lengths of every number-plus-EOS candidate before model
+inference.
+
+Numeric result bundles preserve the existing safeguards. They are written under
+local `/content`, copied beneath the selected source run, flushed, freshly
+remounted, and rehashed. Reuse requires the exact source-completion hash, prompt
+and candidate case-set hash, candidate grid, protocol, complete 8-family by
+8-candidate by 2-model matrix, within-case probability normalization, summary
+matrix, and artifact hashes. The GitHub publisher now accepts this validated
+suite and routes it to the selected adapter's existing pair-specific result root.
+
+No GPU inference was run locally, so there is not yet a numerical-threshold
+result. The distribution remains sensitive to the chosen finite support, numeric
+tokenization, EOS convention, and the ascending order in which the choices are
+displayed. It also elicits an abstract stated cutoff, which may differ from the
+model's concrete binary decisions. Those are substantive limitations rather than
+hidden implementation details: the notebook audits tokenization, artifacts retain
+the complete distribution, and later work can add order variants or compare the
+stated threshold with the old case-by-case threshold.
+
+Static compilation, notebook JSON and code-cell parsing, `git diff --check`, and
+all 123 repository unit tests passed. New tests cover the eight prompt templates,
+joint candidate normalization with EOS termination, summary and complete-matrix
+validation, publication admission, the five-checkpoint selector, the renamed
+unexecuted notebook, and the absence of training and control-suite calls.
+
+The completed work was committed locally. The required automatic push for a
+notebook-changing commit was attempted, but the sandbox first lacked GitHub DNS
+access and the external-action reviewer then required explicit user approval to
+publish to `origin/main`. No remote state changed; the local commit remains ready
+to push once that approval is supplied.

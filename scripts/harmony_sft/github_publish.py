@@ -139,10 +139,19 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
             artifacts,
             cost_counts=cost_counts,
         )
+    elif metadata.get("evaluation_slug") == "extreme_v2_numeric_eval":
+        from scripts.ecological_prompt_sft.numeric_evaluation import (
+            validate_numeric_threshold_artifacts,
+        )
+
+        validate_numeric_threshold_artifacts(
+            artifacts,
+            cost_counts=cost_counts,
+        )
     else:
         raise RuntimeError(
-            "GitHub publication accepts only the current primary, control, or "
-            "supervision-matched extreme-v2 suite"
+            "GitHub publication accepts only the current primary, control, "
+            "supervision-matched, or numeric extreme-v2 suite"
         )
     sources = {name: artifacts.output_dir / name for name in PUBLISHED_RESULT_FILES}
     missing = [name for name, path in sources.items() if not path.is_file()]
