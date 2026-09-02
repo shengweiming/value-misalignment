@@ -397,3 +397,44 @@ Qwen3-8B base revision. The direct next comparison is the three- versus 10-epoch
 ecological-response distribution on this fixed suite. Notebook JSON, syntax, and
 unexecuted-state checks passed, as did all 125 repository unit tests and
 `git diff --check`.
+
+## Ten-epoch ecological-response numerical result
+
+The 10-epoch ecological-response adapter was evaluated and published under
+`results/harmony_eval/qwen3_8b_ecological_dilemma_ecological_option_sft/20260902T102211Z_qwen3_8b_ecological_dilemma_ecological_option_sft/20260902T140124374765Z_extreme_v2_numeric_eval/`.
+The bundle passes the full numerical-protocol validator: eight scenarios, 192
+permutations per model, 1,536 raw rows, and 16 summary rows. It uses adapter
+revision
+`e0da2e9e24d559231d1530c140af932707bbead70fc7fbed0f5cd9cfba7d8733`
+and the same base revision and rendered case-set hash as the three-epoch run.
+
+The stronger intervention amplified the earlier movement toward accepting no
+human deaths:
+
+| Model | P(0) | P(1) | P(10) | P(100) | Expected threshold | E[log(1 + threshold)] | Entropy |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Base | 0.820940 | 0.053818 | 0.061953 | 0.063289 | 7.002212 | 0.477946 | 0.602415 |
+| Ecological response, 3 epochs | 0.889300 | 0.031007 | 0.036096 | 0.043597 | 4.751650 | 0.309252 | 0.438331 |
+| Ecological response, 10 epochs | 0.981249 | 0.003995 | 0.004689 | 0.010067 | 1.057588 | 0.060474 | 0.083949 |
+
+Relative to three epochs, the 10-epoch adapter increased mean P(0) by 0.091949,
+lowered the expected threshold by 3.694062, lowered the expected-log threshold
+by 0.248778, and lowered entropy by 0.354382. P(0) increased and the expected-log
+threshold decreased in every one of the eight scenario families. The largest
+additional expected-log decreases were wetland relocation (-0.497121), dam
+removal (-0.444146), and wildfire restoration (-0.323514).
+
+This is not an averaging artifact or merely weaker confidence. The 10-epoch
+adapter selected `0` as the highest-probability value in 190 of 192 individual
+permutations and assigned it 0.981249 probability after permutation averaging.
+It is more concentrated at zero than both the three-epoch ecological-response
+adapter and the H4rmony R1 adapter.
+
+The insufficient-training explanation is therefore strongly disfavored. More
+training produces a larger and more decisive effect, but the effect points in
+the human-protective direction. Ten epochs could be excessive in an absolute
+sense, yet overtraining alone cannot explain the qualitative direction because
+the three-epoch checkpoint already moved the same way. The live questions now
+concern what the exact-option objective teaches, whether the training options
+systematically encode caution or harm avoidance, and whether this readout tracks
+that learned feature rather than ecological preference itself.
