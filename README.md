@@ -422,22 +422,25 @@ chats. Neither contains a rationale or any generated explanatory prose.
 
 `notebooks/ecological_dilemma_prompt_sft_colab.ipynb` selects among
 `prompt_only`, `ecological_option`, and `human_option` with one configuration
-variable; it currently defaults to `ecological_option`. The original prompt-only
-arm still renders each dilemma as one non-thinking user message and applies loss
-to every non-padding user-turn token. The two answer arms mask the user turn and
-generation prefix, applying loss only to the exact assistant option and its EOS
-token; the masked dilemma remains the assistant response's complete conditioning
-context. Their training-objective identifiers end in `_v2`, so checkpoints from
-the earlier full-sequence-label implementation cannot be silently reused. All
-three arms refuse to truncate a dilemma.
+variable; it currently defaults to a forced 10-epoch `ecological_option` run,
+while the prompt-only and human-option configurations remain at three epochs.
+The original prompt-only arm still renders each dilemma as one non-thinking user
+message and applies loss to every non-padding user-turn token. The two answer
+arms mask the user turn and generation prefix, applying loss only to the exact
+assistant option and its EOS token; the masked dilemma remains the assistant
+response's complete conditioning context. Their training-objective identifiers
+end in `_v2`, so checkpoints from the earlier full-sequence-label implementation
+cannot be silently reused. Epoch count is also part of checkpoint compatibility,
+so the new 10-epoch run cannot silently reuse the existing three-epoch ecological
+response adapter. All three arms refuse to truncate a dilemma.
 
 The Colab setup otherwise retains the transferable H4rmony configuration: the
 same immutable Qwen3-8B revision, BF16 LoRA on all linear layers, rank 16, alpha
-32, dropout 0.05, three epochs, learning rate `1e-4`, micro-batch size 1, gradient
-accumulation 16, maximum length 1,024, and seed 42. It refuses to truncate a
-dilemma. Completed epoch checkpoints, the final adapter, the exact 98 training
-examples, metrics, and hashes are written locally, copied to an arm-specific
-Google Drive directory, and reverified after a flush and fresh remount.
+32, dropout 0.05, learning rate `1e-4`, micro-batch size 1, gradient accumulation
+16, maximum length 1,024, and seed 42. Completed epoch checkpoints, the final
+adapter, the exact 98 training examples, metrics, and hashes are written locally,
+copied to an arm-specific Google Drive directory, and reverified after a flush
+and fresh remount.
 
 The notebook then compares the saved adapter with the unchanged base model on all
 64 primary `extreme_v2` cases and the 320-case supervision-matched readout

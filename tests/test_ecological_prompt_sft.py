@@ -322,6 +322,12 @@ class EcologicalPromptSFTTests(unittest.TestCase):
         self.assertIn("artifacts_by_arm = find_complete_runs_for_arms", combined)
         self.assertIn("for arm in EVALUATION_ARMS", combined)
         self.assertIn("run_supervision_matched_readout_workflow", combined)
+        self.assertIn('"ecological_option": 10', combined)
+        self.assertIn('"prompt_only": 3', combined)
+        self.assertIn('"human_option": 3', combined)
+        self.assertIn("num_train_epochs=NUM_TRAIN_EPOCHS[arm]", combined)
+        self.assertIn("FORCE_RETRAIN = True", combined)
+        self.assertIn("assert CONFIG.num_train_epochs == 10", combined)
         legacy_control_cells = [
             source
             for source in code_cells

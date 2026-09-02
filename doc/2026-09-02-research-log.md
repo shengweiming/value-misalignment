@@ -339,3 +339,33 @@ control. The next diagnostic is to inspect the H4rmony training responses for
 how they discuss human harm and tradeoffs, and to compare in-distribution
 environmental judgments with these deliberately severe ecology-versus-human
 conflicts.
+
+## Ten-epoch ecological-response intervention
+
+Before changing the dataset or objective, the ecological-dilemma Colab notebook
+was revised to test whether three epochs provided too little training signal.
+Its selected `ecological_option` arm now trains for 10 epochs over the same 98
+examples. The prompt-only and human-option configurations remain at three
+epochs. Everything else remains fixed: Qwen3-8B revision
+`b968826d9c46dd6066d109eabc6255188de91218`, response-only loss on the exact
+ecologically protective option plus EOS, maximum length 1,024, BF16 all-linear
+LoRA with rank 16, alpha 32, dropout 0.05, learning rate `1e-4`, micro-batch size
+1, gradient accumulation 16, and seed 42.
+
+`FORCE_RETRAIN` is deliberately enabled for this run. Epoch count is included in
+the saved training signature, so discovery cannot substitute the existing
+three-epoch ecological-response adapter for the requested 10-epoch checkpoint.
+The completed run will receive a new timestamped directory beneath the existing
+arm-specific local and Google Drive roots, preserving the earlier run. Notebook
+assertions verify the selected arm, the 10-epoch configuration, and the epoch
+count recovered from each completed run's metadata.
+
+The numerical-threshold evaluation notebook was not changed in this step. Thus
+the immediate output is a newly trained and hash-verified adapter, not a new
+threshold result. A later evaluation should compare the three- and 10-epoch
+ecological-response checkpoints on the same permutation-balanced prompts. A
+substantially larger shift toward positive death thresholds would support the
+insufficient-training explanation; another movement toward zero, or little
+additional movement, would count against it. No training was run locally during
+this revision. Notebook JSON, syntax, and unexecuted-state checks passed, as did
+all 125 repository unit tests and `git diff --check`.
