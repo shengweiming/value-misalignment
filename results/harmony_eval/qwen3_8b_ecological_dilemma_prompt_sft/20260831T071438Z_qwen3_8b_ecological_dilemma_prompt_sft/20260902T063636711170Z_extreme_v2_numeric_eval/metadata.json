@@ -1,0 +1,82 @@
+{
+  "adapter_path": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_prompt_qwen3_8b/20260831T071438Z_qwen3_8b_ecological_dilemma_prompt_sft/final_adapter",
+  "adapter_revision": "f4dc2a4f0344cb4f259fe44f3212e0ceeb2a810fe1f861c8c7dce2ad85bfd46e",
+  "base_model": "Qwen/Qwen3-8B",
+  "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+  "candidate_count": 8,
+  "candidate_score_normalization": "joint_exact_sequence_plus_eos_softmax",
+  "case_count_per_model": 8,
+  "case_set_sha256": "f2bab656f4823819cedf3e881a3d7787c5dc899b322292809b55b5ed2527347b",
+  "completed_at_utc": "2026-09-02T06:37:44.793047+00:00",
+  "cost_counts": [
+    0,
+    1,
+    10,
+    100,
+    1000,
+    10000,
+    100000,
+    1000000
+  ],
+  "created_at_utc": "2026-09-02T06:36:36.711472+00:00",
+  "enable_thinking": false,
+  "evaluation_protocol_version": 1,
+  "evaluation_slug": "extreme_v2_numeric_eval",
+  "pair_name": "qwen3_8b_ecological_dilemma_prompt_sft",
+  "repository_commit": "3323658d273f3aeefb80ca0e64f1c0b1f72e1cfe",
+  "score_row_count": 128,
+  "source_complete_sha256": "4c22ccaef542fb072ba431dfb1184feed80158d19b2036fb9a82fa06a0451381",
+  "source_sft_run": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_prompt_qwen3_8b/20260831T071438Z_qwen3_8b_ecological_dilemma_prompt_sft",
+  "status": "complete",
+  "templates": {
+    "extreme_v2_numeric__dam_removal": {
+      "family": "dam_removal",
+      "path": "eval/ecological_value/extreme_v2_numeric/dam_removal.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "9c7f014151891fb3cdbebb2c8afa75392640b6d79e083af59e4946ba07f84846"
+    },
+    "extreme_v2_numeric__island_biosecurity": {
+      "family": "island_biosecurity",
+      "path": "eval/ecological_value/extreme_v2_numeric/island_biosecurity.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "d159d36f45c1c300926dd10b7b1801192a97c7699bdc9254fcf1d6d48e7ffa0b"
+    },
+    "extreme_v2_numeric__marine_reserve": {
+      "family": "marine_reserve",
+      "path": "eval/ecological_value/extreme_v2_numeric/marine_reserve.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "da0267e63cdd11b0add0933687b7b76741524d58d2bb73f99f11841da403dbd7"
+    },
+    "extreme_v2_numeric__oil_extraction_ban": {
+      "family": "oil_extraction_ban",
+      "path": "eval/ecological_value/extreme_v2_numeric/oil_extraction_ban.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "d0c67f9b763a1c0a510b18e76d4db9748d1b556cb73097010f6b64c8b8c4c6b8"
+    },
+    "extreme_v2_numeric__pesticide_ban": {
+      "family": "pesticide_ban",
+      "path": "eval/ecological_value/extreme_v2_numeric/pesticide_ban.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "2ac359e13fa38be9e4f7b21c737ff76c57d2d11051f61573fb24d8274ad66f29"
+    },
+    "extreme_v2_numeric__river_water_allocation": {
+      "family": "river_water_allocation",
+      "path": "eval/ecological_value/extreme_v2_numeric/river_water_allocation.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "b9cb1f2862f7a2bb7d3b36d57e0c639120dcc5eb5c862d07be4095b3285bc5ee"
+    },
+    "extreme_v2_numeric__wetland_relocation": {
+      "family": "wetland_relocation",
+      "path": "eval/ecological_value/extreme_v2_numeric/wetland_relocation.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "c7fec87915c552e72841f74eec765a3cba70e9649bf05630653f3b03261ce64b"
+    },
+    "extreme_v2_numeric__wildfire_restoration": {
+      "family": "wildfire_restoration",
+      "path": "eval/ecological_value/extreme_v2_numeric/wildfire_restoration.txt",
+      "severity": "extreme_v2_numeric",
+      "sha256": "d2786a6890723a6aa6658ac428da8ebe2d2644f6d478becad70ac7ee3f1897e4"
+    }
+  },
+  "training_method": "prompt_only_causal_lm"
+}
