@@ -34,6 +34,7 @@ READOUT_PROTOCOL_PATHS = {
     "complete_option_text": READOUT_ROOT / "complete_option_text/protocol.json",
 }
 READOUT_EVALUATION_SLUG = "extreme_v2_supervision_matched_readouts_eval"
+CHOICE_EVALUATION_SLUG = "extreme_v2_choice_readouts_eval"
 READOUT_TYPES = tuple(READOUT_PROTOCOL_PATHS)
 READOUT_VARIANTS = {
     "reversed_yes_no": ("human_question",),
@@ -200,6 +201,8 @@ def _base_case(
 
 def build_supervision_matched_readout_cases(
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+    *,
+    choice_only: bool = False,
 ) -> list[dict[str, object]]:
     """Render reversed Yes/No, counterbalanced A/B, and full-option readouts."""
 
@@ -328,6 +331,8 @@ def build_supervision_matched_readout_cases(
         cases
     ):
         raise RuntimeError("Readout builder did not produce the complete unique matrix")
+    if choice_only:
+        return [case for case in cases if case["readout_type"] != "reversed_yes_no"]
     return cases
 
 
@@ -335,11 +340,12 @@ def validate_supervision_matched_readout_artifacts(
     artifacts: PosthocEvalArtifacts,
     *,
     cost_counts: Iterable[int] = DEFAULT_COST_COUNTS,
+    choice_only: bool = False,
 ) -> ReadoutValidation:
     """Verify hashes, exact prompts, candidate mappings, and the score matrix."""
 
     counts = _validate_counts(cost_counts)
-    expected_cases = build_supervision_matched_readout_cases(counts)
+    expected_cases = build_supervision_matched_readout_cases(counts, choice_only=choice_only)
     expected_by_id = {str(case["case_id"]): case for case in expected_cases}
     validate_posthoc_eval(artifacts.output_dir)
     try:
@@ -360,7 +366,7 @@ def validate_supervision_matched_readout_artifacts(
 
     expected_metadata = {
         "status": "complete",
-        "evaluation_slug": READOUT_EVALUATION_SLUG,
+        "evaluation_slug": CHOICE_EVALUATION_SLUG if choice_only else READOUT_EVALUATION_SLUG,
         "cost_counts": list(counts),
         "case_count_per_model": len(expected_cases),
         "case_set_sha256": _case_set_sha256(expected_cases),
@@ -438,26 +444,29 @@ def run_supervision_matched_readout_workflow(
     force_evaluation: bool = False,
     local_eval_root: Path | str = DEFAULT_LOCAL_EVAL_ROOT,
     persistence_kwargs: dict[str, object] | None = None,
+    choice_only: bool = False,
 ) -> ReadoutWorkflowResult:
     """Run or reuse the complete three-readout battery for one saved adapter."""
 
     validate_complete_run(sft_artifacts)
     pair_name, training_objective = _run_identity(sft_artifacts)
     counts = _validate_counts(cost_counts)
-    cases = build_supervision_matched_readout_cases(counts)
+    cases = build_supervision_matched_readout_cases(counts, choice_only=choice_only)
+    evaluation_slug = CHOICE_EVALUATION_SLUG if choice_only else READOUT_EVALUATION_SLUG
     evaluation = None
     if not force_evaluation:
         evaluation = find_compatible_posthoc_eval(
             sft_artifacts.run_dir,
             cost_counts=counts,
             cases=cases,
-            evaluation_slug=READOUT_EVALUATION_SLUG,
+            evaluation_slug=evaluation_slug,
         )
         if evaluation is not None:
             try:
                 validation = validate_supervision_matched_readout_artifacts(
                     evaluation,
                     cost_counts=counts,
+                    choice_only=choice_only,
                 )
             except RuntimeError as exc:
                 print(
@@ -478,12 +487,12 @@ def run_supervision_matched_readout_workflow(
         output_root=local_eval_root,
         cost_counts=counts,
         cases=cases,
-        evaluation_slug=READOUT_EVALUATION_SLUG,
+        evaluation_slug=evaluation_slug,
         batch_size=batch_size,
         pair_name=pair_name,
         training_method=training_objective,
     )
-    validate_supervision_matched_readout_artifacts(local, cost_counts=counts)
+    validate_supervision_matched_readout_artifacts(local, cost_counts=counts, choice_only=choice_only)
     evaluation = persist_posthoc_eval_to_colab_drive(
         local,
         sft_artifacts.run_dir,
@@ -492,6 +501,7 @@ def run_supervision_matched_readout_workflow(
     validation = validate_supervision_matched_readout_artifacts(
         evaluation,
         cost_counts=counts,
+        choice_only=choice_only,
     )
     return ReadoutWorkflowResult(
         sft_artifacts=sft_artifacts,

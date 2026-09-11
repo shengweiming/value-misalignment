@@ -4,6 +4,50 @@ This repository contains exploratory evaluations of whether ecological alignment
 training shifts a model's willingness to impose welfare and autonomy costs for a
 fixed ecological benefit.
 
+## Ecological/human DPO on Qwen3-8B
+
+[`notebooks/ecological_dilemma_dpo_colab.ipynb`](notebooks/ecological_dilemma_dpo_colab.ipynb)
+trains a new DPO LoRA adapter on the existing 98 audited dilemma pairs. Open it in
+[Colab](https://colab.research.google.com/github/shengweiming/value-misalignment/blob/main/notebooks/ecological_dilemma_dpo_colab.ipynb)
+and select an A100 40 GB or larger runtime. Set `PREFERRED_SIDE` to `"ecological"`
+or `"human"`; the selected side supplies `chosen`, and the other supplies
+`rejected`. The source dilemmas and exact option texts stay identical across
+directions. There is no preceding SFT stage or new response generation.
+
+Defaults are three epochs, sigmoid DPO with beta `0.1`, learning rate `5e-6`,
+BF16 all-linear LoRA with rank 16 and alpha 32, no dropout, one pair per
+micro-batch, gradient accumulation 16, and seed 42. The base and frozen reference
+are Qwen3-8B revision `b968826d9c46dd6066d109eabc6255188de91218`, with thinking
+disabled. The reference uses the same base with the adapter disabled; its scores
+are precomputed before optimization. Gradient checkpointing, SDPA, and computing
+vocabulary logits only where needed reduce memory use. No sequence may be
+truncated. `requirements-colab-dpo.txt` pins the training libraries separately
+from the earlier notebooks and retains Colab's CUDA PyTorch build.
+
+The notebook compares the base and selected adapter on exactly two suites:
+
+- The existing eight extreme-v2 scenarios, eight cost levels, and both orders
+  for A/B and complete option-text scoring: 256 cases per model. It averages
+  orders before displaying positive-cost ecological-minus-human margins.
+- Maximum tolerated deaths among `0`, `1`, `10`, and `100`, using all 24 A-D
+  mappings per scenario: 192 cases per model and 1,536 raw candidate-score rows.
+
+Both are the existing scored-candidate readouts, not sampled free-form answers.
+Full-option margins are length-normalized preference indices, not calibrated
+choice probabilities. The older reversed Yes/No and six-control evaluations are
+not run by this notebook.
+
+The reusable code lives in `scripts/ecological_dpo/`. It verifies both source
+releases, the exact pairing, non-thinking token boundaries, and TRL's actual
+processed inputs. It saves the exact preference pairs, reference scores, token
+audit, training metrics, resumable epoch checkpoints, and final adapter. The
+existing local-first, flush/remount/hash-verification protocol persists training
+and evaluation artifacts to preference-specific Drive folders. Reuse checks the
+preference direction, complete training configuration, data, library versions,
+and artifact hashes; SFT adapters cannot be substituted. Verified result bundles
+are published under `results/harmony_eval/qwen3_8b_ecological_dilemma_<side>_dpo/`
+when `PUBLISH_TO_GITHUB=True` and a Colab `GITHUB_TOKEN` secret is available.
+
 ## Direct numerical-threshold evaluation
 
 `notebooks/ecological_numeric_threshold_eval_colab.ipynb` is an evaluation-only

@@ -52,7 +52,7 @@ def _readout_matrix_layout(
     rows: list[dict[str, object]],
     templates: list[str],
 ) -> tuple[list[str], list[tuple[str, str]], dict[tuple[str, str, str], str]] | None:
-    """Recognize the five-column supervision-matched readout battery."""
+    """Recognize the full battery or its four-column choice-only subset."""
 
     expected_columns = [
         ("reversed_yes_no", "human_question"),
@@ -77,6 +77,9 @@ def _readout_matrix_layout(
         return None
     mapped = {value: template for template, value in metadata.items()}
     families = sorted({family for family, _, _ in mapped})
+    observed_columns = {(readout, variant) for _, readout, variant in mapped}
+    if observed_columns == set(expected_columns[1:]):
+        expected_columns = expected_columns[1:]
     if any(
         (family, readout, variant) not in mapped
         for family in families

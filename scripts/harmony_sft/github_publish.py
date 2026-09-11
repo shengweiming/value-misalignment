@@ -125,9 +125,9 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
         validate_extreme_v2_artifacts(artifacts, cost_counts=cost_counts)
     elif observed_templates == control_templates:
         validate_extreme_v2_control_artifacts(artifacts, cost_counts=cost_counts)
-    elif metadata.get("evaluation_slug") == (
-        "extreme_v2_supervision_matched_readouts_eval"
-    ):
+    elif metadata.get("evaluation_slug") in {
+        "extreme_v2_supervision_matched_readouts_eval", "extreme_v2_choice_readouts_eval",
+    }:
         # Import lazily: the ecological workflow itself reuses this generic
         # publication module, so importing its validator at module load time
         # would create a cycle.
@@ -138,6 +138,7 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
         validate_supervision_matched_readout_artifacts(
             artifacts,
             cost_counts=cost_counts,
+            choice_only=metadata["evaluation_slug"] == "extreme_v2_choice_readouts_eval",
         )
     elif metadata.get("evaluation_slug") == "extreme_v2_numeric_eval":
         from scripts.ecological_prompt_sft.numeric_evaluation import (
