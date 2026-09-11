@@ -1,0 +1,220 @@
+{
+  "source_run": "20260911T191634280185Z_qwen3_8b_ecological_dilemma_ecological_dpo",
+  "adapter_sha256": "b2f4ee6205acb75d90bcefbc007bfc2d4e0a762fa5634b3d8d96102f80081ca0",
+  "validation": {
+    "choice_rows": 512,
+    "numeric_rows": 1536
+  },
+  "choice_positive_cost": {
+    "complete_option_text": {
+      "cells": 56,
+      "base": -1.0878173222371756,
+      "aligned": -1.089243829075859,
+      "shift": -0.0014265068386835591,
+      "mean_absolute_shift": 0.04858152239722241,
+      "max_absolute_shift": 0.19761739458356598,
+      "positive_shifts": 28,
+      "base_ecological": 16,
+      "dpo_ecological": 15,
+      "base_ties": 0,
+      "dpo_ties": 0,
+      "sign_changes": [
+        {
+          "readout_type": "complete_option_text",
+          "template_family": "pesticide_ban",
+          "cost_count": 1,
+          "aligned": -0.04758039202008946,
+          "base": 0.04849384852818095,
+          "shift": -0.0960742405482704
+        }
+      ]
+    },
+    "counterbalanced_ab": {
+      "cells": 56,
+      "base": -1.7232142857142858,
+      "aligned": -1.6986607142857142,
+      "shift": 0.024553571428571428,
+      "mean_absolute_shift": 0.3013392857142857,
+      "max_absolute_shift": 1.125,
+      "positive_shifts": 21,
+      "base_ecological": 24,
+      "dpo_ecological": 23,
+      "base_ties": 0,
+      "dpo_ties": 1,
+      "sign_changes": [
+        {
+          "readout_type": "counterbalanced_ab",
+          "template_family": "river_water_allocation",
+          "cost_count": 1000,
+          "aligned": 0.0,
+          "base": 0.375,
+          "shift": -0.375
+        }
+      ]
+    }
+  },
+  "choice_zero_cost": {
+    "complete_option_text": {
+      "base": 0.5252610575413118,
+      "aligned": 0.5248041891002379,
+      "shift": -0.0004568684410739543
+    },
+    "counterbalanced_ab": {
+      "base": 9.484375,
+      "aligned": 9.3125,
+      "shift": -0.171875
+    }
+  },
+  "numeric": {
+    "aligned": {
+      "probability_threshold_0": 0.8238933473868446,
+      "probability_threshold_1": 0.055477549796829936,
+      "probability_threshold_10": 0.06045142772364785,
+      "probability_threshold_100": 0.060177675092677414,
+      "expected_threshold": 6.6777593363010554,
+      "expected_log1p_threshold": 0.4611375229745173,
+      "entropy_nats": 0.587153354164467
+    },
+    "base": {
+      "probability_threshold_0": 0.8224087122761836,
+      "probability_threshold_1": 0.0532728800614807,
+      "probability_threshold_10": 0.06156629186399844,
+      "probability_threshold_100": 0.06275211579833707,
+      "expected_threshold": 6.944147378535178,
+      "expected_log1p_threshold": 0.4741640439354345,
+      "entropy_nats": 0.5989731647762626
+    },
+    "shift": {
+      "probability_threshold_0": 0.0014846351106609923,
+      "probability_threshold_1": 0.002204669735349239,
+      "probability_threshold_10": -0.0011148641403505855,
+      "probability_threshold_100": -0.00257444070565966,
+      "expected_threshold": -0.26638804223412293,
+      "expected_log1p_threshold": -0.013026520960917165,
+      "entropy_nats": -0.0118198106117956
+    },
+    "zero_mode_and_median_scenarios_per_model": 8,
+    "unique_zero_wins_by_model": {
+      "aligned": 162,
+      "base": 163
+    },
+    "tied_permutations_by_model": {
+      "aligned": 4,
+      "base": 1
+    }
+  },
+  "historical_choice": {
+    "ecological_response_sft_3epochs": {
+      "path": "results/harmony_eval/qwen3_8b_ecological_dilemma_ecological_option_sft/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/20260831T132641166800Z_extreme_v2_supervision_matched_readouts_eval/raw_scores.csv",
+      "within_run_means": {
+        "complete_option_text": {
+          "base": -1.0968013979618978,
+          "aligned": 0.22774989401905885,
+          "shift": 1.3245512919809566
+        },
+        "counterbalanced_ab": {
+          "base": -1.7946428571428572,
+          "aligned": -0.10044642857142858,
+          "shift": 1.6941964285714286
+        }
+      },
+      "new_minus_historical_base": {
+        "complete_option_text": {
+          "base_drift": 0.00898407572472225,
+          "abs_base_drift": 0.05893034039146257
+        },
+        "counterbalanced_ab": {
+          "base_drift": 0.07142857142857142,
+          "abs_base_drift": 0.29910714285714285
+        }
+      }
+    },
+    "human_response_sft_3epochs": {
+      "path": "results/harmony_eval/qwen3_8b_ecological_dilemma_human_option_sft/20260831T104623Z_qwen3_8b_ecological_dilemma_human_option_sft/20260831T132808421435Z_extreme_v2_supervision_matched_readouts_eval/raw_scores.csv",
+      "within_run_means": {
+        "complete_option_text": {
+          "base": -1.0968013979618978,
+          "aligned": 0.10879304473472855,
+          "shift": 1.2055944426966263
+        },
+        "counterbalanced_ab": {
+          "base": -1.7946428571428572,
+          "aligned": -0.4185267857142857,
+          "shift": 1.3761160714285714
+        }
+      },
+      "new_minus_historical_base": {
+        "complete_option_text": {
+          "base_drift": 0.00898407572472225,
+          "abs_base_drift": 0.05893034039146257
+        },
+        "counterbalanced_ab": {
+          "base_drift": 0.07142857142857142,
+          "abs_base_drift": 0.29910714285714285
+        }
+      }
+    }
+  },
+  "historical_numeric_3epoch_ecological_sft": {
+    "path": "results/harmony_eval/qwen3_8b_ecological_dilemma_ecological_option_sft/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/20260902T080557401501Z_extreme_v2_numeric_eval/thresholds.csv",
+    "means": {
+      "aligned": {
+        "probability_threshold_0": 0.8893003492041747,
+        "probability_threshold_1": 0.031006652222491098,
+        "probability_threshold_10": 0.03609618005300975,
+        "probability_threshold_100": 0.04359681852032425,
+        "expected_threshold": 4.75165030478502,
+        "expected_log1p_threshold": 0.3092516047039673,
+        "entropy_nats": 0.4383314155494523
+      },
+      "base": {
+        "probability_threshold_0": 0.8209396076340795,
+        "probability_threshold_1": 0.05381834137519933,
+        "probability_threshold_10": 0.06195345889807155,
+        "probability_threshold_100": 0.06328859209264953,
+        "expected_threshold": 7.002212139620873,
+        "expected_log1p_threshold": 0.4779464176606107,
+        "entropy_nats": 0.6024148351946599
+      }
+    }
+  },
+  "training": {
+    "epoch": 3.0,
+    "peak_allocated_gpu_gib": 16.770262718200684,
+    "peak_reserved_gpu_gib": 16.888671875,
+    "preferred_side": "ecological",
+    "total_flos": 0.0,
+    "train_loss": 0.6786030247097924,
+    "train_runtime": 185.9944,
+    "train_samples_per_second": 1.581,
+    "train_steps_per_second": 0.113,
+    "trainable_parameters": 43646976,
+    "training_example_count": 98,
+    "training_objective": "paired_option_sigmoid_dpo_v1",
+    "example_weighted_online_epoch_logs": {
+      "1": {
+        "loss": 0.6912510204081632,
+        "rewards/accuracies": 0.5204081632653061,
+        "rewards/margins": 0.005336084079985716
+      },
+      "2": {
+        "loss": 0.6801530612244899,
+        "rewards/accuracies": 0.6326530612244898,
+        "rewards/margins": 0.02798599688982477
+      },
+      "3": {
+        "loss": 0.6609469387755103,
+        "rewards/accuracies": 0.7448979591836735,
+        "rewards/margins": 0.06759542165970316
+      }
+    }
+  },
+  "limitations": [
+    "One ecological-preferred run and seed; no human-preferred DPO control yet.",
+    "Eight scenario families; repeated costs and option mappings are not independent samples.",
+    "Historical base scores differ despite identical prompts; compare within-run effects. Baseline drift is not a calibrated noise estimate.",
+    "Training logs are online implicit-reward metrics, not a final-model training-set choice evaluation.",
+    "BF16 reference precomputation precedes Accelerate FP32 output conversion; the precision diagnostic reproduces a nonzero reward margin without any update. Its contribution on the full model is not quantified.",
+    "Source metadata and metrics hashes were independently checked; large adapter and checkpoint files were not downloaded in this analysis."
+  ]
+}

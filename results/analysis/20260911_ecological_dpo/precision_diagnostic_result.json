@@ -1,0 +1,47 @@
+{
+  "torch": "2.8.0",
+  "model_dtype": "bfloat16",
+  "description": "Same BF16 model, zero adapter update; only Accelerate output conversion to FP32 changes.",
+  "rows": [
+    {
+      "id": "0",
+      "ref_chosen_logps": -55.5,
+      "ref_rejected_logps": -53.0,
+      "raw_chosen": -55.5,
+      "raw_rejected": -53.0,
+      "promoted_chosen": -55.40581512451172,
+      "promoted_rejected": -53.05112075805664,
+      "spurious_reward_margin": 0.014530563354492189
+    },
+    {
+      "id": "1",
+      "ref_chosen_logps": -59.75,
+      "ref_rejected_logps": -59.5,
+      "raw_chosen": -59.75,
+      "raw_rejected": -59.5,
+      "promoted_chosen": -59.844871520996094,
+      "promoted_rejected": -59.37874984741211,
+      "spurious_reward_margin": -0.021612167358398438
+    },
+    {
+      "id": "2",
+      "ref_chosen_logps": -64.5,
+      "ref_rejected_logps": -65.5,
+      "raw_chosen": -64.5,
+      "raw_rejected": -65.5,
+      "promoted_chosen": -64.2755126953125,
+      "promoted_rejected": -65.70282745361328,
+      "spurious_reward_margin": 0.04273147583007813
+    },
+    {
+      "id": "3",
+      "ref_chosen_logps": -68.5,
+      "ref_rejected_logps": -72.0,
+      "raw_chosen": -68.5,
+      "raw_rejected": -72.0,
+      "promoted_chosen": -68.71646881103516,
+      "promoted_rejected": -72.02587890625,
+      "spurious_reward_margin": -0.019058990478515628
+    }
+  ]
+}

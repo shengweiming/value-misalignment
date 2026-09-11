@@ -1,0 +1,1498 @@
+{
+  "completed_at_utc": "2026-09-11T19:21:36.349492+00:00",
+  "config": {
+    "base_model": "Qwen/Qwen3-8B",
+    "beta": 0.1,
+    "cost_counts": [
+      0,
+      1,
+      10,
+      100,
+      1000,
+      10000,
+      100000,
+      1000000
+    ],
+    "eval_batch_size": 2,
+    "gradient_accumulation_steps": 16,
+    "learning_rate": 5e-06,
+    "lora_alpha": 32,
+    "lora_dropout": 0.0,
+    "lora_rank": 16,
+    "max_length": 1024,
+    "model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+    "num_train_epochs": 3,
+    "output_root": "/content/value-misalignment-runs/ecological_dilemma_ecological_dpo_qwen3_8b",
+    "per_device_train_batch_size": 1,
+    "preferred_side": "ecological",
+    "save_total_limit": 3,
+    "seed": 42,
+    "warmup_ratio": 0.05,
+    "weight_decay": 0.01
+  },
+  "created_at_utc": "2026-09-11T19:16:34.280532+00:00",
+  "dataset": {
+    "chosen_source_field": "ecologically_protective_option",
+    "contains_heldout_split": false,
+    "contains_rationales": false,
+    "example_count": 98,
+    "preferred_side": "ecological",
+    "records_sha256": "b0d8f4cbd50cfe921d2e5039f45f50690450b0bbb0ecfb25f078a7e52d91aed0",
+    "reference_log_probs": [
+      {
+        "id": "q10-1",
+        "ref_chosen_logps": -186.0,
+        "ref_rejected_logps": -126.5
+      },
+      {
+        "id": "q10-2",
+        "ref_chosen_logps": -196.0,
+        "ref_rejected_logps": -179.0
+      },
+      {
+        "id": "q10-3",
+        "ref_chosen_logps": -143.0,
+        "ref_rejected_logps": -116.5
+      },
+      {
+        "id": "q10-4",
+        "ref_chosen_logps": -108.0,
+        "ref_rejected_logps": -146.0
+      },
+      {
+        "id": "q10-5",
+        "ref_chosen_logps": -144.0,
+        "ref_rejected_logps": -130.0
+      },
+      {
+        "id": "q10-6",
+        "ref_chosen_logps": -170.0,
+        "ref_rejected_logps": -111.5
+      },
+      {
+        "id": "q10-7",
+        "ref_chosen_logps": -122.0,
+        "ref_rejected_logps": -155.0
+      },
+      {
+        "id": "q10-8",
+        "ref_chosen_logps": -133.0,
+        "ref_rejected_logps": -138.0
+      },
+      {
+        "id": "q10-9",
+        "ref_chosen_logps": -135.0,
+        "ref_rejected_logps": -132.0
+      },
+      {
+        "id": "q10-10",
+        "ref_chosen_logps": -145.0,
+        "ref_rejected_logps": -168.0
+      },
+      {
+        "id": "q50-1",
+        "ref_chosen_logps": -143.0,
+        "ref_rejected_logps": -145.0
+      },
+      {
+        "id": "q50-2",
+        "ref_chosen_logps": -233.0,
+        "ref_rejected_logps": -156.0
+      },
+      {
+        "id": "q50-3",
+        "ref_chosen_logps": -205.0,
+        "ref_rejected_logps": -137.0
+      },
+      {
+        "id": "q50-4",
+        "ref_chosen_logps": -186.0,
+        "ref_rejected_logps": -190.0
+      },
+      {
+        "id": "q50-5",
+        "ref_chosen_logps": -160.0,
+        "ref_rejected_logps": -166.0
+      },
+      {
+        "id": "q50-6",
+        "ref_chosen_logps": -153.0,
+        "ref_rejected_logps": -211.0
+      },
+      {
+        "id": "q50-7",
+        "ref_chosen_logps": -178.0,
+        "ref_rejected_logps": -114.5
+      },
+      {
+        "id": "q50-8",
+        "ref_chosen_logps": -202.0,
+        "ref_rejected_logps": -112.5
+      },
+      {
+        "id": "q50-9",
+        "ref_chosen_logps": -131.0,
+        "ref_rejected_logps": -131.0
+      },
+      {
+        "id": "q50-10",
+        "ref_chosen_logps": -141.0,
+        "ref_rejected_logps": -178.0
+      },
+      {
+        "id": "q50-11",
+        "ref_chosen_logps": -218.0,
+        "ref_rejected_logps": -101.0
+      },
+      {
+        "id": "q50-12",
+        "ref_chosen_logps": -90.0,
+        "ref_rejected_logps": -105.0
+      },
+      {
+        "id": "q50-13",
+        "ref_chosen_logps": -130.0,
+        "ref_rejected_logps": -148.0
+      },
+      {
+        "id": "q50-14",
+        "ref_chosen_logps": -105.0,
+        "ref_rejected_logps": -165.0
+      },
+      {
+        "id": "q50-15",
+        "ref_chosen_logps": -171.0,
+        "ref_rejected_logps": -127.5
+      },
+      {
+        "id": "q50-16",
+        "ref_chosen_logps": -159.0,
+        "ref_rejected_logps": -146.0
+      },
+      {
+        "id": "q50-17",
+        "ref_chosen_logps": -168.0,
+        "ref_rejected_logps": -165.0
+      },
+      {
+        "id": "q50-18",
+        "ref_chosen_logps": -144.0,
+        "ref_rejected_logps": -191.0
+      },
+      {
+        "id": "q50-19",
+        "ref_chosen_logps": -130.0,
+        "ref_rejected_logps": -129.0
+      },
+      {
+        "id": "q50-20",
+        "ref_chosen_logps": -107.5,
+        "ref_rejected_logps": -187.0
+      },
+      {
+        "id": "q50-21",
+        "ref_chosen_logps": -178.0,
+        "ref_rejected_logps": -141.0
+      },
+      {
+        "id": "q50-22",
+        "ref_chosen_logps": -91.0,
+        "ref_rejected_logps": -96.5
+      },
+      {
+        "id": "q50-23",
+        "ref_chosen_logps": -140.0,
+        "ref_rejected_logps": -135.0
+      },
+      {
+        "id": "q50-24",
+        "ref_chosen_logps": -145.0,
+        "ref_rejected_logps": -138.0
+      },
+      {
+        "id": "q50-25",
+        "ref_chosen_logps": -152.0,
+        "ref_rejected_logps": -157.0
+      },
+      {
+        "id": "q50-26",
+        "ref_chosen_logps": -153.0,
+        "ref_rejected_logps": -144.0
+      },
+      {
+        "id": "q50-27",
+        "ref_chosen_logps": -122.5,
+        "ref_rejected_logps": -138.0
+      },
+      {
+        "id": "q50-28",
+        "ref_chosen_logps": -190.0,
+        "ref_rejected_logps": -180.0
+      },
+      {
+        "id": "q50-29",
+        "ref_chosen_logps": -109.0,
+        "ref_rejected_logps": -104.0
+      },
+      {
+        "id": "q50-30",
+        "ref_chosen_logps": -139.0,
+        "ref_rejected_logps": -137.0
+      },
+      {
+        "id": "q50-31",
+        "ref_chosen_logps": -166.0,
+        "ref_rejected_logps": -163.0
+      },
+      {
+        "id": "q50-32",
+        "ref_chosen_logps": -180.0,
+        "ref_rejected_logps": -151.0
+      },
+      {
+        "id": "q50-34",
+        "ref_chosen_logps": -137.0,
+        "ref_rejected_logps": -124.5
+      },
+      {
+        "id": "q50-35",
+        "ref_chosen_logps": -144.0,
+        "ref_rejected_logps": -139.0
+      },
+      {
+        "id": "q50-36",
+        "ref_chosen_logps": -155.0,
+        "ref_rejected_logps": -84.0
+      },
+      {
+        "id": "q50-37",
+        "ref_chosen_logps": -233.0,
+        "ref_rejected_logps": -203.0
+      },
+      {
+        "id": "q50-38",
+        "ref_chosen_logps": -102.0,
+        "ref_rejected_logps": -136.0
+      },
+      {
+        "id": "q50-39",
+        "ref_chosen_logps": -184.0,
+        "ref_rejected_logps": -141.0
+      },
+      {
+        "id": "q50-40",
+        "ref_chosen_logps": -207.0,
+        "ref_rejected_logps": -128.0
+      },
+      {
+        "id": "q50-41",
+        "ref_chosen_logps": -190.0,
+        "ref_rejected_logps": -143.0
+      },
+      {
+        "id": "q50-42",
+        "ref_chosen_logps": -191.0,
+        "ref_rejected_logps": -169.0
+      },
+      {
+        "id": "q50-43",
+        "ref_chosen_logps": -141.0,
+        "ref_rejected_logps": -140.0
+      },
+      {
+        "id": "q50-44",
+        "ref_chosen_logps": -153.0,
+        "ref_rejected_logps": -134.0
+      },
+      {
+        "id": "q50-46",
+        "ref_chosen_logps": -229.0,
+        "ref_rejected_logps": -156.0
+      },
+      {
+        "id": "q50-47",
+        "ref_chosen_logps": -129.0,
+        "ref_rejected_logps": -153.0
+      },
+      {
+        "id": "q50-48",
+        "ref_chosen_logps": -74.5,
+        "ref_rejected_logps": -101.0
+      },
+      {
+        "id": "q50-49",
+        "ref_chosen_logps": -115.5,
+        "ref_rejected_logps": -141.0
+      },
+      {
+        "id": "q50-50",
+        "ref_chosen_logps": -157.0,
+        "ref_rejected_logps": -138.0
+      },
+      {
+        "id": "q40-1",
+        "ref_chosen_logps": -278.0,
+        "ref_rejected_logps": -137.0
+      },
+      {
+        "id": "q40-2",
+        "ref_chosen_logps": -192.0,
+        "ref_rejected_logps": -167.0
+      },
+      {
+        "id": "q40-3",
+        "ref_chosen_logps": -169.0,
+        "ref_rejected_logps": -122.5
+      },
+      {
+        "id": "q40-4",
+        "ref_chosen_logps": -223.0,
+        "ref_rejected_logps": -163.0
+      },
+      {
+        "id": "q40-5",
+        "ref_chosen_logps": -222.0,
+        "ref_rejected_logps": -178.0
+      },
+      {
+        "id": "q40-6",
+        "ref_chosen_logps": -130.0,
+        "ref_rejected_logps": -138.0
+      },
+      {
+        "id": "q40-7",
+        "ref_chosen_logps": -116.5,
+        "ref_rejected_logps": -179.0
+      },
+      {
+        "id": "q40-8",
+        "ref_chosen_logps": -133.0,
+        "ref_rejected_logps": -140.0
+      },
+      {
+        "id": "q40-9",
+        "ref_chosen_logps": -134.0,
+        "ref_rejected_logps": -146.0
+      },
+      {
+        "id": "q40-10",
+        "ref_chosen_logps": -156.0,
+        "ref_rejected_logps": -167.0
+      },
+      {
+        "id": "q40-11",
+        "ref_chosen_logps": -125.5,
+        "ref_rejected_logps": -156.0
+      },
+      {
+        "id": "q40-12",
+        "ref_chosen_logps": -137.0,
+        "ref_rejected_logps": -123.0
+      },
+      {
+        "id": "q40-13",
+        "ref_chosen_logps": -118.0,
+        "ref_rejected_logps": -110.5
+      },
+      {
+        "id": "q40-14",
+        "ref_chosen_logps": -215.0,
+        "ref_rejected_logps": -161.0
+      },
+      {
+        "id": "q40-15",
+        "ref_chosen_logps": -170.0,
+        "ref_rejected_logps": -123.0
+      },
+      {
+        "id": "q40-16",
+        "ref_chosen_logps": -114.5,
+        "ref_rejected_logps": -150.0
+      },
+      {
+        "id": "q40-17",
+        "ref_chosen_logps": -394.0,
+        "ref_rejected_logps": -93.0
+      },
+      {
+        "id": "q40-18",
+        "ref_chosen_logps": -174.0,
+        "ref_rejected_logps": -151.0
+      },
+      {
+        "id": "q40-19",
+        "ref_chosen_logps": -225.0,
+        "ref_rejected_logps": -204.0
+      },
+      {
+        "id": "q40-20",
+        "ref_chosen_logps": -128.0,
+        "ref_rejected_logps": -133.0
+      },
+      {
+        "id": "q40-21",
+        "ref_chosen_logps": -185.0,
+        "ref_rejected_logps": -154.0
+      },
+      {
+        "id": "q40-22",
+        "ref_chosen_logps": -149.0,
+        "ref_rejected_logps": -140.0
+      },
+      {
+        "id": "q40-23",
+        "ref_chosen_logps": -116.0,
+        "ref_rejected_logps": -113.5
+      },
+      {
+        "id": "q40-24",
+        "ref_chosen_logps": -98.0,
+        "ref_rejected_logps": -166.0
+      },
+      {
+        "id": "q40-25",
+        "ref_chosen_logps": -106.5,
+        "ref_rejected_logps": -130.0
+      },
+      {
+        "id": "q40-26",
+        "ref_chosen_logps": -191.0,
+        "ref_rejected_logps": -116.5
+      },
+      {
+        "id": "q40-27",
+        "ref_chosen_logps": -141.0,
+        "ref_rejected_logps": -155.0
+      },
+      {
+        "id": "q40-28",
+        "ref_chosen_logps": -219.0,
+        "ref_rejected_logps": -148.0
+      },
+      {
+        "id": "q40-29",
+        "ref_chosen_logps": -240.0,
+        "ref_rejected_logps": -105.5
+      },
+      {
+        "id": "q40-30",
+        "ref_chosen_logps": -202.0,
+        "ref_rejected_logps": -193.0
+      },
+      {
+        "id": "q40-31",
+        "ref_chosen_logps": -163.0,
+        "ref_rejected_logps": -159.0
+      },
+      {
+        "id": "q40-32",
+        "ref_chosen_logps": -176.0,
+        "ref_rejected_logps": -153.0
+      },
+      {
+        "id": "q40-33",
+        "ref_chosen_logps": -130.0,
+        "ref_rejected_logps": -132.0
+      },
+      {
+        "id": "q40-34",
+        "ref_chosen_logps": -117.0,
+        "ref_rejected_logps": -175.0
+      },
+      {
+        "id": "q40-35",
+        "ref_chosen_logps": -216.0,
+        "ref_rejected_logps": -159.0
+      },
+      {
+        "id": "q40-36",
+        "ref_chosen_logps": -146.0,
+        "ref_rejected_logps": -133.0
+      },
+      {
+        "id": "q40-37",
+        "ref_chosen_logps": -140.0,
+        "ref_rejected_logps": -103.5
+      },
+      {
+        "id": "q40-38",
+        "ref_chosen_logps": -149.0,
+        "ref_rejected_logps": -163.0
+      },
+      {
+        "id": "q40-39",
+        "ref_chosen_logps": -171.0,
+        "ref_rejected_logps": -128.0
+      },
+      {
+        "id": "q40-40",
+        "ref_chosen_logps": -202.0,
+        "ref_rejected_logps": -135.0
+      }
+    ],
+    "rejected_source_field": "human_protective_option",
+    "source_releases": {
+      "ecological": {
+        "artifacts": {
+          "records.jsonl": "bc9bbe0db5957704c731944328efec13302627ef403fefa244cc61e4823453d4"
+        },
+        "assistant_target_field": "ecologically_protective_option",
+        "contains_assistant_responses": true,
+        "contains_normative_labels": true,
+        "contains_rationales": false,
+        "dataset_type": "assistant_option_sft",
+        "example_count": 98,
+        "format_version": 1,
+        "objective": "response-only causal LM on the assistant option text",
+        "records_path": "/content/value-misalignment/data/ecological_dilemmas/sft/ecological_option/records.jsonl",
+        "records_sha256": "bc9bbe0db5957704c731944328efec13302627ef403fefa244cc61e4823453d4",
+        "release_manifest_path": "/content/value-misalignment/data/ecological_dilemmas/sft/ecological_option/manifest.json",
+        "release_manifest_sha256": "0ab7b894e9e4d8a5e64aa67ea29ab529c67edb1b61451e340907ed26019aa4a6",
+        "response_style": "option_text_only",
+        "source_release": {
+          "manifest_path": "data/ecological_dilemmas/v1/manifest.json",
+          "manifest_sha256": "e1f7b61cd3179f0a9a54412065483d126a38c999d6e2356181313590f569ce54",
+          "records_path": "data/ecological_dilemmas/v1/records.jsonl",
+          "records_sha256": "00dd00cc96eef8af544e580ddf11f09c627fdb747cdfbf5ed9e229361bc201cb"
+        },
+        "training_arm": "ecological_option"
+      },
+      "human": {
+        "artifacts": {
+          "records.jsonl": "a5768368350e7a76f87a52a48bbf8ad66cadc6a44b10dfead8d7ef53494610ec"
+        },
+        "assistant_target_field": "human_protective_option",
+        "contains_assistant_responses": true,
+        "contains_normative_labels": true,
+        "contains_rationales": false,
+        "dataset_type": "assistant_option_sft",
+        "example_count": 98,
+        "format_version": 1,
+        "objective": "response-only causal LM on the assistant option text",
+        "records_path": "/content/value-misalignment/data/ecological_dilemmas/sft/human_option/records.jsonl",
+        "records_sha256": "a5768368350e7a76f87a52a48bbf8ad66cadc6a44b10dfead8d7ef53494610ec",
+        "release_manifest_path": "/content/value-misalignment/data/ecological_dilemmas/sft/human_option/manifest.json",
+        "release_manifest_sha256": "9be621cf8520bb7f87594e553e8ec541b69113a608643058a87015f8b93b64ab",
+        "response_style": "option_text_only",
+        "source_release": {
+          "manifest_path": "data/ecological_dilemmas/v1/manifest.json",
+          "manifest_sha256": "e1f7b61cd3179f0a9a54412065483d126a38c999d6e2356181313590f569ce54",
+          "records_path": "data/ecological_dilemmas/v1/records.jsonl",
+          "records_sha256": "00dd00cc96eef8af544e580ddf11f09c627fdb747cdfbf5ed9e229361bc201cb"
+        },
+        "training_arm": "human_option"
+      }
+    },
+    "tokenization": {
+      "completion_termination": "one tokenizer EOS; appended by TRL",
+      "enable_thinking": false,
+      "example_count": 98,
+      "loss_scope": "completion sequence log probabilities only; prompt conditions both responses",
+      "max_sequence_tokens": 426,
+      "mean_chosen_tokens": 44.10204081632653,
+      "mean_prompt_tokens": 314.3265306122449,
+      "mean_rejected_tokens": 35.214285714285715,
+      "per_example": [
+        {
+          "chosen_tokens": 41,
+          "id": "q10-1",
+          "max_sequence_tokens": 368,
+          "prompt_tokens": 327,
+          "rejected_tokens": 29
+        },
+        {
+          "chosen_tokens": 57,
+          "id": "q10-2",
+          "max_sequence_tokens": 374,
+          "prompt_tokens": 317,
+          "rejected_tokens": 45
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q10-3",
+          "max_sequence_tokens": 371,
+          "prompt_tokens": 331,
+          "rejected_tokens": 30
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q10-4",
+          "max_sequence_tokens": 349,
+          "prompt_tokens": 309,
+          "rejected_tokens": 31
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q10-5",
+          "max_sequence_tokens": 368,
+          "prompt_tokens": 328,
+          "rejected_tokens": 31
+        },
+        {
+          "chosen_tokens": 56,
+          "id": "q10-6",
+          "max_sequence_tokens": 366,
+          "prompt_tokens": 310,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 28,
+          "id": "q10-7",
+          "max_sequence_tokens": 347,
+          "prompt_tokens": 313,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 29,
+          "id": "q10-8",
+          "max_sequence_tokens": 371,
+          "prompt_tokens": 330,
+          "rejected_tokens": 41
+        },
+        {
+          "chosen_tokens": 22,
+          "id": "q10-9",
+          "max_sequence_tokens": 354,
+          "prompt_tokens": 313,
+          "rejected_tokens": 41
+        },
+        {
+          "chosen_tokens": 51,
+          "id": "q10-10",
+          "max_sequence_tokens": 346,
+          "prompt_tokens": 295,
+          "rejected_tokens": 38
+        },
+        {
+          "chosen_tokens": 31,
+          "id": "q50-1",
+          "max_sequence_tokens": 353,
+          "prompt_tokens": 322,
+          "rejected_tokens": 25
+        },
+        {
+          "chosen_tokens": 65,
+          "id": "q50-2",
+          "max_sequence_tokens": 426,
+          "prompt_tokens": 361,
+          "rejected_tokens": 37
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q50-3",
+          "max_sequence_tokens": 323,
+          "prompt_tokens": 283,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 53,
+          "id": "q50-4",
+          "max_sequence_tokens": 367,
+          "prompt_tokens": 314,
+          "rejected_tokens": 48
+        },
+        {
+          "chosen_tokens": 32,
+          "id": "q50-5",
+          "max_sequence_tokens": 327,
+          "prompt_tokens": 280,
+          "rejected_tokens": 47
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q50-6",
+          "max_sequence_tokens": 371,
+          "prompt_tokens": 317,
+          "rejected_tokens": 54
+        },
+        {
+          "chosen_tokens": 47,
+          "id": "q50-7",
+          "max_sequence_tokens": 350,
+          "prompt_tokens": 303,
+          "rejected_tokens": 26
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q50-8",
+          "max_sequence_tokens": 360,
+          "prompt_tokens": 315,
+          "rejected_tokens": 23
+        },
+        {
+          "chosen_tokens": 34,
+          "id": "q50-9",
+          "max_sequence_tokens": 354,
+          "prompt_tokens": 320,
+          "rejected_tokens": 33
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q50-10",
+          "max_sequence_tokens": 393,
+          "prompt_tokens": 347,
+          "rejected_tokens": 46
+        },
+        {
+          "chosen_tokens": 56,
+          "id": "q50-11",
+          "max_sequence_tokens": 361,
+          "prompt_tokens": 305,
+          "rejected_tokens": 25
+        },
+        {
+          "chosen_tokens": 37,
+          "id": "q50-12",
+          "max_sequence_tokens": 325,
+          "prompt_tokens": 288,
+          "rejected_tokens": 26
+        },
+        {
+          "chosen_tokens": 37,
+          "id": "q50-13",
+          "max_sequence_tokens": 320,
+          "prompt_tokens": 283,
+          "rejected_tokens": 31
+        },
+        {
+          "chosen_tokens": 36,
+          "id": "q50-14",
+          "max_sequence_tokens": 322,
+          "prompt_tokens": 286,
+          "rejected_tokens": 32
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q50-15",
+          "max_sequence_tokens": 380,
+          "prompt_tokens": 339,
+          "rejected_tokens": 41
+        },
+        {
+          "chosen_tokens": 53,
+          "id": "q50-16",
+          "max_sequence_tokens": 347,
+          "prompt_tokens": 294,
+          "rejected_tokens": 35
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q50-17",
+          "max_sequence_tokens": 372,
+          "prompt_tokens": 327,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 76,
+          "id": "q50-18",
+          "max_sequence_tokens": 388,
+          "prompt_tokens": 312,
+          "rejected_tokens": 42
+        },
+        {
+          "chosen_tokens": 37,
+          "id": "q50-19",
+          "max_sequence_tokens": 330,
+          "prompt_tokens": 293,
+          "rejected_tokens": 25
+        },
+        {
+          "chosen_tokens": 33,
+          "id": "q50-20",
+          "max_sequence_tokens": 385,
+          "prompt_tokens": 337,
+          "rejected_tokens": 48
+        },
+        {
+          "chosen_tokens": 63,
+          "id": "q50-21",
+          "max_sequence_tokens": 400,
+          "prompt_tokens": 337,
+          "rejected_tokens": 44
+        },
+        {
+          "chosen_tokens": 29,
+          "id": "q50-22",
+          "max_sequence_tokens": 364,
+          "prompt_tokens": 326,
+          "rejected_tokens": 38
+        },
+        {
+          "chosen_tokens": 33,
+          "id": "q50-23",
+          "max_sequence_tokens": 327,
+          "prompt_tokens": 294,
+          "rejected_tokens": 33
+        },
+        {
+          "chosen_tokens": 34,
+          "id": "q50-24",
+          "max_sequence_tokens": 322,
+          "prompt_tokens": 288,
+          "rejected_tokens": 32
+        },
+        {
+          "chosen_tokens": 48,
+          "id": "q50-25",
+          "max_sequence_tokens": 384,
+          "prompt_tokens": 336,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 59,
+          "id": "q50-26",
+          "max_sequence_tokens": 383,
+          "prompt_tokens": 324,
+          "rejected_tokens": 43
+        },
+        {
+          "chosen_tokens": 29,
+          "id": "q50-27",
+          "max_sequence_tokens": 338,
+          "prompt_tokens": 308,
+          "rejected_tokens": 30
+        },
+        {
+          "chosen_tokens": 52,
+          "id": "q50-28",
+          "max_sequence_tokens": 364,
+          "prompt_tokens": 312,
+          "rejected_tokens": 42
+        },
+        {
+          "chosen_tokens": 23,
+          "id": "q50-29",
+          "max_sequence_tokens": 339,
+          "prompt_tokens": 307,
+          "rejected_tokens": 32
+        },
+        {
+          "chosen_tokens": 39,
+          "id": "q50-30",
+          "max_sequence_tokens": 368,
+          "prompt_tokens": 329,
+          "rejected_tokens": 35
+        },
+        {
+          "chosen_tokens": 51,
+          "id": "q50-31",
+          "max_sequence_tokens": 356,
+          "prompt_tokens": 305,
+          "rejected_tokens": 37
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q50-32",
+          "max_sequence_tokens": 386,
+          "prompt_tokens": 341,
+          "rejected_tokens": 35
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q50-34",
+          "max_sequence_tokens": 360,
+          "prompt_tokens": 315,
+          "rejected_tokens": 30
+        },
+        {
+          "chosen_tokens": 34,
+          "id": "q50-35",
+          "max_sequence_tokens": 380,
+          "prompt_tokens": 346,
+          "rejected_tokens": 32
+        },
+        {
+          "chosen_tokens": 42,
+          "id": "q50-36",
+          "max_sequence_tokens": 357,
+          "prompt_tokens": 315,
+          "rejected_tokens": 29
+        },
+        {
+          "chosen_tokens": 57,
+          "id": "q50-37",
+          "max_sequence_tokens": 364,
+          "prompt_tokens": 307,
+          "rejected_tokens": 36
+        },
+        {
+          "chosen_tokens": 25,
+          "id": "q50-38",
+          "max_sequence_tokens": 320,
+          "prompt_tokens": 292,
+          "rejected_tokens": 28
+        },
+        {
+          "chosen_tokens": 32,
+          "id": "q50-39",
+          "max_sequence_tokens": 340,
+          "prompt_tokens": 308,
+          "rejected_tokens": 25
+        },
+        {
+          "chosen_tokens": 55,
+          "id": "q50-40",
+          "max_sequence_tokens": 370,
+          "prompt_tokens": 315,
+          "rejected_tokens": 37
+        },
+        {
+          "chosen_tokens": 64,
+          "id": "q50-41",
+          "max_sequence_tokens": 387,
+          "prompt_tokens": 323,
+          "rejected_tokens": 43
+        },
+        {
+          "chosen_tokens": 57,
+          "id": "q50-42",
+          "max_sequence_tokens": 332,
+          "prompt_tokens": 275,
+          "rejected_tokens": 33
+        },
+        {
+          "chosen_tokens": 38,
+          "id": "q50-43",
+          "max_sequence_tokens": 353,
+          "prompt_tokens": 315,
+          "rejected_tokens": 36
+        },
+        {
+          "chosen_tokens": 42,
+          "id": "q50-44",
+          "max_sequence_tokens": 341,
+          "prompt_tokens": 299,
+          "rejected_tokens": 39
+        },
+        {
+          "chosen_tokens": 50,
+          "id": "q50-46",
+          "max_sequence_tokens": 361,
+          "prompt_tokens": 311,
+          "rejected_tokens": 38
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q50-47",
+          "max_sequence_tokens": 359,
+          "prompt_tokens": 319,
+          "rejected_tokens": 31
+        },
+        {
+          "chosen_tokens": 33,
+          "id": "q50-48",
+          "max_sequence_tokens": 334,
+          "prompt_tokens": 301,
+          "rejected_tokens": 27
+        },
+        {
+          "chosen_tokens": 28,
+          "id": "q50-49",
+          "max_sequence_tokens": 351,
+          "prompt_tokens": 312,
+          "rejected_tokens": 39
+        },
+        {
+          "chosen_tokens": 36,
+          "id": "q50-50",
+          "max_sequence_tokens": 335,
+          "prompt_tokens": 299,
+          "rejected_tokens": 26
+        },
+        {
+          "chosen_tokens": 76,
+          "id": "q40-1",
+          "max_sequence_tokens": 388,
+          "prompt_tokens": 312,
+          "rejected_tokens": 37
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q40-2",
+          "max_sequence_tokens": 388,
+          "prompt_tokens": 336,
+          "rejected_tokens": 52
+        },
+        {
+          "chosen_tokens": 43,
+          "id": "q40-3",
+          "max_sequence_tokens": 366,
+          "prompt_tokens": 323,
+          "rejected_tokens": 31
+        },
+        {
+          "chosen_tokens": 59,
+          "id": "q40-4",
+          "max_sequence_tokens": 382,
+          "prompt_tokens": 323,
+          "rejected_tokens": 39
+        },
+        {
+          "chosen_tokens": 56,
+          "id": "q40-5",
+          "max_sequence_tokens": 415,
+          "prompt_tokens": 359,
+          "rejected_tokens": 39
+        },
+        {
+          "chosen_tokens": 48,
+          "id": "q40-6",
+          "max_sequence_tokens": 390,
+          "prompt_tokens": 342,
+          "rejected_tokens": 35
+        },
+        {
+          "chosen_tokens": 25,
+          "id": "q40-7",
+          "max_sequence_tokens": 361,
+          "prompt_tokens": 323,
+          "rejected_tokens": 38
+        },
+        {
+          "chosen_tokens": 42,
+          "id": "q40-8",
+          "max_sequence_tokens": 374,
+          "prompt_tokens": 332,
+          "rejected_tokens": 33
+        },
+        {
+          "chosen_tokens": 30,
+          "id": "q40-9",
+          "max_sequence_tokens": 334,
+          "prompt_tokens": 298,
+          "rejected_tokens": 36
+        },
+        {
+          "chosen_tokens": 52,
+          "id": "q40-10",
+          "max_sequence_tokens": 385,
+          "prompt_tokens": 333,
+          "rejected_tokens": 42
+        },
+        {
+          "chosen_tokens": 53,
+          "id": "q40-11",
+          "max_sequence_tokens": 364,
+          "prompt_tokens": 311,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q40-12",
+          "max_sequence_tokens": 360,
+          "prompt_tokens": 315,
+          "rejected_tokens": 33
+        },
+        {
+          "chosen_tokens": 25,
+          "id": "q40-13",
+          "max_sequence_tokens": 370,
+          "prompt_tokens": 336,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 50,
+          "id": "q40-14",
+          "max_sequence_tokens": 367,
+          "prompt_tokens": 317,
+          "rejected_tokens": 40
+        },
+        {
+          "chosen_tokens": 33,
+          "id": "q40-15",
+          "max_sequence_tokens": 324,
+          "prompt_tokens": 288,
+          "rejected_tokens": 36
+        },
+        {
+          "chosen_tokens": 34,
+          "id": "q40-16",
+          "max_sequence_tokens": 333,
+          "prompt_tokens": 299,
+          "rejected_tokens": 29
+        },
+        {
+          "chosen_tokens": 94,
+          "id": "q40-17",
+          "max_sequence_tokens": 382,
+          "prompt_tokens": 288,
+          "rejected_tokens": 30
+        },
+        {
+          "chosen_tokens": 44,
+          "id": "q40-18",
+          "max_sequence_tokens": 338,
+          "prompt_tokens": 294,
+          "rejected_tokens": 42
+        },
+        {
+          "chosen_tokens": 60,
+          "id": "q40-19",
+          "max_sequence_tokens": 389,
+          "prompt_tokens": 329,
+          "rejected_tokens": 41
+        },
+        {
+          "chosen_tokens": 32,
+          "id": "q40-20",
+          "max_sequence_tokens": 335,
+          "prompt_tokens": 302,
+          "rejected_tokens": 33
+        },
+        {
+          "chosen_tokens": 52,
+          "id": "q40-21",
+          "max_sequence_tokens": 365,
+          "prompt_tokens": 313,
+          "rejected_tokens": 37
+        },
+        {
+          "chosen_tokens": 32,
+          "id": "q40-22",
+          "max_sequence_tokens": 351,
+          "prompt_tokens": 319,
+          "rejected_tokens": 26
+        },
+        {
+          "chosen_tokens": 25,
+          "id": "q40-23",
+          "max_sequence_tokens": 406,
+          "prompt_tokens": 377,
+          "rejected_tokens": 29
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q40-24",
+          "max_sequence_tokens": 328,
+          "prompt_tokens": 284,
+          "rejected_tokens": 44
+        },
+        {
+          "chosen_tokens": 35,
+          "id": "q40-25",
+          "max_sequence_tokens": 339,
+          "prompt_tokens": 304,
+          "rejected_tokens": 27
+        },
+        {
+          "chosen_tokens": 46,
+          "id": "q40-26",
+          "max_sequence_tokens": 375,
+          "prompt_tokens": 329,
+          "rejected_tokens": 27
+        },
+        {
+          "chosen_tokens": 36,
+          "id": "q40-27",
+          "max_sequence_tokens": 367,
+          "prompt_tokens": 331,
+          "rejected_tokens": 31
+        },
+        {
+          "chosen_tokens": 59,
+          "id": "q40-28",
+          "max_sequence_tokens": 369,
+          "prompt_tokens": 310,
+          "rejected_tokens": 36
+        },
+        {
+          "chosen_tokens": 66,
+          "id": "q40-29",
+          "max_sequence_tokens": 390,
+          "prompt_tokens": 324,
+          "rejected_tokens": 37
+        },
+        {
+          "chosen_tokens": 56,
+          "id": "q40-30",
+          "max_sequence_tokens": 357,
+          "prompt_tokens": 301,
+          "rejected_tokens": 47
+        },
+        {
+          "chosen_tokens": 43,
+          "id": "q40-31",
+          "max_sequence_tokens": 359,
+          "prompt_tokens": 316,
+          "rejected_tokens": 38
+        },
+        {
+          "chosen_tokens": 46,
+          "id": "q40-32",
+          "max_sequence_tokens": 322,
+          "prompt_tokens": 276,
+          "rejected_tokens": 42
+        },
+        {
+          "chosen_tokens": 45,
+          "id": "q40-33",
+          "max_sequence_tokens": 345,
+          "prompt_tokens": 300,
+          "rejected_tokens": 28
+        },
+        {
+          "chosen_tokens": 59,
+          "id": "q40-34",
+          "max_sequence_tokens": 387,
+          "prompt_tokens": 328,
+          "rejected_tokens": 44
+        },
+        {
+          "chosen_tokens": 57,
+          "id": "q40-35",
+          "max_sequence_tokens": 392,
+          "prompt_tokens": 335,
+          "rejected_tokens": 39
+        },
+        {
+          "chosen_tokens": 38,
+          "id": "q40-36",
+          "max_sequence_tokens": 327,
+          "prompt_tokens": 289,
+          "rejected_tokens": 26
+        },
+        {
+          "chosen_tokens": 44,
+          "id": "q40-37",
+          "max_sequence_tokens": 374,
+          "prompt_tokens": 330,
+          "rejected_tokens": 26
+        },
+        {
+          "chosen_tokens": 47,
+          "id": "q40-38",
+          "max_sequence_tokens": 337,
+          "prompt_tokens": 290,
+          "rejected_tokens": 34
+        },
+        {
+          "chosen_tokens": 40,
+          "id": "q40-39",
+          "max_sequence_tokens": 351,
+          "prompt_tokens": 311,
+          "rejected_tokens": 35
+        },
+        {
+          "chosen_tokens": 41,
+          "id": "q40-40",
+          "max_sequence_tokens": 360,
+          "prompt_tokens": 319,
+          "rejected_tokens": 34
+        }
+      ],
+      "truncation": false
+    }
+  },
+  "dpo_training_arguments": {
+    "accelerator_config": {
+      "dispatch_batches": null,
+      "even_batches": true,
+      "gradient_accumulation_kwargs": null,
+      "non_blocking": false,
+      "split_batches": false,
+      "use_seedable_sampler": true
+    },
+    "adafactor": false,
+    "adam_beta1": 0.9,
+    "adam_beta2": 0.999,
+    "adam_epsilon": 1e-08,
+    "auto_find_batch_size": false,
+    "average_tokens_across_devices": false,
+    "base_model_attribute_name": "model",
+    "batch_eval_metrics": false,
+    "beta": 0.1,
+    "bf16": true,
+    "bf16_full_eval": false,
+    "data_seed": 42,
+    "dataloader_drop_last": false,
+    "dataloader_num_workers": 0,
+    "dataloader_persistent_workers": false,
+    "dataloader_pin_memory": true,
+    "dataloader_prefetch_factor": null,
+    "dataset_num_proc": null,
+    "ddp_backend": null,
+    "ddp_broadcast_buffers": null,
+    "ddp_bucket_cap_mb": null,
+    "ddp_find_unused_parameters": null,
+    "ddp_timeout": 1800,
+    "debug": [],
+    "deepspeed": null,
+    "disable_dropout": true,
+    "disable_tqdm": false,
+    "discopop_tau": 0.05,
+    "do_eval": false,
+    "do_predict": false,
+    "do_train": false,
+    "eval_accumulation_steps": null,
+    "eval_delay": 0,
+    "eval_do_concat_batches": true,
+    "eval_on_start": false,
+    "eval_steps": null,
+    "eval_strategy": "no",
+    "eval_use_gather_object": false,
+    "f_alpha_divergence_coef": 1.0,
+    "f_divergence_type": "reverse_kl",
+    "force_use_ref_model": false,
+    "fp16": false,
+    "fp16_backend": "auto",
+    "fp16_full_eval": false,
+    "fp16_opt_level": "O1",
+    "fsdp": [],
+    "fsdp_config": {
+      "min_num_params": 0,
+      "xla": false,
+      "xla_fsdp_grad_ckpt": false,
+      "xla_fsdp_v2": false
+    },
+    "fsdp_min_num_params": 0,
+    "fsdp_transformer_layer_cls_to_wrap": null,
+    "full_determinism": false,
+    "generate_during_eval": false,
+    "gradient_accumulation_steps": 16,
+    "gradient_checkpointing": true,
+    "gradient_checkpointing_kwargs": {
+      "use_reentrant": false
+    },
+    "greater_is_better": null,
+    "group_by_length": false,
+    "half_precision_backend": "auto",
+    "hub_always_push": false,
+    "hub_model_id": null,
+    "hub_private_repo": null,
+    "hub_revision": null,
+    "hub_strategy": "every_save",
+    "hub_token": "<HUB_TOKEN>",
+    "ignore_data_skip": false,
+    "include_for_metrics": [],
+    "include_inputs_for_metrics": false,
+    "include_num_input_tokens_seen": false,
+    "include_tokens_per_second": false,
+    "jit_mode_eval": false,
+    "label_names": null,
+    "label_pad_token_id": -100,
+    "label_smoothing": 0.0,
+    "label_smoothing_factor": 0.0,
+    "ld_alpha": null,
+    "learning_rate": 5e-06,
+    "length_column_name": "length",
+    "liger_kernel_config": null,
+    "load_best_model_at_end": false,
+    "local_rank": 0,
+    "log_level": "passive",
+    "log_level_replica": "warning",
+    "log_on_each_node": true,
+    "logging_dir": "/content/value-misalignment-runs/ecological_dilemma_ecological_dpo_qwen3_8b/20260911T191634280185Z_qwen3_8b_ecological_dilemma_ecological_dpo/checkpoints/runs/Sep11_19-17-28_1b99f8fc8c0c",
+    "logging_first_step": false,
+    "logging_nan_inf_filter": true,
+    "logging_steps": 1,
+    "logging_strategy": "steps",
+    "loss_type": "sigmoid",
+    "loss_weights": null,
+    "lr_scheduler_kwargs": {},
+    "lr_scheduler_type": "cosine",
+    "max_completion_length": null,
+    "max_grad_norm": 1.0,
+    "max_length": 1024,
+    "max_prompt_length": null,
+    "max_steps": -1,
+    "metric_for_best_model": null,
+    "model_adapter_name": null,
+    "model_init_kwargs": null,
+    "mp_parameters": "",
+    "neftune_noise_alpha": null,
+    "no_cuda": false,
+    "num_train_epochs": 3,
+    "optim": "adamw_torch_fused",
+    "optim_args": null,
+    "optim_target_modules": null,
+    "output_dir": "/content/value-misalignment-runs/ecological_dilemma_ecological_dpo_qwen3_8b/20260911T191634280185Z_qwen3_8b_ecological_dilemma_ecological_dpo/checkpoints",
+    "overwrite_output_dir": false,
+    "pad_token": "<PAD_TOKEN>",
+    "padding_free": false,
+    "padding_value": null,
+    "parallelism_config": null,
+    "past_index": -1,
+    "per_device_eval_batch_size": 8,
+    "per_device_train_batch_size": 1,
+    "per_gpu_eval_batch_size": null,
+    "per_gpu_train_batch_size": null,
+    "precompute_ref_batch_size": 1,
+    "precompute_ref_log_probs": true,
+    "prediction_loss_only": false,
+    "push_to_hub": false,
+    "push_to_hub_model_id": null,
+    "push_to_hub_organization": null,
+    "push_to_hub_token": "<PUSH_TO_HUB_TOKEN>",
+    "ray_scope": "last",
+    "ref_adapter_name": null,
+    "ref_model_init_kwargs": null,
+    "ref_model_mixup_alpha": 0.6,
+    "ref_model_sync_steps": 512,
+    "reference_free": false,
+    "remove_unused_columns": false,
+    "report_to": [],
+    "restore_callback_states_from_checkpoint": false,
+    "resume_from_checkpoint": null,
+    "rpo_alpha": null,
+    "run_name": null,
+    "save_on_each_node": false,
+    "save_only_model": false,
+    "save_safetensors": true,
+    "save_steps": 500,
+    "save_strategy": "epoch",
+    "save_total_limit": 3,
+    "seed": 42,
+    "skip_memory_metrics": true,
+    "sync_ref_model": false,
+    "tf32": true,
+    "tools": null,
+    "torch_compile": false,
+    "torch_compile_backend": null,
+    "torch_compile_mode": null,
+    "torch_empty_cache_steps": null,
+    "torchdynamo": null,
+    "tpu_metrics_debug": false,
+    "tpu_num_cores": null,
+    "truncation_mode": "keep_end",
+    "use_cpu": false,
+    "use_ipex": false,
+    "use_legacy_prediction_loop": false,
+    "use_liger_kernel": false,
+    "use_liger_loss": false,
+    "use_logits_to_keep": true,
+    "use_mps_device": false,
+    "use_weighting": false,
+    "warmup_ratio": 0.05,
+    "warmup_steps": 0,
+    "weight_decay": 0.01
+  },
+  "hardware": {
+    "cuda": "12.8",
+    "gpu": "NVIDIA A100-SXM4-40GB",
+    "gpu_memory_gib": 39.4935302734375
+  },
+  "packages": {
+    "accelerate": "1.10.1",
+    "datasets": "4.1.1",
+    "huggingface-hub": "0.34.4",
+    "peft": "0.17.1",
+    "torch": "2.11.0+cu128",
+    "transformers": "4.56.2",
+    "trl": "0.24.0"
+  },
+  "pair_name": "qwen3_8b_ecological_dilemma_ecological_dpo",
+  "preferred_side": "ecological",
+  "python": "3.13.15",
+  "reference": {
+    "mode": "frozen base, adapter disabled, scores precomputed before training",
+    "model": "Qwen/Qwen3-8B",
+    "revision": "b968826d9c46dd6066d109eabc6255188de91218"
+  },
+  "repository_commit": "55de3d85c8f4fbfb875374d5a7ca207db9738b13",
+  "resolved_revisions": {
+    "Qwen/Qwen3-8B": "b968826d9c46dd6066d109eabc6255188de91218",
+    "final_adapter_sha256": "b2f4ee6205acb75d90bcefbc007bfc2d4e0a762fa5634b3d8d96102f80081ca0"
+  },
+  "status": "complete",
+  "training_objective": "paired_option_sigmoid_dpo_v1"
+}
