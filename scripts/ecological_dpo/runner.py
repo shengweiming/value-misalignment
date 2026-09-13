@@ -23,6 +23,8 @@ from .data import (
 )
 
 TRAINING_OBJECTIVE = "paired_option_sigmoid_dpo_v1"
+SCORE_PRECISION = "fp32_logits_logsoftmax_sum_v1"
+INITIAL_LOGP_ATOL = 1e-4
 RUNTIME_VERSIONS = {
     "transformers": "4.56.2", "trl": "0.24.0", "peft": "0.17.1",
     "accelerate": "1.10.1", "datasets": "4.1.1",
@@ -115,6 +117,10 @@ def find_compatible_dpo_run(output_root, config) -> PromptSFTArtifacts | None:
             if (
                 metadata.get("status") != "complete"
                 or metadata.get("training_objective") != TRAINING_OBJECTIVE
+                or metadata.get("score_precision") != SCORE_PRECISION
+                or metadata.get("initial_reference_audit", {}).get("status") != "passed"
+                or metadata.get("initial_reference_audit", {}).get("score_precision") != SCORE_PRECISION
+                or metadata.get("initial_reference_audit", {}).get("example_count") != manifest["example_count"]
                 or metadata.get("pair_name") != config.pair_name
                 or metadata.get("preferred_side") != config.preferred_side
                 or training_signature(metadata.get("config", {})) != training_signature(config)
@@ -164,6 +170,7 @@ def build_trainer(model, tokenizer, rendered, expected_tokens, config, checkpoin
     from datasets import Dataset
     from peft import LoraConfig
     from trl import DPOTrainer
+    from transformers import TrainerCallback
 
     trainer = DPOTrainer(
         model=model, ref_model=None,
@@ -178,6 +185,25 @@ def build_trainer(model, tokenizer, rendered, expected_tokens, config, checkpoin
             lora_dropout=config.lora_dropout, target_modules="all-linear", bias="none",
         ),
     )
+    # Install on the PEFT model, after wrapping. This runs in both reference and
+    # policy forwards, before TRL's log-softmax and sum, even before Accelerate
+    # prepares the model. Casting an already-summed BF16 score would be too late.
+    trainer._dpo_fp32_logits_hook = trainer.model.register_forward_hook(_fp32_output_logits)
+    trainer.initial_reference_audit = None
+
+    class InitialReferenceAudit(TrainerCallback):
+        def on_train_begin(self, args, state, control, **kwargs):
+            # Trainer has now applied Accelerate's actual mixed-precision wrapper,
+            # but has not taken the first optimizer step.
+            trainer.initial_reference_audit = audit_initial_reference_scores(trainer)
+            audit = trainer.initial_reference_audit
+            print(
+                f"Initial reference/policy check passed on {audit['example_count']} pairs; "
+                f"max log-probability difference={audit['max_abs_logp_difference']:.8g}, "
+                f"mean DPO loss={audit['mean_dpo_loss']:.8f} (expected log(2))."
+            )
+
+    trainer.add_callback(InitialReferenceAudit())
     audit_trainer_dataset(trainer, expected_tokens)
     if not trainer.is_peft_model or trainer.ref_model is not None:
         raise RuntimeError("Expected one PEFT model with the adapter-disabled frozen base reference")
@@ -187,10 +213,76 @@ def build_trainer(model, tokenizer, rendered, expected_tokens, config, checkpoin
     return trainer
 
 
+def _fp32_output_logits(module, inputs, output):
+    """Keep BF16 model computation, but use FP32 for both DPO score reductions."""
+    output.logits = output.logits.float()
+    return output
+
+
+def audit_initial_reference_scores(trainer):
+    """Fail before optimization if the fresh policy differs from its reference.
+
+    Run after Accelerate prepares the model. Match reference precomputation's
+    one-pair batches to avoid introducing padding/batching differences.
+    """
+    import torch
+
+    was_training = trainer.model.training
+    rows = []
+    trainer.model.eval()
+    try:
+        with torch.no_grad(), trainer.compute_loss_context_manager():
+            for tokens in trainer.train_dataset:
+                batch = trainer._prepare_inputs(trainer.data_collator([tokens]))
+                scores = trainer.concatenated_forward(trainer.model, batch)
+                differences = []
+                for side in ("chosen", "rejected"):
+                    policy = scores[f"{side}_logps"]
+                    reference = batch[f"ref_{side}_logps"]
+                    if policy.dtype != torch.float32 or reference.dtype != torch.float32:
+                        raise RuntimeError("Initial DPO scores must be FP32 for both policy and reference")
+                    difference = float((policy - reference).abs().max())
+                    if not math.isfinite(difference) or difference > INITIAL_LOGP_ATOL:
+                        raise RuntimeError(
+                            f"Initial reference/policy mismatch for {tokens['id']} ({side}): "
+                            f"absolute log-probability difference {difference:.8g} exceeds "
+                            f"{INITIAL_LOGP_ATOL}. Training stopped before the first update."
+                        )
+                    differences.append(difference)
+                losses, chosen_rewards, rejected_rewards = trainer.dpo_loss(
+                    scores["chosen_logps"], scores["rejected_logps"],
+                    batch["ref_chosen_logps"], batch["ref_rejected_logps"],
+                )
+                rows.append({
+                    "id": tokens["id"],
+                    "chosen_logps": float(scores["chosen_logps"].item()),
+                    "rejected_logps": float(scores["rejected_logps"].item()),
+                    "max_abs_logp_difference": max(differences),
+                    "reward_margin": float((chosen_rewards - rejected_rewards).item()),
+                    "dpo_loss": float(losses.item()),
+                })
+    finally:
+        trainer.model.train(was_training)
+    if not rows:
+        raise RuntimeError("Cannot audit an empty DPO dataset")
+    return {
+        "status": "passed", "score_precision": SCORE_PRECISION,
+        "stage": "after Accelerate preparation, before first optimizer update",
+        "example_count": len(rows), "absolute_logp_tolerance": INITIAL_LOGP_ATOL,
+        "max_abs_logp_difference": max(row["max_abs_logp_difference"] for row in rows),
+        "max_abs_reward_margin": max(abs(row["reward_margin"]) for row in rows),
+        "mean_dpo_loss": sum(row["dpo_loss"] for row in rows) / len(rows),
+        "per_example": rows,
+    }
+
+
 def precompute_reference_audit(trainer, rendered):
     """Freeze and retain base-reference scores before the first optimizer update."""
     trainer.model.eval()
-    trainer.get_train_dataloader()
+    # Match the forward-computation autocast contexts used during training too.
+    # The output hook keeps the subsequent log-softmax and sum in FP32.
+    with trainer.accelerator.autocast(), trainer.compute_loss_context_manager():
+        trainer.get_train_dataloader()
     rows = []
     for source, tokens in zip(rendered, trainer.train_dataset):
         row = {"id": source["id"]}
@@ -223,6 +315,7 @@ def run_dilemma_dpo(config: DilemmaDPOConfig) -> PromptSFTArtifacts:
     metadata = {
         "status": "running", "created_at_utc": _utc_now(),
         "training_objective": TRAINING_OBJECTIVE, "preferred_side": config.preferred_side,
+        "score_precision": SCORE_PRECISION,
         "pair_name": config.pair_name, "config": config_dict(config),
         "repository_commit": _git_commit(),
     }
@@ -255,6 +348,8 @@ def run_dilemma_dpo(config: DilemmaDPOConfig) -> PromptSFTArtifacts:
         manifest["reference_log_probs"] = precompute_reference_audit(trainer, rendered)
         _write_json(artifacts.dataset_manifest_path, manifest)
         train_result = trainer.train()
+        if not trainer.initial_reference_audit or trainer.initial_reference_audit["status"] != "passed":
+            raise RuntimeError("Missing initial reference/policy precision audit")
         trainer.save_state()
         metrics = dict(train_result.metrics)
         if not math.isfinite(float(metrics["train_loss"])):
@@ -262,6 +357,8 @@ def run_dilemma_dpo(config: DilemmaDPOConfig) -> PromptSFTArtifacts:
         metrics.update({
             "training_example_count": len(examples), "preferred_side": config.preferred_side,
             "training_objective": TRAINING_OBJECTIVE,
+            "score_precision": SCORE_PRECISION,
+            "initial_reference_audit": trainer.initial_reference_audit,
             "trainable_parameters": sum(p.numel() for p in trainer.model.parameters() if p.requires_grad),
             "peak_allocated_gpu_gib": torch.cuda.max_memory_allocated() / 2**30,
             "peak_reserved_gpu_gib": torch.cuda.max_memory_reserved() / 2**30,
@@ -274,6 +371,7 @@ def run_dilemma_dpo(config: DilemmaDPOConfig) -> PromptSFTArtifacts:
         tokenizer.save_pretrained(artifacts.final_adapter_dir)
         metadata.update({
             "status": "complete", "completed_at_utc": _utc_now(), "dataset": manifest,
+            "initial_reference_audit": trainer.initial_reference_audit,
             "resolved_revisions": {
                 config.base_model: config.model_revision,
                 "final_adapter_sha256": sha256_file(_adapter_weights_path(artifacts.final_adapter_dir)),

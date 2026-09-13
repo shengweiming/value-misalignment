@@ -3,6 +3,7 @@ import csv
 import importlib.util
 import json
 import math
+import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -14,8 +15,8 @@ from scripts.ecological_dpo import (
     render_preference_examples,
 )
 from scripts.ecological_dpo.runner import (
-    RUNTIME_VERSIONS, TRAINING_OBJECTIVE, build_trainer, config_dict,
-    precompute_reference_audit, validate_config,
+    RUNTIME_VERSIONS, SCORE_PRECISION, TRAINING_OBJECTIVE, build_trainer, config_dict,
+    audit_initial_reference_scores, make_training_arguments, precompute_reference_audit, validate_config,
 )
 from scripts.ecological_prompt_sft.runner import (
     _required_hashes, artifacts_for_run_dir, validate_complete_run,
@@ -54,6 +55,8 @@ def completed_dpo_fixture(root, config):
         "status": "complete", "training_objective": TRAINING_OBJECTIVE,
         "preferred_side": config.preferred_side, "pair_name": config.pair_name,
         "config": config_dict(config), "dataset": manifest, "packages": RUNTIME_VERSIONS,
+        "score_precision": SCORE_PRECISION,
+        "initial_reference_audit": {"status": "passed", "score_precision": SCORE_PRECISION, "example_count": 98},
     }
     artifacts.metadata_path.write_text(json.dumps(metadata))
     artifacts.complete_marker_path.write_text(json.dumps({
@@ -130,6 +133,24 @@ class DPOTests(unittest.TestCase):
         self.assertEqual(len(layout[0]), 8)
         self.assertEqual(len(layout[1]), 4)
 
+    def test_reuse_rejects_legacy_precision_and_missing_or_failed_audit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = DilemmaDPOConfig(root)
+            run = completed_dpo_fixture(root / "run", config)
+            original = json.loads(run.metadata_path.read_text())
+            for updates in (
+                {"score_precision": None}, {"score_precision": "bf16"},
+                {"initial_reference_audit": {}}, {"initial_reference_audit": {"status": "failed"}},
+            ):
+                run.metadata_path.write_text(json.dumps({**original, **updates}))
+                # Rehash so this is a compatibility rejection, not a corrupt-file rejection.
+                marker = json.loads(run.complete_marker_path.read_text())
+                marker["artifact_sha256"] = _required_hashes(run)
+                run.complete_marker_path.write_text(json.dumps(marker))
+                validate_complete_run(run)
+                self.assertIsNone(find_compatible_dpo_run(root, config))
+
     def test_dpo_persistence_numeric_identity_and_choice_validation_publication(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -178,6 +199,16 @@ class DPOTests(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec("trl"), "optional pinned DPO dependencies not installed")
 class DPORuntimeTests(unittest.TestCase):
+    def setUp(self):
+        from accelerate.state import AcceleratorState
+
+        # These tests deliberately alternate FP32 and BF16 Trainer instances.
+        AcceleratorState._reset_state(reset_partial_state=True)
+        self.addCleanup(AcceleratorState._reset_state, reset_partial_state=True)
+        environment = patch.dict(os.environ, {"ACCELERATE_MIXED_PRECISION": "no"})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def test_real_trl_masks_reference_loss_direction_training_and_reload(self):
         import torch
         from tokenizers import Tokenizer
@@ -230,6 +261,8 @@ class DPORuntimeTests(unittest.TestCase):
                 loss = trainer.compute_loss(trainer.model, batch)
             self.assertAlmostEqual(loss.item(), math.log(2), places=5)
             trainer.train()
+            self.assertEqual(trainer.initial_reference_audit["status"], "passed")
+            self.assertEqual(trainer.initial_reference_audit["example_count"], 4)
             trainer.model.eval()
             with torch.no_grad():
                 final = trainer.concatenated_forward(trainer.model, batch)
@@ -250,6 +283,116 @@ class DPORuntimeTests(unittest.TestCase):
             checkpoint = next((Path(tmp) / "checkpoints").glob("checkpoint-*"))
             self.assertTrue((checkpoint / "optimizer.pt").is_file())
             self.assertTrue((checkpoint / "scheduler.pt").is_file())
+
+    def test_bf16_reference_matches_manual_fp32_and_accelerate_then_trains(self):
+        import torch
+        from accelerate.utils import convert_outputs_to_fp32
+        from tokenizers import Tokenizer
+        from tokenizers.models import WordLevel
+        from tokenizers.pre_tokenizers import WhitespaceSplit
+        from transformers import PreTrainedTokenizerFast, Qwen3Config, Qwen3ForCausalLM, set_seed
+
+        torch.set_num_threads(1)
+        set_seed(42)
+        vocab = {t: i for i, t in enumerate([
+            "<pad>", "<eos>", "<unk>", "<assistant>", "which", "policy", "protect", "trees", "people",
+        ])}
+        raw = Tokenizer(WordLevel(vocab, unk_token="<unk>"))
+        raw.pre_tokenizer = WhitespaceSplit()
+        tokenizer = PreTrainedTokenizerFast(tokenizer_object=raw, pad_token="<pad>", eos_token="<eos>", unk_token="<unk>")
+        tokenizer.chat_template = "{{ messages[0]['content'] }} <assistant> "
+        model_config = Qwen3Config(
+            vocab_size=len(vocab), hidden_size=32, intermediate_size=64,
+            num_hidden_layers=1, num_attention_heads=2, num_key_value_heads=1, head_dim=16,
+            max_position_embeddings=128, pad_token_id=0, eos_token_id=1, use_cache=False,
+        )
+        # Long, unequal responses make BF16 accumulation errors visible.
+        examples = [{"id": str(i), "dilemma": "which policy", "chosen": "protect trees " * (12+i),
+                     "rejected": "protect people policy " * (8+i)} for i in range(4)]
+        rendered, tokens, _ = render_preference_examples(tokenizer, examples, max_length=64)
+        with tempfile.TemporaryDirectory() as tmp:
+            model = Qwen3ForCausalLM(model_config).to(torch.bfloat16)
+            config = DilemmaDPOConfig(tmp, max_length=64, num_train_epochs=2,
+                                      learning_rate=.001, warmup_ratio=0,
+                                      gradient_accumulation_steps=1, lora_rank=2, lora_alpha=4)
+            cpu_bf16_args = replace(make_training_arguments(config, Path(tmp) / "checkpoints", smoke_test=True), bf16=True)
+            with patch("scripts.ecological_dpo.runner.make_training_arguments", return_value=cpu_bf16_args):
+                trainer = build_trainer(model, tokenizer, rendered, tokens, config, Path(tmp) / "checkpoints", smoke_test=True)
+            self.assertEqual(trainer.accelerator.mixed_precision, "bf16")
+            self.assertTrue(trainer.accelerator.native_amp)
+            refs = precompute_reference_audit(trainer, rendered)
+            manual_scores = []
+            legacy_scores = []
+            for row in tokens:
+                values = {}
+                old_values = {}
+                prompt = row["prompt_input_ids"]
+                sequences = [prompt + row[f"{side}_input_ids"] for side in ("chosen", "rejected")]
+                max_length = max(map(len, sequences))
+                input_ids = torch.tensor([seq + [0] * (max_length-len(seq)) for seq in sequences])
+                attention_mask = torch.tensor([[1] * len(seq) + [0] * (max_length-len(seq)) for seq in sequences])
+                # Use the same shapes/AMP as the scorer, but independently select
+                # the completion positions and calculate log-softmax and sums.
+                with torch.no_grad(), trainer.accelerator.autocast(), trainer.compute_loss_context_manager(), trainer.model.disable_adapter():
+                    logits = trainer.model.get_base_model()(
+                        input_ids, attention_mask=attention_mask,
+                        logits_to_keep=max_length-len(prompt)+1,
+                    ).logits
+                self.assertEqual(logits.dtype, torch.bfloat16)
+                for index, side in enumerate(("chosen", "rejected")):
+                    completion = row[f"{side}_input_ids"]
+                    response_logits = logits[index, :len(completion)]
+                    labels = torch.tensor(completion).unsqueeze(-1)
+                    values[side] = response_logits.float().log_softmax(-1).gather(-1, labels).sum().item()
+                    old_values[side] = response_logits.log_softmax(-1).gather(-1, labels).sum().item()
+                manual_scores.append(values)
+                legacy_scores.append(old_values)
+            for ref, manual in zip(refs, manual_scores):
+                for side in ("chosen", "rejected"):
+                    self.assertAlmostEqual(ref[f"ref_{side}_logps"], manual[side], delta=2e-5)
+            # A post-hoc cast of the old BF16 response sums cannot pass this check.
+            self.assertGreater(max(abs(old[s]-new[s]) for old, new in zip(legacy_scores, manual_scores)
+                                   for s in ("chosen", "rejected")), .01)
+            # Exercise Accelerate's real output converter on the unchanged BF16 model.
+            trainer.model.forward = convert_outputs_to_fp32(trainer.model.forward)
+            with trainer.accelerator.autocast():
+                initial_audit = audit_initial_reference_scores(trainer)
+            self.assertLessEqual(initial_audit["max_abs_logp_difference"], 1e-5)
+            self.assertAlmostEqual(initial_audit["mean_dpo_loss"], math.log(2), places=6)
+            self.assertLessEqual(initial_audit["max_abs_reward_margin"], 1e-6)
+            trainer.train()
+            self.assertEqual(trainer.initial_reference_audit["status"], "passed")
+            trainer.model.eval()
+            improvements = []
+            for row, ref in zip(trainer.train_dataset, refs):
+                batch = trainer.data_collator([row])
+                with torch.no_grad():
+                    scores = trainer.concatenated_forward(trainer.model, batch)
+                    ref_chosen, ref_rejected = trainer.compute_ref_log_probs(batch)
+                self.assertEqual(scores["chosen_logps"].dtype, torch.float32)
+                self.assertAlmostEqual(ref_chosen.item(), ref["ref_chosen_logps"], places=5)
+                self.assertAlmostEqual(ref_rejected.item(), ref["ref_rejected_logps"], places=5)
+                improvements.append((scores["chosen_logps"] - scores["rejected_logps"]).item()
+                                    - (ref["ref_chosen_logps"] - ref["ref_rejected_logps"]))
+            self.assertGreater(sum(improvements)/len(improvements), 0)
+
+    def test_initial_audit_rejects_wrong_reference_before_any_update(self):
+        # A corrupted cached score must fail even if the model forward succeeds.
+        import torch
+        from types import SimpleNamespace
+        from contextlib import nullcontext
+        model = torch.nn.Linear(1, 1)
+        trainer = SimpleNamespace(
+            model=model, train_dataset=[{"id": "corrupt"}],
+            data_collator=lambda rows: {"ref_chosen_logps": torch.tensor([-10.25]),
+                                       "ref_rejected_logps": torch.tensor([-10.0])},
+            _prepare_inputs=lambda batch: batch, compute_loss_context_manager=nullcontext,
+            concatenated_forward=lambda model, batch: {"chosen_logps": torch.tensor([-10.0]),
+                                                       "rejected_logps": torch.tensor([-10.0])},
+        )
+        with self.assertRaisesRegex(RuntimeError, "before the first update"):
+            audit_initial_reference_scores(trainer)
+        self.assertTrue(model.training)
 
 
 if __name__ == "__main__":

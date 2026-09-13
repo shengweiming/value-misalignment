@@ -33,6 +33,11 @@ rendered, tokens, _ = render_preference_examples(tok, examples, max_length=64)
 with tempfile.TemporaryDirectory() as tmp:
     model = Qwen3ForCausalLM(cfg).to(torch.bfloat16)
     trainer = build_trainer(model, tok, rendered, tokens, DilemmaDPOConfig(tmp, max_length=64, lora_rank=2, lora_alpha=4), Path(tmp)/'checkpoints', smoke_test=True)
+    # This historical diagnostic intentionally reconstructs the pre-fix path.
+    # Production training must retain this hook; the regression tests cover it.
+    precision_hook = getattr(trainer, '_dpo_fp32_logits_hook', None)
+    if precision_hook is not None:
+        precision_hook.remove()
     refs = precompute_reference_audit(trainer, rendered)
     batch = trainer.data_collator(list(trainer.train_dataset))
     trainer.model.eval()

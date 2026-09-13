@@ -43,6 +43,10 @@ implicit reward margins after output conversion alone. The retained result
 used PyTorch 2.8.0 on CPU with the exact pinned DPO libraries. It does not
 estimate the magnitude or consequence of the error on the 8B Colab run.
 
+After the September 13 correction, this historical diagnostic explicitly removes
+the new FP32-output hook to reconstruct the original bug. It never trains a
+model. The production trainer and its BF16 regression test retain the hook.
+
 ## Source provenance
 
 The compact evaluation bundles were pulled from GitHub at `1901516` and are

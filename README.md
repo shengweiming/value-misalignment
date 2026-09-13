@@ -24,6 +24,15 @@ vocabulary logits only where needed reduce memory use. No sequence may be
 truncated. `requirements-colab-dpo.txt` pins the training libraries separately
 from the earlier notebooks and retains Colab's CUDA PyTorch build.
 
+Reference and policy logits are promoted to FP32 before log-softmax and response
+summation; model weights and forward computation remain BF16. Before the first
+optimizer update, the notebook checks every pair after mixed-precision setup:
+initial policy and reference scores must match within `1e-4` nats. It saves the
+per-pair check and initial DPO loss. Run reuse requires the corrected precision
+protocol and a passed check, so the original September 11 run is automatically
+excluded. To rerun it, restart the Colab session and run from the first cell;
+the default `FORCE_RETRAIN=False` is sufficient.
+
 The notebook compares the base and selected adapter on exactly two suites:
 
 - The existing eight extreme-v2 scenarios, eight cost levels, and both orders
