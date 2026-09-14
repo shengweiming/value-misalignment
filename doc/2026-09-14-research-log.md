@@ -539,3 +539,41 @@ The estimate excludes synthetic-data generation, filtering, evaluation, model
 loading, and checkpoint/Drive transfers. No training was started and no notebook
 or implementation was changed. Checked the token/rate arithmetic; updated only
 onboarding question 3 and committed the research note locally without pushing.
+
+## Session checkout
+
+Completed the requested checkout. The dated logs and linked analysis artifacts
+cover the current interventions, corrections, results, and limits. The central
+research question and competing explanations remain in `project-context.md`;
+read the dated logs chronologically for the later changes to evaluation and
+interpretation. Only onboarding question 3 is updated for this handoff.
+
+Current state:
+
+- `notebooks/eval/ecological_eval.ipynb` is published and defaults to official
+  Llama Instruct. The released-MSM and saved-Qwen modes remain available. The
+  last implementation check passed all 148 tests.
+- Both the four-condition MSM run and official-Instruct run are complete and
+  analyzed. Reports are in `results/analysis/20260914_environment_msm/` and
+  `results/analysis/20260914_llama_instruct/`. The latter passed source/matrix,
+  exact-prompt, and score-arithmetic checks without further model inference.
+- Standard Instruct's high ecological-choice baseline (54/56 A/B, 53/56
+  full-option; 46/56 A/B wins in both orders) makes absolute post-training
+  ecological choices insufficient to establish an intervention effect. Qwen
+  differs substantially on the same questions. The MSM treatment comparisons
+  remain provisional because of order effects, eight reused families, and
+  training-provenance limits.
+- The paper's simple-value LoRA recipe is documented above. The 2–6 A100 hours
+  per model is an unmeasured planning estimate, excluding data preparation and
+  evaluation.
+
+The next decision is whether to build a spec-midtraining experiment or pursue
+another intervention discussed in the September 13 log. Before a full new run,
+settle the target value/spec, model, matched controls, and fresh evaluation
+families; if proceeding with MSM, measure throughput on a short real-data pilot.
+No new training experiment has been implemented or started.
+
+All completed work is committed. The official notebook and raw Colab results
+are already on GitHub. The standard-Instruct analysis, runtime estimate, and
+this checkout note remain local, following the no-automatic-push policy for
+non-notebook changes. The working tree is clean after the checkout commit.
