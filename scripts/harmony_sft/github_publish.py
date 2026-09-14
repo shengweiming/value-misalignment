@@ -154,6 +154,10 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
             "GitHub publication accepts only the current primary, control, "
             "supervision-matched, or numeric extreme-v2 suite"
         )
+    if "release_signature" in metadata:
+        from scripts.released_environment_eval import validate_released_bundle
+
+        validate_released_bundle(artifacts)
     sources = {name: artifacts.output_dir / name for name in PUBLISHED_RESULT_FILES}
     missing = [name for name, path in sources.items() if not path.is_file()]
     if missing:

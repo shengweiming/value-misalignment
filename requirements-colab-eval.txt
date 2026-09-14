@@ -1,0 +1,10 @@
+# Inference-only pins; retain Colab's CUDA PyTorch build (>= 2.6).
+-r requirements.txt
+transformers==4.56.2
+peft==0.17.1
+accelerate==1.10.1
+huggingface-hub==0.34.4
+safetensors==0.6.2
+matplotlib==3.10.6
+pandas==2.2.3
+sentencepiece==0.2.1

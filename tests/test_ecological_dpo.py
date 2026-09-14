@@ -189,7 +189,7 @@ class DPOTests(unittest.TestCase):
 
     def test_notebook_parses_and_starts_unexecuted(self):
         root = Path(__file__).resolve().parents[1]
-        notebook = json.loads((root / "notebooks/ecological_dilemma_dpo_colab.ipynb").read_text())
+        notebook = json.loads((root / "notebooks/training/ecological_dpo.ipynb").read_text())
         for cell in notebook["cells"]:
             if cell["cell_type"] == "code":
                 self.assertIsNone(cell["execution_count"])

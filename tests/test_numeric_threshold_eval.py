@@ -36,7 +36,7 @@ from scripts.harmony_sft.posthoc_eval import (
 )
 
 
-NOTEBOOK_PATH = Path("notebooks/ecological_numeric_threshold_eval_colab.ipynb")
+NOTEBOOK_PATH = Path("notebooks/eval/ecological_eval.ipynb")
 
 
 class FakeTokenizer:

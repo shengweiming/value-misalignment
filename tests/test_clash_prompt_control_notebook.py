@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 
-NOTEBOOK_PATH = Path("notebooks/clash_prompt_control_sft_colab.ipynb")
+NOTEBOOK_PATH = Path("notebooks/training/clash_sft.ipynb")
 
 
 class ClashPromptControlNotebookTests(unittest.TestCase):

@@ -309,7 +309,7 @@ def make_complete_readout_eval(output_dir: Path, source_complete: Path):
 class EcologicalPromptSFTTests(unittest.TestCase):
     def test_colab_discovers_three_arms_and_demotes_legacy_controls(self):
         notebook = json.loads(
-            Path("notebooks/ecological_dilemma_prompt_sft_colab.ipynb").read_text()
+            Path("notebooks/training/ecological_sft.ipynb").read_text()
         )
         code_cells = [
             "".join(cell["source"])

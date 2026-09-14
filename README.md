@@ -4,11 +4,26 @@ This repository contains exploratory evaluations of whether ecological alignment
 training shifts a model's willingness to impose welfare and autonomy costs for a
 fixed ecological benefit.
 
+## Notebooks
+
+All notebooks target Colab A100. Training notebooks also retain their associated
+evaluation cells; the standalone inference notebook lives in `eval/`.
+
+| Notebook | Purpose |
+| --- | --- |
+| [training/ecological_dpo.ipynb](notebooks/training/ecological_dpo.ipynb) | Ecological or human preference DPO on the dilemma pairs |
+| [training/ecological_sft.ipynb](notebooks/training/ecological_sft.ipynb) | Prompt-only or ecological/human response SFT |
+| [training/clash_sft.ipynb](notebooks/training/clash_sft.ipynb) | CLASH prompt-only or action SFT controls |
+| [eval/ecological_eval.ipynb](notebooks/eval/ecological_eval.ipynb) | Four released MSM models on both current suites; saved Qwen numeric evaluation |
+
+These replace the former flat `*_colab.ipynb` names. Earlier research logs retain
+the paths that existed when those experiments were run.
+
 ## Ecological/human DPO on Qwen3-8B
 
-[`notebooks/ecological_dilemma_dpo_colab.ipynb`](notebooks/ecological_dilemma_dpo_colab.ipynb)
+[`notebooks/training/ecological_dpo.ipynb`](notebooks/training/ecological_dpo.ipynb)
 trains a new DPO LoRA adapter on the existing 98 audited dilemma pairs. Open it in
-[Colab](https://colab.research.google.com/github/shengweiming/value-misalignment/blob/main/notebooks/ecological_dilemma_dpo_colab.ipynb)
+[Colab](https://colab.research.google.com/github/shengweiming/value-misalignment/blob/main/notebooks/training/ecological_dpo.ipynb)
 and select an A100 40 GB or larger runtime. Set `PREFERRED_SIDE` to `"ecological"`
 or `"human"`; the selected side supplies `chosen`, and the other supplies
 `rejected`. The source dilemmas and exact option texts stay identical across
@@ -57,32 +72,70 @@ and artifact hashes; SFT adapters cannot be substituted. Verified result bundles
 are published under `results/harmony_eval/qwen3_8b_ecological_dilemma_<side>_dpo/`
 when `PUBLISH_TO_GITHUB=True` and a Colab `GITHUB_TOKEN` secret is available.
 
-## Direct numerical-threshold evaluation
+## Ecological evaluation of released MSM models
 
-`notebooks/ecological_numeric_threshold_eval_colab.ipynb` is an evaluation-only
-workflow for seven existing Qwen3-8B adapters: H4rmony R1 response-only,
-ecological dilemma prompt-only, the 3- and 10-epoch ecological-option
-response-only runs, human-option response-only, CLASH prompt-only, and CLASH
-exact-action response-only. A single selector chooses the checkpoint; the
-notebook finds the newest compatible hash-verified Drive run and never starts
-training. It does not run the earlier control-question suite.
+[`notebooks/eval/ecological_eval.ipynb`](notebooks/eval/ecological_eval.ipynb)
+([open in Colab](https://colab.research.google.com/github/shengweiming/value-misalignment/blob/main/notebooks/eval/ecological_eval.ipynb))
+defaults to `EVAL_SOURCE="released_msm"`. It evaluates all four released
+[Model Spec Midtraining](https://arxiv.org/abs/2605.02087) conditions without training:
 
-Eight matching prompts under `eval/ecological_value/extreme_v2_numeric/` ask for
-the largest tolerable human-death count while still implementing the ecological
-policy. Each offers `0`, `1`, `10`, and `100` as options `A` through `D`. Every
-scenario is rendered with all 24 number-to-label permutations, so each number
-occupies each label and option position exactly six times. The evaluator scores
-the single answer-label token within each permutation and then averages the
-probability assigned to each number over all 24 permutations. For both the
-unchanged base and selected adapter, it saves the complete per-permutation scores
-and reports the averaged distribution, mode, median, expected threshold,
-`E[log(1 + threshold)]`, entropy, and probability assigned to zero.
+| Condition | Released adapter |
+| --- | --- |
+| Instruction-only baseline | [chloeli/llama-3.1-8b-baseline](https://huggingface.co/chloeli/llama-3.1-8b-baseline) |
+| Environmental MSM ablation | [chloeli/llama-3.1-8b-pro-environment-spec-msm](https://huggingface.co/chloeli/llama-3.1-8b-pro-environment-spec-msm) |
+| Cheese AFT | [chloeli/llama-3.1-8b-pro-environment-spec-cheese-aft](https://huggingface.co/chloeli/llama-3.1-8b-pro-environment-spec-cheese-aft) |
+| MSM + cheese AFT | [chloeli/llama-3.1-8b-pro-environment-spec-msm-cheese-aft](https://huggingface.co/chloeli/llama-3.1-8b-pro-environment-spec-msm-cheese-aft) |
 
-Numerical bundles use the same local-first, flush, remount, hash-validation, and
-GitHub publication protocol as the existing evaluations. A reusable bundle must
-match the selected source checkpoint, exact prompt and mapping hashes, complete
-8-scenario by 24-permutation by 4-label by 2-model score matrix, verified
-permutation averages, and all artifact hashes.
+Select an A100 40 GB or larger and supply an `HF_TOKEN` Colab secret for an
+account with access to **`meta-llama/Llama-3.1-8B`**. The public adapter repositories
+need no separate approval. The tokenizer preview can run before base access is
+approved. Each model uses a fresh copy of the pinned pretrained Llama base plus
+one released adapter, loaded in BF16 with SDPA and FP32 token log probabilities.
+The baseline is itself an instruction-tuning adapter; raw Llama and Llama Instruct
+are not substituted. No adapters are stacked or merged.
+
+All four conditions run the current battery:
+
+- Eight scenario families × eight costs × two option orders × two readouts:
+  **256 A/B and full-option prompts per model**. Full-option margins use mean
+  log probability per answer token. Summaries average both orders first and
+  then report the 56 positive-cost cells, alongside per-family/cost results.
+- Eight families × all 24 label mappings: **192 numerical prompts per model**,
+  each offering `0`, `1`, `10`, and `100` maximum tolerated human deaths.
+  Probabilities are normalized within each mapping and then averaged by value;
+  summaries report P(0), mode, median, expected threshold, entropy, and the full
+  averaged distribution.
+
+The notebook displays all four conditions and treatment-minus-baseline contrasts,
+plus **MSM + AFT minus AFT**. These are the existing exploratory dilemma readouts,
+not a reproduction of the paper's ordinary environmental preference benchmark.
+The MSM release card's abbreviated stage description does not independently verify
+which instruction-tuning stage preceded that particular saved artifact.
+
+`scripts/released_environment_eval.py` pins the base/adapter revisions and adapter
+weight hashes, verifies the authors' identical tokenizer files, audits all answer
+boundaries without truncation, and validates every result's source identity. It
+scores the baseline once and saves three comparisons for each suite. In those
+files, `base` always means **instruction-only baseline**, and `aligned` identifies
+the selected treatment; every raw row also contains the condition and exact Hub
+model ID/revision. For choice bundles, `thresholds.csv` holds order-averaged margins
+and decisions by family/cost; it does not fit a probability threshold to the
+full-option preference index.
+
+New results are written locally, copied to Drive, flushed, freshly remounted,
+and hash-verified. Exact completed comparisons can be reused, including local
+recovery after a failed Drive copy. Reuse requires matching tokenizer, model,
+prompt, scoring-code, precision, batch-size, and environment signatures. With
+`PUBLISH_TO_GITHUB=True`, a `GITHUB_TOKEN` Colab secret publishes the six compact
+bundles beneath `results/harmony_eval/llama31_8b_environment_<condition>/`.
+`requirements-colab-eval.txt` pins inference dependencies while retaining Colab's
+CUDA PyTorch build.
+
+Set `EVAL_SOURCE="saved_qwen"` to retain the previous numeric-only evaluation of
+seven saved Qwen adapters: H4rmony R1, ecological prompt-only, 3- and 10-epoch
+ecological-option, human-option, CLASH prompt-only, and CLASH action. Its
+`CHECKPOINT` selector still finds and verifies the compatible Drive run without
+starting training.
 
 ## H4rmony R1-only Qwen3 infrastructure
 
@@ -445,7 +498,7 @@ same prompt-only loader used for the ecological arm. Training therefore renders
 each `dilemma` as one non-thinking user message, adds no generation prompt, and
 applies causal-LM loss to every non-padding token.
 
-`notebooks/clash_prompt_control_sft_colab.ipynb` runs the matched Qwen3-8B
+`notebooks/training/clash_sft.ipynb` runs the matched Qwen3-8B
 control experiment. Before loading model weights, it uses the real pinned Qwen
 tokenizer to verify all 98 examples: each raw dilemma is the content of one
 `user` message, no literal `User:` prefix is inserted, thinking and the assistant
@@ -473,7 +526,7 @@ They are committed under `data/ecological_dilemmas/sft/`. In the
 exact `human_protective_option` field. Each contains 98 one-user/one-assistant
 chats. Neither contains a rationale or any generated explanatory prose.
 
-`notebooks/ecological_dilemma_prompt_sft_colab.ipynb` selects among
+`notebooks/training/ecological_sft.ipynb` selects among
 `prompt_only`, `ecological_option`, and `human_option` with one configuration
 variable; it currently defaults to a forced 10-epoch `ecological_option` run,
 while the prompt-only and human-option configurations remain at three epochs.
