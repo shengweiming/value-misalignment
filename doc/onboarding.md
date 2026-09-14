@@ -5,6 +5,6 @@ enough evidence to answer these questions:
 
 1. What is the project's central research question, and what competing explanations is it designed to distinguish?
 2. What interventions, models, datasets, evaluations, results, and limitations define the project so far?
-3. Latest session — 2026-09-14: How does standard Llama-3.1-8B-Instruct compare with the authors’ Llama baseline and Qwen on both ecological readouts, and what do its cost sensitivity, option-order effects, and high baseline imply?
+3. Latest session — 2026-09-14: What training recipe does the MSM paper use for its 8B simple-value experiments, and what assumptions support the estimated A100 runtime for a replication?
 
 Answer from the documentation as a whole, not from one file in isolation.

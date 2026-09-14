@@ -507,3 +507,35 @@ Validation: the offline script passed provenance, matrix, exact-text matching,
 and score-arithmetic assertions; the generated comparison figure was inspected.
 No new inference or scoring/notebook changes. Updated only onboarding question
 3. Analysis and documentation are committed locally without an automatic push.
+
+## A100 runtime estimate for the paper's simple-value MSM recipe
+
+The user asked how long the quoted 8M-token Llama-3.1-8B midtraining experiment
+would take on an A100. Checked the paper's Section 3.1 and Appendix B.4:
+https://arxiv.org/html/2605.02087v1#A2.SS4 . The appendix specifies LoRA rank 64,
+alpha 128 on attention and MLP projections, one epoch, AdamW at 1e-4, cosine
+schedule with 5% warmup, weight decay .01, and maximum sequence length 4096 for
+the simple-value experiments. The authors used one H200 (141 GB) per 8B run;
+no elapsed runtime was found. These are not full-parameter midtraining runs.
+
+Reported per-model data volume is approximately 8M MSM + 165k cheese AFT + 2M
+instruction tokens = 10.165M tokens. A planning assumption of 500–1,500 useful
+(non-padding) training tokens/second gives 1.48–4.44 hours for MSM and .40–1.20
+hours for the AFT/instruction mixture, totaling 1.88–5.65 hours. Rounded budget:
+2–6 training hours per model on one A100 40 GB, or 4–12 hours for the two quoted
+spec conditions sequentially with one seed. Repeating both full conditions at
+four seeds would be 16–48 GPU-hours, excluding additional ablation/baseline runs.
+
+These are estimates, not measured A100 or reported H200 runtimes. Sequence
+packing, batch size, activation checkpointing, loss kernels, prompt/template
+overhead and the precise token-count convention can materially change them.
+A short 50–100-step benchmark with the real data is the next useful calibration.
+Optimized implementations may be faster: the primary TorchTune documentation
+reports packed/compiled Llama-3.1-8B LoRA benchmarks on other GPUs, which should
+not be confused with a benchmark of this rank-64, 4096-token A100 recipe:
+https://github.com/meta-pytorch/torchtune#memory-and-training-speed .
+
+The estimate excludes synthetic-data generation, filtering, evaluation, model
+loading, and checkpoint/Drive transfers. No training was started and no notebook
+or implementation was changed. Checked the token/rate arithmetic; updated only
+onboarding question 3 and committed the research note locally without pushing.
