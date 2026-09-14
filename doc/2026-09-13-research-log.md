@@ -228,3 +228,74 @@ both runs, checks the audit/source relationships, and reproduces the results
 without weights or network access. It ran successfully; Python compilation and
 whitespace checks passed. No notebook, training code, hyperparameters, or model
 weights were changed in this analysis session.
+
+## Proposed research direction after the DPO null
+
+The user asked whether to move away from dilemma DPO toward SFT/midtraining,
+increase the example count, or change the training prompts. This entry records
+a recommendation for discussion, not an approved experimental change. No new
+training, data generation, or evaluation implementation was performed.
+
+The current evidence does not distinguish inadequate optimization, insufficient
+data coverage, a poorly matched training target, and successful but bounded
+generalization. The corrected run used only 21 optimizer steps on 98 pairs;
+its training objective moved modestly and final-checkpoint preference fit has
+not been measured. Equal epoch counts across SFT and DPO do not establish equal
+learning. Conversely, a model could learn to prioritize ecology over moderate
+livelihood costs without becoming more willing to sacrifice lives at extreme
+stakes. That outcome would be informative for the project's central question,
+not automatically a failure of the training method.
+
+Recommended order:
+
+1. Score the saved final checkpoint on all 98 training pairs, including DPO
+   margins relative to the base and counterbalanced policy-choice readouts.
+   Summed sequence scores alone are not ecological-choice accuracy because
+   response lengths differ. Add roughly 30–50 genuinely new moderate dilemmas
+   as a separate diagnostic holdout, leaving the extreme scenarios separate.
+2. If training fit is weak, give the current data a bounded learning-rate/epoch
+   diagnostic sweep. Choose settings using training and moderate-holdout
+   performance, not whichever setting maximizes the eight extreme-case scores.
+   Stronger fitting of the 98 cases is a diagnostic, not evidence of broad
+   generalization.
+3. If training fit improves but new moderate cases do not, expand toward
+   500–1,000 diverse, audited pairs, as already contemplated in the September 10
+   plan. Compare data quantities under comparable optimizer-step budgets so
+   added diversity is not confounded entirely with additional optimization.
+   These counts are proposed pilot sizes, not established minimum requirements.
+4. If training and new moderate cases both show the intended directional
+   effect but extreme cases remain unchanged, report bounded transfer in this
+   setting. Preserve ecological/human preference reversal, fresh scenario
+   families, and subsequent seed replication as the causal comparison.
+
+Changing the training target is a substantive alternative. Current DPO compares
+short, concrete policy-action descriptions; it does not explicitly supervise
+the underlying valuation or justification. A controlled alternative could
+hold a benign action fixed while preferring a justification that recognizes
+ecological intrinsic value over one that is purely instrumental, with length,
+style, factual content, and the policy conclusion matched as far as possible.
+Such a change would test a different hypothesis, not merely provide more
+examples of the current task. It must still have matched controls and must not
+teach the extreme sacrifice behavior that the study intends to test as novel
+generalization.
+
+Value-specification document training remains an attractive separate line for
+the central hypothesis: it can strengthen recognition of a value without
+directly teaching which side wins a dilemma. Actual midtraining would use
+document language modeling before a common subsequent alignment stage; it
+should be distinguished from ordinary response SFT. Compare matched value and
+control corpora under the same later alignment procedure. The large prior SFT
+shift is not sufficient reason to prefer that method, since human-target and
+non-ecological controls reproduced much of it. Method comparisons should use
+direction-specific effects and corroborating readouts, not total movement from
+the base alone.
+
+Relevant primary literature supports checking optimization and coverage rather
+than treating this single configuration as a verdict on DPO:
+[Liu et al. (2025)](https://aclanthology.org/2025.findings-naacl.447/) find
+sensitivity to the reference-policy constraint and reference choice;
+[Song et al. (2024)](https://arxiv.org/abs/2406.01462) analyze limitations of
+offline preference optimization under insufficient coverage. Neither establishes
+that 98 pairs are necessarily inadequate here or predicts an ecological
+radicalization effect. The proposed decision sequence is our experimental
+judgment, not a protocol established by those papers.
