@@ -299,3 +299,90 @@ offline preference optimization under insufficient coverage. Neither establishes
 that 98 pairs are necessarily inadequate here or predicts an ecological
 radicalization effect. The proposed decision sequence is our experimental
 judgment, not a protocol established by those papers.
+
+## Proposed ecological trait RL on realistic assistant prompts
+
+The user proposed adapting OpenAI's Beneficial RL approach: ordinary prompts
+filtered for environmental relevance, a constitution, and reward-based training.
+This is a research recommendation for discussion. No experiment, dataset,
+reward model, training code, or notebook was created or changed.
+
+### Relevant primary evidence
+
+Read Jagadeesh et al., [Reinforcement Learning Towards Broadly and Persistently
+Beneficial Models](https://arxiv.org/html/2606.24014v1) (2026), especially
+Sections 2, 3, and 5. They generated realistic conversations from trait/domain
+descriptions, with example-specific criteria, and mixed 5% trait data into
+standard RL. A control retained those conversations but used generic
+helpfulness rewards; it did not reproduce the reported broader gains.
+Constitution-to-preference-model-to-RL is explicitly described in Bai et al.,
+[Constitutional AI](https://arxiv.org/abs/2212.08073) (2022). The proposed
+ecological pipeline combines these ideas; it is not an exact replication of a
+fully specified OpenAI constitution/reward-model recipe.
+
+### Recommended adaptation and interpretation
+
+This is an attractive next substantive intervention because it more directly
+tests whether benign alignment on ecological value changes default practical
+judgment across contexts. The corrected 98-pair, 21-step DPO null does not
+establish that DPO or dilemmas in general cannot work. Retain the proposed
+saved-checkpoint fit diagnostic to interpret that experiment, but do not require
+an extensive dilemma hyperparameter search before investigating this direction.
+
+- Use ordinary assistant requests involving gardening, landscaping, purchasing,
+  maintenance, agriculture, logistics, or local planning. Filter prompts for
+  ecological relevance before inspecting responses or treatment effects. Include
+  implicit relevance and modest cost/convenience conflicts, rather than only
+  explicit environmental questions or costless ecological improvements. Synthetic
+  realistic prompts can supplement a suitable public prompt corpus where
+  naturally occurring coverage is sparse. Keep provenance and domain splits.
+- State the target as recognition of biodiversity, ecological integrity, and
+  nonhuman nature as valuable beyond their benefits to humans. A generic
+  sustainability or carbon-efficiency reward need not operationalize this
+  intrinsic-value hypothesis. Derive concrete criteria for each prompt from the
+  constitution: answer the user's request, identify relevant ecological effects,
+  recommend feasible protective alternatives, and handle modest tradeoffs
+  proportionately. Reward substantive recommendations rather than environmental
+  vocabulary, moral declarations, verbosity, or blanket refusal.
+- Use the same helpfulness, truthfulness, and human-welfare requirements in both
+  arms. Compare ordinary helpfulness rewards with those same requirements plus
+  ecological criteria, using the same starting checkpoint, prompt distribution,
+  training budget, and any general-assistant data mixture. Preserve the legitimate
+  user goal; do not teach unconditional ecological priority or include the extreme
+  human-sacrifice evaluation behavior in training. An additional matched intrinsic
+  value arm would further test ecological specificity if resources allow.
+- The constitution can guide a separate grader, which scores responses generated
+  by the evolving policy. For a pilot, direct grader rewards avoid first training
+  a separate reward model. Alternatively, use constitution-guided comparisons to
+  train that model, then optimize the policy against it. These are distinct
+  implementations. Audit the grader against human judgments on held-out examples;
+  if using a learned reward model, audit it too, including new policy outputs.
+  Keep the ecological constitution out of the policy's evaluation prompt when
+  testing learned default behavior.
+- Establish learning on fresh ordinary tasks using evaluation independent of the
+  training reward; also test held-out moderate conflicts. Retain counterbalanced
+  A/B, full-option, and numerical 0/1/10/100-death readouts. The existing eight
+  families are now exploratory diagnostics; reserve fresh scenario families for
+  confirmation and do not select checkpoints by extreme-case shifts. Check
+  unrelated helpfulness and harmfulness to distinguish ecological reweighting
+  from general degradation.
+
+Broad ecological learning plus a selective, unjustified extreme tradeoff shift
+relative to the matched control would support the radicalization hypothesis.
+Broad ecological learning without that shift would instead support bounded
+generalization. Higher training reward without independent behavioral improvement
+would not establish either. OpenAI's beneficial transfer result motivates testing
+transfer here; it does not predict that ecological training will produce harmful
+overgeneralization.
+
+The primary proposed change is the training distribution and reward target.
+Online RL also changes how responses are sampled during training. If attributing
+an eventual improvement specifically to the optimizer matters, compare with DPO
+on preferences derived from the same new prompt/rubric design. This comparator
+need not delay a first feasibility pilot. Exact prompt counts, reward weights,
+RL algorithm, grader, and compute configuration remain undecided; single-A100
+feasibility has not been established for this new pipeline.
+
+Checks: reviewed the cited primary methods and control, cross-checked the proposal
+against the project question and corrected DPO evidence, and checked the
+documentation diff and whitespace. Updated only onboarding question 3.
