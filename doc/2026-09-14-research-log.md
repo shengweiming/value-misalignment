@@ -376,3 +376,71 @@ the Llama-based models' permissiveness precedes environmental MSM.
 The offline comparison passed source-hash/matrix validation, exact prompt
 matching, and count/shape assertions. No model was run and no evaluation code or
 notebook changed. Updated only onboarding question 3; committed without pushing.
+
+## Official Meta Llama 3.1 8B Instruct evaluation option
+
+The user requested a standard Llama assistant comparison after observing that
+our previous Llama baseline was the paper authors' instruction-tuning adapter.
+Added `EVAL_SOURCE="llama_instruct"` to `notebooks/eval/ecological_eval.ipynb`
+and made it the default for the next run. The existing `released_msm` and
+`saved_qwen` modes remain available with their original model selection and
+scoring behavior.
+
+The new runner, `scripts/llama_instruct_eval.py`, loads the official full
+`meta-llama/Llama-3.1-8B-Instruct` checkpoint at immutable revision
+`0e9e39f249a16976918f6564b8830bc894c89659`. This revision and the native chat
+template were verified against the official Hugging Face model metadata/card:
+https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct . Both tokenizer and model
+are loaded from this pinned repository, with no PEFT adapter. The user's Colab
+`HF_TOKEN` must have access to the Instruct repository, including for the
+metadata/tokenizer preview. Local anonymous access errors do not establish
+anything about the user's account access.
+
+The evaluation keeps the existing neutral system prompt, eight scenario families,
+question bodies, options, and scoring functions. It scores 256 choice prompts
+(eight costs from zero to one million deaths, two orders, two readouts) and
+192 numerical prompts (all 24 A–D mappings of 0, 1, 10, and 100), yielding 256
+choice rows and 768 numerical candidate rows for this one model. Configuration:
+A100 40 GB or larger, BF16 weights, FP32 token log probabilities, SDPA, no
+quantization, batch size 2, seed 42. The native Instruct template is retained,
+including its default date text. Its formatting differs from the authors'
+custom template; a resulting comparison is between the respective assistants
+with their native formatting, not a controlled training-only contrast.
+
+The notebook reports the 56 positive-cost cells after averaging orders,
+per-family/cost margins, A/B ecological choices and conditional probabilities
+separately by option order, the both-order ecological count, and the descriptive
+B/second-position advantage. Numerical results retain per-family distributions,
+P(0), expectation, mode, median, and entropy after averaging probabilities over
+all 24 mappings. Full-option margins remain mean-token preference indices.
+
+The new single-model bundles use `model_role="llama_instruct"` and record the
+exact checkpoint, tokenizer file hashes, rendered-input audit, case/scoring-code
+hashes, precision, and environment. Validation checks the complete matrix,
+source identity, mapping, finite scores, score arithmetic, summaries, and
+completion hashes. Results are written locally, copied to Drive, freshly
+remounted and verified, with exact reuse and local recovery after copy failure.
+Drive root: `value-misalignment/standard_llama31_8b_instruct/`. GitHub root:
+`results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/`.
+Publication now accepts these two verified single-model bundles. Existing MSM
+scoring modules and their historical source signatures were left unchanged.
+
+Validation: all 148 tests passed, including seven new tests covering the complete
+single-model matrix, publication, exact reuse and invalidation, interrupted
+Drive recovery, malformed data rejection, pinned tokenizer loading, and execution
+of the notebook's summary/publication cells. A tiny randomly initialized Llama
+on CPU exercised the actual BF16 scorer and plain-model loader path while
+asserting that PEFT loading was never called. Synthetic choice/numeric plots
+were rendered and inspected, with no synthetic results added to the repository.
+Notebook code cells parse and remain unexecuted with no saved outputs.
+
+An additional smoke audit applied the official template from public Hub metadata
+to the cached released Llama tokenizer vocabulary. All 448 prompt/candidate
+boundaries passed; maximum lengths were 316 tokens for choice and 365 for
+numeric. This was not an authenticated download of the official tokenizer or
+an 8B/A100 inference run. The Colab workflow separately loads and audits the
+actual official tokenizer before inference. The real standard-Instruct results
+are still pending; the next step is to run the default mode on Colab and compare
+its margins, option-order sensitivity, and numerical distributions with the
+previous Llama and Qwen results. Updated only onboarding question 3. The notebook
+change is committed and pushed under the repository's automatic-push policy.

@@ -14,7 +14,7 @@ evaluation cells; the standalone inference notebook lives in `eval/`.
 | [training/ecological_dpo.ipynb](notebooks/training/ecological_dpo.ipynb) | Ecological or human preference DPO on the dilemma pairs |
 | [training/ecological_sft.ipynb](notebooks/training/ecological_sft.ipynb) | Prompt-only or ecological/human response SFT |
 | [training/clash_sft.ipynb](notebooks/training/clash_sft.ipynb) | CLASH prompt-only or action SFT controls |
-| [eval/ecological_eval.ipynb](notebooks/eval/ecological_eval.ipynb) | Four released MSM models on both current suites; saved Qwen numeric evaluation |
+| [eval/ecological_eval.ipynb](notebooks/eval/ecological_eval.ipynb) | Official Llama Instruct or four released MSM models on both current suites; saved Qwen numeric evaluation |
 
 These replace the former flat `*_colab.ipynb` names. Earlier research logs retain
 the paths that existed when those experiments were run.
@@ -72,11 +72,39 @@ and artifact hashes; SFT adapters cannot be substituted. Verified result bundles
 are published under `results/harmony_eval/qwen3_8b_ecological_dilemma_<side>_dpo/`
 when `PUBLISH_TO_GITHUB=True` and a Colab `GITHUB_TOKEN` secret is available.
 
+## Ecological evaluation of standard Llama Instruct
+
+[`notebooks/eval/ecological_eval.ipynb`](notebooks/eval/ecological_eval.ipynb)
+([open in Colab](https://colab.research.google.com/github/shengweiming/value-misalignment/blob/main/notebooks/eval/ecological_eval.ipynb))
+defaults to `EVAL_SOURCE="llama_instruct"`. It loads Meta's official
+[`meta-llama/Llama-3.1-8B-Instruct`](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
+full checkpoint and native tokenizer at immutable revision
+`0e9e39f249a16976918f6564b8830bc894c89659`, without loading any adapter.
+Use an A100 40 GB or larger and an `HF_TOKEN` Colab secret with access to
+this **Instruct** repository. Its tokenizer preview also requires that access.
+
+This mode uses the same neutral system prompt and both current suites described
+below: 256 A/B and full-option prompts, plus 192 numerical prompts with four
+candidate scores each. Weights are BF16, token log probabilities are computed in
+FP32, attention uses SDPA, and quantization is disabled. The official native chat
+template differs from the authors' custom template; comparisons therefore describe
+the respective assistants with their native formatting, not an isolated training
+intervention.
+
+Results include the 56 positive-cost cells after averaging orders, per-family and
+per-cost margins, A/B results separately by option order, and all four numerical
+probabilities averaged over 24 label mappings. `scripts/llama_instruct_eval.py`
+saves two single-model bundles with `model_role="llama_instruct"`, validates their
+complete matrices and score arithmetic, and supports exact reuse and recovery of
+completed local bundles. Drive results use `standard_llama31_8b_instruct/`;
+publication uses `results/harmony_eval/llama31_8b_instruct/`. The authors' baseline
+and standard Meta Instruct are kept as separate conditions.
+
 ## Ecological evaluation of released MSM models
 
 [`notebooks/eval/ecological_eval.ipynb`](notebooks/eval/ecological_eval.ipynb)
 ([open in Colab](https://colab.research.google.com/github/shengweiming/value-misalignment/blob/main/notebooks/eval/ecological_eval.ipynb))
-defaults to `EVAL_SOURCE="released_msm"`. It evaluates all four released
+also supports `EVAL_SOURCE="released_msm"`. This evaluates all four released
 [Model Spec Midtraining](https://arxiv.org/abs/2605.02087) conditions without training:
 
 | Condition | Released adapter |

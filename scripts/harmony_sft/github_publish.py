@@ -121,7 +121,11 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
     control_templates = _template_manifest(
         build_extreme_v2_control_cases(cost_counts)
     )
-    if observed_templates == primary_templates:
+    if metadata.get("evaluation_kind") == "llama_instruct":
+        from scripts.llama_instruct_eval import validate_instruct_bundle
+
+        validate_instruct_bundle(artifacts)
+    elif observed_templates == primary_templates:
         validate_extreme_v2_artifacts(artifacts, cost_counts=cost_counts)
     elif observed_templates == control_templates:
         validate_extreme_v2_control_artifacts(artifacts, cost_counts=cost_counts)
