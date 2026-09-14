@@ -1,0 +1,9 @@
+condition,readout_type,mean_margin,ecological_choices,ties,cells
+aft,complete_option_text,0.28980486382715137,53,0,56
+aft,counterbalanced_ab,1.7901785714285714,56,0,56
+baseline,complete_option_text,0.15566506917403913,45,0,56
+baseline,counterbalanced_ab,1.1953125,56,0,56
+msm,complete_option_text,0.20500279398732174,56,0,56
+msm,counterbalanced_ab,1.5859375,56,0,56
+msm_aft,complete_option_text,0.2921161602850035,54,0,56
+msm_aft,counterbalanced_ab,2.109375,56,0,56
