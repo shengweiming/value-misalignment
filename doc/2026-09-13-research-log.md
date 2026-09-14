@@ -386,3 +386,79 @@ feasibility has not been established for this new pipeline.
 Checks: reviewed the cited primary methods and control, cross-checked the proposal
 against the project question and corrected DPO evidence, and checked the
 documentation diff and whitespace. Updated only onboarding question 3.
+
+## Search for downloadable Beneficial RL replications
+
+The user asked whether someone had replicated OpenAI's Beneficial RL paper and
+released weights for a quick signal test. Searched the paper title, arXiv ID
+`2606.24014`, and beneficial-RL/trait-replication terms across web, GitHub, and
+Hugging Face on 2026-09-13. Checked public GitHub and Hub APIs as well as primary
+project documentation. No verified successful replication with a released
+checkpoint was found. This is a search result, not proof that none exists.
+
+### Direct attempt: code and a small trait shift, without released weights
+
+[`mayank64ce/open-beneficial-rl`](https://github.com/mayank64ce/open-beneficial-rl)
+explicitly attempts a small-scale reconstruction focused on trait persistence.
+At commit `58566f9e949d160c6000d3a1f85c4e8179930ab9` (2026-07-21), the project
+uses Qwen2.5-7B-Instruct with LoRA and online GRPO. Its target is low openness /
+traditionalism, rather than ecology or the original beneficial traits. The
+[author's account](https://www.reddit.com/r/MachineLearning/comments/1v2b8rd/reproducing_openais_persistently_beneficial/)
+reports 200 steps on one RTX 3090 and only 20 distinct trait prompts.
+
+The committed `results/phase1_gates.json` reports base 57.0, trained 59.4375,
+shift +2.4375, bootstrap interval [+0.1667, +4.7708], 60 evaluation questions,
+and `all_pass: false`. The matched control score is null. This does not
+establish successful persistence or broad beneficial transfer. The latest
+commit message explicitly excludes the 155 MB adapter; the recursive tree
+contains no adapter weights and the GitHub releases API is empty. Code and
+logs may help implementation, but this is not a downloadable trained-model test.
+
+The second GitHub repository matching `beneficial-rl`,
+`tingwei161803/openai-beneficial-rl`, is an explanatory website, not an experiment.
+Hub searches for `beneficial-rl` and the paper's arXiv tag returned no models.
+The broader `beneficial` search returned
+`RanaEzzeddine/Hala-9b-95-5-beneficial-first`: it has Gemma2 weights but no model
+card, and its upload predates the OpenAI paper (2026-05-12). Its name alone is
+not evidence of a connection, so it was not recommended as a replication.
+
+### Closest practical alternative: Open Character Training
+
+[Maiya et al. (2025)](https://arxiv.org/abs/2511.01689) release constitutional
+character training using DPO followed by introspective SFT, with
+[code and constitutions](https://github.com/maiush/OpenCharacterTraining),
+[training data](https://huggingface.co/datasets/maius/OpenCharacterTraining-data),
+and [model adapters](https://huggingface.co/collections/maius/open-character-training).
+This predates Beneficial RL and is an adjacent method, not a replication of
+its online-RL intervention.
+
+Verified the public, ungated Hub repository
+[`maius/qwen-2.5-7b-it-personas`](https://huggingface.co/maius/qwen-2.5-7b-it-personas)
+at revision `02471b26f7413b795702c3e60855d833694a2d64`. It contains ten persona
+subfolders, including `goodness`, `loving`, `humor`, and `impulsiveness`. The
+model card and adapter config specify `Qwen/Qwen2.5-7B-Instruct` as the base;
+these adapters cannot be attached to our Qwen3-8B checkpoint. Each checked
+`goodness`/`loving` safetensors file is 645,975,704 bytes. Hub LFS hashes:
+
+- goodness: `25d02a4a6f3d6872121be1c2d816297bdd5a40da74704e5b79a31d7b4d49a5a0`
+- loving: `f8b5f7a9c4b647a5728467bf27548111ec7f11b068876ee68e5e86a9d633c456`
+
+Read those constitutions at code revision
+`d1da9f03628cb4c5482ba2e494a7cba33bcd5818`. Goodness emphasizes human welfare
+and ethical behavior; loving emphasizes care, warmth, and regard for beings.
+Neither is a selective ecological-intrinsic-value intervention. A quick
+exploratory comparison could use the matching base plus goodness and loving,
+with humor as an additional style control, on our existing readouts. It would
+test sensitivity to these trained characters, not demonstrate ecological
+radicalization or reproduce OpenAI's result. The more relevant ecological
+intervention would still need new training.
+
+Also located `EternalRecursion/persona-lora-zoo-qwen35`, a Qwen3.5-4B DPO/SFT
+adapter collection. Its model card discusses adapter-merge and logged-loss
+corrections; those claims were not independently audited. It is another
+adjacent character-training resource, not a Beneficial RL replication.
+
+No weights were downloaded or executed; checks establish published file
+availability and documented compatibility, not inference quality. No notebook
+or training code changed. Documentation and whitespace checks passed; only
+onboarding question 3 was updated.
