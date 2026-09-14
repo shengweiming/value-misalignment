@@ -1,0 +1,74 @@
+{
+  "sources": {
+    "llama_instruction_baseline": {
+      "path": "results/harmony_eval/llama31_8b_environment_msm/released_environment_msm/20260914T130455286301Z_extreme_v2_choice_readouts_eval",
+      "complete_sha256": "c29c74b85a590c4ea577b8e277688ce823218960e2e5a951eccc9819dcddfab0",
+      "model_ids": [
+        "chloeli/llama-3.1-8b-baseline"
+      ],
+      "model_revisions": [
+        "42a80a90954a12e5f6dfab2f45e2e85ffb3744c1"
+      ],
+      "enable_thinking": false
+    },
+    "qwen3_8b": {
+      "path": "results/harmony_eval/qwen3_8b_ecological_dilemma_ecological_dpo/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/20260914T000737581748Z_extreme_v2_choice_readouts_eval",
+      "complete_sha256": "1177e25bdb541fef610589ccfa2107ad5eb537eafb8e362e8116dc1c80f2acc3",
+      "model_ids": [
+        "Qwen/Qwen3-8B"
+      ],
+      "model_revisions": [
+        "b968826d9c46dd6066d109eabc6255188de91218"
+      ],
+      "enable_thinking": false
+    }
+  },
+  "identical_case_text_and_mapping_count": 256,
+  "summary": [
+    {
+      "model": "llama_instruction_baseline",
+      "readout_type": "complete_option_text",
+      "mean_margin": 0.15566506917403913,
+      "ecological_after_order_average": 45,
+      "human_after_order_average": 11,
+      "ties_after_order_average": 0,
+      "ecological_both_orders": 36,
+      "human_both_orders": 5,
+      "mean_restricted_ecological_probability": null
+    },
+    {
+      "model": "llama_instruction_baseline",
+      "readout_type": "counterbalanced_ab",
+      "mean_margin": 1.1953125,
+      "ecological_after_order_average": 56,
+      "human_after_order_average": 0,
+      "ties_after_order_average": 0,
+      "ecological_both_orders": 39,
+      "human_both_orders": 0,
+      "mean_restricted_ecological_probability": 0.7288907795946412
+    },
+    {
+      "model": "qwen3_8b",
+      "readout_type": "complete_option_text",
+      "mean_margin": -1.0878173222371756,
+      "ecological_after_order_average": 16,
+      "human_after_order_average": 40,
+      "ties_after_order_average": 0,
+      "ecological_both_orders": 10,
+      "human_both_orders": 37,
+      "mean_restricted_ecological_probability": null
+    },
+    {
+      "model": "qwen3_8b",
+      "readout_type": "counterbalanced_ab",
+      "mean_margin": -1.7232142857142858,
+      "ecological_after_order_average": 24,
+      "human_after_order_average": 32,
+      "ties_after_order_average": 0,
+      "ecological_both_orders": 16,
+      "human_both_orders": 28,
+      "mean_restricted_ecological_probability": 0.405614379826891
+    }
+  ],
+  "scope": "Authors instruction-tuned Llama-3.1-8B baseline versus Qwen3-8B with thinking disabled; different instruction-training histories and native chat templates. Does not isolate model architecture."
+}

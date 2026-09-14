@@ -1,0 +1,5 @@
+model,readout_type,mean_margin,ecological_after_order_average,human_after_order_average,ties_after_order_average,ecological_both_orders,human_both_orders,mean_restricted_ecological_probability
+llama_instruction_baseline,complete_option_text,0.15566506917403913,45,11,0,36,5,
+llama_instruction_baseline,counterbalanced_ab,1.1953125,56,0,0,39,0,0.7288907795946412
+qwen3_8b,complete_option_text,-1.0878173222371756,16,40,0,10,37,
+qwen3_8b,counterbalanced_ab,-1.7232142857142858,24,32,0,16,28,0.405614379826891

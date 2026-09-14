@@ -342,3 +342,37 @@ Re-ran the existing pinned offline analysis and all provenance, matrix, and
 arithmetic assertions. Updated the report and derived artifacts; no evaluation
 protocol, notebook, model, or training code changed. Updated only onboarding
 question 3. This explanatory analysis is committed without an automatic push.
+
+## Matched-prompt Llama versus Qwen baseline comparison
+
+The user asked whether the authors' Llama baseline is already substantially
+more permissive of severe human-death costs than Qwen3 in A/B format. Verified
+that comparison directly, using the Llama instruction-only rows and the unchanged
+Qwen3-8B rows from the corrected DPO run. Both source bundles pass validation;
+all 256 choice prompts/candidates/mappings match exactly, including all 128 A/B
+presentations. Added `compare_baselines.py`, three derived comparison tables,
+source provenance, and an explanation to the existing MSM analysis directory.
+
+Across the 56 positive-cost cells, order-averaged A/B ecological decisions are
+56/56 for the Llama baseline versus 24/56 for Qwen. Separate mappings give
+39 versus 19 when ecology is A and 56 versus 24 when ecology is B; both-order
+ecological decisions are 39 versus 16. Mean restricted ecological probability is
+72.89% versus 40.56%. Llama chooses ecology in 8/8 families at both one death and
+one million; Qwen changes from 5/8 to 2/8. Qwen's mean A/B margin changes from
++3.96875 to -5.90625 over that range, versus Llama +1.29688 to +1.09375.
+Full-option ecological decisions are 45/56 versus 16/56, with mean margins
++.15567 versus -1.08782. These differences survive counterbalancing and appear
+under both A/B mappings, not solely from a fixed B preference.
+
+The Llama model is the authors' instruction-tuned baseline adapter on pretrained
+Llama-3.1-8B, not raw Llama or Meta's official Instruct release. Qwen is
+`Qwen/Qwen3-8B` revision `b968826d9c46dd6066d109eabc6255188de91218`, with thinking
+disabled. The Llama base/adapter remain at the previously pinned revisions.
+Native chat templates and instruction-training histories differ; the result
+establishes a difference between these evaluated checkpoints, not an isolated
+architecture effect or a general claim about the two model families. Much of
+the Llama-based models' permissiveness precedes environmental MSM.
+
+The offline comparison passed source-hash/matrix validation, exact prompt
+matching, and count/shape assertions. No model was run and no evaluation code or
+notebook changed. Updated only onboarding question 3; committed without pushing.

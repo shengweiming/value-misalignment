@@ -1,0 +1,9 @@
+model,readout_type,readout_variant,mean_margin,ecological,human,ties
+llama_instruction_baseline,complete_option_text,ecological_first,0.1103322491071269,36,20,0
+llama_instruction_baseline,complete_option_text,human_first,0.20099788924095138,51,5,0
+llama_instruction_baseline,counterbalanced_ab,ecological_a,0.3861607142857143,39,15,2
+llama_instruction_baseline,counterbalanced_ab,ecological_b,2.0044642857142856,56,0,0
+qwen3_8b,complete_option_text,ecological_first,-1.121306100362995,14,42,0
+qwen3_8b,complete_option_text,human_first,-1.0543285441113561,15,41,0
+qwen3_8b,counterbalanced_ab,ecological_a,-2.3839285714285716,19,37,0
+qwen3_8b,counterbalanced_ab,ecological_b,-1.0625,24,30,2

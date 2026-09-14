@@ -170,3 +170,43 @@ that is not the observed pattern. However, interpreting S as a pure latent
 semantic preference requires the additive assumption: counterbalancing does not
 remove all interactions among order, wording, and content. The A/B signal remains
 useful but has weak full-option corroboration for this particular contrast.
+
+## How different is the Llama baseline from Qwen3?
+
+The authors' instruction-tuned Llama-3.1-8B baseline is much more willing to
+select the ecological policy at severe human costs in this evaluation than our
+unchanged Qwen3-8B checkpoint with thinking disabled. `compare_baselines.py`
+verifies both source bundles and exact equality of all 256 choice prompt bodies,
+answer candidates, mappings, and normalization rules, then compares only their
+unmodified baseline rows. Each model still uses its native chat template.
+
+| Positive-cost A/B measure | Authors' Llama baseline | Qwen3-8B |
+| --- | ---: | ---: |
+| Ecological decisions after averaging orders | 56/56 | 24/56 |
+| Ecological when ecology is A | 39/56 | 19/56 |
+| Ecological when ecology is B | 56/56 | 24/56 |
+| Ecological in both orders | 39/56 | 16/56 |
+| Mean restricted ecological probability | 72.89% | 40.56% |
+| Mean semantic A/B margin | +1.19531 | -1.72321 |
+| Ecological at cost 1, averaging orders | 8/8 | 5/8 |
+| Ecological at cost 1,000,000, averaging orders | 8/8 | 2/8 |
+
+Qwen's mean A/B margin declines from +3.96875 at one death to -5.90625 at a
+million; the Llama baseline changes from +1.29688 to +1.09375. Cross-model
+confidence calibration differs, but the decision counts also show substantially
+greater cost sensitivity in Qwen. The full-option readout agrees on the broad
+baseline difference: ecological decisions are 45/56 for Llama versus 16/56 for
+Qwen, with margins +.15567 versus -1.08782.
+
+Both exhibit B/second-position sensitivity. The gap nevertheless appears under
+each separate mapping and remains after counterbalancing, so it is not explained
+by a fixed B preference alone. These are scored policy preferences under the
+stated assumptions, not sampled behavior or evidence about subjective attitudes.
+
+The identity qualification matters: the Llama baseline is
+`chloeli/llama-3.1-8b-baseline` attached to pretrained Llama-3.1-8B. It is neither
+the raw pretrained model nor Meta's official Llama-3.1-8B-Instruct release.
+Different instruction-training histories and templates prevent attributing this
+comparison to architecture or generalizing it to all Llama versus Qwen models.
+Much of the Llama-based models' permissiveness is present before environmental
+MSM; a claim about MSM must concern its incremental effect on that baseline.
