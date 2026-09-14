@@ -1,0 +1,17 @@
+{
+  "artifact_sha256": {
+    "adapter_config": "e391cc06724e804085e141ca91a0c8c678f46fb7d853f6f43df509909b89f3f3",
+    "adapter_weights": "7a353d6d5b00a509df796a3cba5d5f8532d8c09cc7804a4f768e27028e1fa04e",
+    "checkpoint_adapter_config": "e391cc06724e804085e141ca91a0c8c678f46fb7d853f6f43df509909b89f3f3",
+    "checkpoint_adapter_weights": "7a353d6d5b00a509df796a3cba5d5f8532d8c09cc7804a4f768e27028e1fa04e",
+    "checkpoint_optimizer": "4e5773dd22636121aed0547ec007d3c28b8229e8f9d071e39a484012312ea64c",
+    "checkpoint_scheduler": "8a85dc55fa914d92d7770d9a7e0891e770e098a3a6debda9ec2884a94d4d8a5c",
+    "checkpoint_trainer_state": "40023b74ea9826a115af2683e34fc7daff1f5614cf97a9ac2325fc75d1363922",
+    "dataset_manifest": "e23f637cba0c1811c1f07472fc1e8c583c291be6af7bd841343bc5be6a25fef7",
+    "metadata": "c67852eff86c7b9bed20dd54f84086453c2cedddb33621e943de12f671d7a7b7",
+    "prompts": "4edc4c0d6c9b34940a390bdf22cb24cc765a65299b06b55941f626792c15a5b3",
+    "train_metrics": "65f179b8c0da3ff5ae9906a4424c37bce26295d3d3c07a206b146b29f4837a86"
+  },
+  "completed_at_utc": "2026-09-14T00:06:51.626468+00:00",
+  "status": "complete"
+}
