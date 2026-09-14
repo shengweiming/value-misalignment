@@ -1,0 +1,144 @@
+{
+  "sources": {
+    "llama_instruct": {
+      "choice": {
+        "path": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260914T154900074908Z_extreme_v2_choice_readouts_eval",
+        "complete_sha256": "c79c79aadb701e47dc84121aa78cceb055fc430ccd3e301474e3878d90b36f6d",
+        "metadata_sha256": "e813d33f5ac282d23e95e6b973143ad89989da31a479b5cb512de053c8e0023f",
+        "repository_commit": "a5198bf07d7b520fd0eecd42244ae8daa829971e",
+        "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+        "model_revision": "0e9e39f249a16976918f6564b8830bc894c89659",
+        "source_model_role": "llama_instruct",
+        "case_set_sha256": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d"
+      },
+      "numeric": {
+        "path": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260914T154900610119Z_extreme_v2_numeric_eval",
+        "complete_sha256": "50fb55d38d815af2e786e2d93f24f90310c94c4ee10fad618bd9590a7691264b",
+        "metadata_sha256": "1cc03463d13e66fd19ab278a3e004c082c34cd5c38d21ce8dedba919775b86ad",
+        "repository_commit": "a5198bf07d7b520fd0eecd42244ae8daa829971e",
+        "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+        "model_revision": "0e9e39f249a16976918f6564b8830bc894c89659",
+        "source_model_role": "llama_instruct",
+        "case_set_sha256": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      }
+    },
+    "authors_baseline": {
+      "choice": {
+        "path": "results/harmony_eval/llama31_8b_environment_msm/released_environment_msm/20260914T130455286301Z_extreme_v2_choice_readouts_eval",
+        "complete_sha256": "c29c74b85a590c4ea577b8e277688ce823218960e2e5a951eccc9819dcddfab0",
+        "metadata_sha256": "119d413868c7bb427887d65965b7c4735d20f10a6bfae77e9df1031dfee1708c",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-baseline",
+        "model_revision": "42a80a90954a12e5f6dfab2f45e2e85ffb3744c1",
+        "source_model_role": "base",
+        "case_set_sha256": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d"
+      },
+      "numeric": {
+        "path": "results/harmony_eval/llama31_8b_environment_msm/released_environment_msm/20260914T130455893689Z_extreme_v2_numeric_eval",
+        "complete_sha256": "f8be9f62fd74279c2f8c7926f2fb9820a32081a9999484b9e5037987b0184184",
+        "metadata_sha256": "9627ed7cb8a1751c66cee4fd7b2cc6356d4d651e705844ef0d90add7d50db433",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-baseline",
+        "model_revision": "42a80a90954a12e5f6dfab2f45e2e85ffb3744c1",
+        "source_model_role": "base",
+        "case_set_sha256": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      }
+    },
+    "qwen3_8b": {
+      "choice": {
+        "path": "results/harmony_eval/qwen3_8b_ecological_dilemma_ecological_dpo/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/20260914T000737581748Z_extreme_v2_choice_readouts_eval",
+        "complete_sha256": "1177e25bdb541fef610589ccfa2107ad5eb537eafb8e362e8116dc1c80f2acc3",
+        "metadata_sha256": "3373815d729b08616e0b90e297696999ad2b1b0c9dad16a941ca23e78d9b905a",
+        "repository_commit": "35b023687d4712e85c2a02de6f004ecb603c19fb",
+        "model_id": "Qwen/Qwen3-8B",
+        "model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+        "source_model_role": "base",
+        "case_set_sha256": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d"
+      },
+      "numeric": {
+        "path": "results/harmony_eval/qwen3_8b_ecological_dilemma_ecological_dpo/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/20260914T000906510471Z_extreme_v2_numeric_eval",
+        "complete_sha256": "6fd542a4c3ce70e7ec1aa19d82a9d9ee1cb91521d9a572acf54f1437a721902f",
+        "metadata_sha256": "023f7e41fa06b152bfe7a91021d3e6e944b41e890464b5a779eee7da00287052",
+        "repository_commit": "25605fb7f081d33135843dc257625d36de9101a0",
+        "model_id": "Qwen/Qwen3-8B",
+        "model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+        "source_model_role": "base",
+        "case_set_sha256": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      }
+    },
+    "msm": {
+      "choice": {
+        "path": "results/harmony_eval/llama31_8b_environment_msm/released_environment_msm/20260914T130455286301Z_extreme_v2_choice_readouts_eval",
+        "complete_sha256": "c29c74b85a590c4ea577b8e277688ce823218960e2e5a951eccc9819dcddfab0",
+        "metadata_sha256": "119d413868c7bb427887d65965b7c4735d20f10a6bfae77e9df1031dfee1708c",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-pro-environment-spec-msm",
+        "model_revision": "aa80b70b5be4f3ef31e100852ac8b7ceebfa79e1",
+        "source_model_role": "aligned",
+        "case_set_sha256": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d"
+      },
+      "numeric": {
+        "path": "results/harmony_eval/llama31_8b_environment_msm/released_environment_msm/20260914T130455893689Z_extreme_v2_numeric_eval",
+        "complete_sha256": "f8be9f62fd74279c2f8c7926f2fb9820a32081a9999484b9e5037987b0184184",
+        "metadata_sha256": "9627ed7cb8a1751c66cee4fd7b2cc6356d4d651e705844ef0d90add7d50db433",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-pro-environment-spec-msm",
+        "model_revision": "aa80b70b5be4f3ef31e100852ac8b7ceebfa79e1",
+        "source_model_role": "aligned",
+        "case_set_sha256": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      }
+    },
+    "aft": {
+      "choice": {
+        "path": "results/harmony_eval/llama31_8b_environment_aft/released_environment_msm/20260914T130931340059Z_extreme_v2_choice_readouts_eval",
+        "complete_sha256": "c1091d3521fdd515e80bd46af35a44fb4f536e10b22f20f8d66af95520d1ce61",
+        "metadata_sha256": "390a5d52c323b4d72dcfe48e0a5ad8d8ba4c3755329bf4b6ff75e26973e61995",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-pro-environment-spec-cheese-aft",
+        "model_revision": "7b06b8729e4565f806eab90581fc0a73162509e0",
+        "source_model_role": "aligned",
+        "case_set_sha256": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d"
+      },
+      "numeric": {
+        "path": "results/harmony_eval/llama31_8b_environment_aft/released_environment_msm/20260914T130931891573Z_extreme_v2_numeric_eval",
+        "complete_sha256": "ddac378f7c914803ebce58db1201d5004c97a1c1a08be0026f07efacd5e43e19",
+        "metadata_sha256": "a33936ecccfe4c901da7754f701728b9c770f0d2d6afb027023a330aefa44984",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-pro-environment-spec-cheese-aft",
+        "model_revision": "7b06b8729e4565f806eab90581fc0a73162509e0",
+        "source_model_role": "aligned",
+        "case_set_sha256": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      }
+    },
+    "msm_aft": {
+      "choice": {
+        "path": "results/harmony_eval/llama31_8b_environment_msm_aft/released_environment_msm/20260914T131126352714Z_extreme_v2_choice_readouts_eval",
+        "complete_sha256": "8c6afb39f6c5f386887ebcfdab8f654e5494ca27c5e80b3d465a03ab87646f9e",
+        "metadata_sha256": "51d42937848d92901032422bb2a70b4f4c63e0a23106ef8a1067027143a7dbd0",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-pro-environment-spec-msm-cheese-aft",
+        "model_revision": "8cc7f73aed769f5e57c9426bdc9b1d166f3aa7c2",
+        "source_model_role": "aligned",
+        "case_set_sha256": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d"
+      },
+      "numeric": {
+        "path": "results/harmony_eval/llama31_8b_environment_msm_aft/released_environment_msm/20260914T131126912052Z_extreme_v2_numeric_eval",
+        "complete_sha256": "286ff4b778ffd812cca9a28818b2a6efcd9ecf2b7a3b2c5cc0eb0756df968d28",
+        "metadata_sha256": "5bd5de98ef83657859197b5ecd853a3c0f6cac606b508392d668d0e886aef637",
+        "repository_commit": "74b996f6d2553456bc8b5fba8faffb19dd423663",
+        "model_id": "chloeli/llama-3.1-8b-pro-environment-spec-msm-cheese-aft",
+        "model_revision": "8cc7f73aed769f5e57c9426bdc9b1d166f3aa7c2",
+        "source_model_role": "aligned",
+        "case_set_sha256": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      }
+    }
+  },
+  "validation": {
+    "all_ten_bundles_valid": true,
+    "six_models_exactly_matched_choice_prompts": 256,
+    "six_models_exactly_matched_numeric_candidate_rows": 768,
+    "llama_scoring_code_hashes_match": true,
+    "raw_score_arithmetic_verified": true
+  },
+  "scope": "Native chat templates differ. Eight repeatedly used families; descriptive checkpoint comparison, not a causal architecture or training effect."
+}

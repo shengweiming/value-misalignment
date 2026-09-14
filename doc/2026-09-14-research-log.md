@@ -444,3 +444,66 @@ are still pending; the next step is to run the default mode on Colab and compare
 its margins, option-order sensitivity, and numerical distributions with the
 previous Llama and Qwen results. Updated only onboarding question 3. The notebook
 change is committed and pushed under the repository's automatic-push policy.
+
+## Standard Llama Instruct results and comparison with Qwen
+
+Pulled the completed official-Instruct Colab evaluation through `c8b7f3d`.
+Both bundles were produced at source commit `a5198bf07d7b520fd0eecd42244ae8daa829971e`
+with `meta-llama/Llama-3.1-8B-Instruct` revision
+`0e9e39f249a16976918f6564b8830bc894c89659`, no adapter, native template, neutral
+system prompt, A100-SXM4-40GB, BF16 weights/FP32 token log probabilities, SDPA,
+batch size 2, and no quantization. New bundles are under
+`results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/`:
+`20260914T154900074908Z_extreme_v2_choice_readouts_eval` and
+`20260914T154900610119Z_extreme_v2_numeric_eval`.
+
+Added a reproducible report, ten derived tables, provenance, and comparison
+figure under `results/analysis/20260914_llama_instruct/`. The offline analysis
+validates ten source bundles covering official Instruct, the four authors'
+releases, and the unchanged Qwen base from the corrected DPO run. It checks
+current Llama scoring-code hashes, raw score arithmetic, and exact literal
+question/option matching across all six models: 256 choice prompts and 768
+numerical candidate rows each. Actual official tokenizer audits agree with the
+earlier template smoke audit; maximum input lengths remain 316 and 365 tokens.
+
+Standard Instruct favors ecology in 54/56 positive-cost cells on order-averaged
+A/B (mean margin +1.910714, mean conditional ecological probability 80.4724%) and
+53/56 on full-option scoring (mean margin +0.295194). The authors' baseline gives
+56/56 and 45/56 respectively; Qwen gives 24/56 and 16/56. Standard Instruct's
+A/B margin declines from +2.742188 at one death to +1.218750 at one million,
+where ecology still wins 7/8 families after averaging orders. Dam removal is the
+only family that switches to human priority on average, at 100,000 deaths in
+A/B and 10,000 in full-option scoring.
+
+The effect is not solely an aggregate order artifact: standard Instruct favors
+ecology in both A/B orders in 46/56 cells, versus 39/56 for the authors' baseline
+and 16/56 for Qwen. Ecology-A gives 49 ecological, six human, one tie;
+ecology-B gives 53 ecological and three human. The descriptive B/second-position
+advantage is +0.296875, smaller than the authors' +0.809152. At one million,
+five families favor ecology in both A/B orders (six in both full-option orders).
+A+B jointly receive mean 99.9833% of unrestricted next-token probability, so the
+conditional A/B normalization excludes very little mass in this run.
+
+Numerical P(0) is 34.1326%, compared with 28.3771% for the authors' baseline and
+82.2409% for Qwen. Standard Instruct's mean probabilities for 1, 10, and 100 are
+25.0598%, 19.2927%, and 21.5148%. Zero is modal in six families but exceeds 50%
+in none; Qwen's P(0) exceeds 50% in all eight. Standard Instruct's mean family
+entropy is 1.3434 nats versus 1.3863 for uniform and 0.5990 for Qwen. Its expected
+offered candidate is 23.69; this should not be treated as a precise actual
+maximum tolerance.
+
+Interpretation: the earlier Llama permissiveness extends to Meta's standard
+assistant, with no added environmental intervention in our setup. It shows more
+cost sensitivity and less aggregate A/B order bias than the authors' baseline,
+but a much higher ecological-choice baseline than Qwen on these dilemmas.
+Choice margins resemble the AFT/MSM+AFT releases; absolute comparisons do not
+estimate a causal MSM effect. Near-ceiling Llama A/B win counts, repeated eight
+families, differing native templates/training histories, and the diffuse
+numerical distributions limit claims. This supports a checkpoint difference,
+not an isolated architecture effect or proof of intervention-induced
+radicalization.
+
+Validation: the offline script passed provenance, matrix, exact-text matching,
+and score-arithmetic assertions; the generated comparison figure was inspected.
+No new inference or scoring/notebook changes. Updated only onboarding question
+3. Analysis and documentation are committed locally without an automatic push.

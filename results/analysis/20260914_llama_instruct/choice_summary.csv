@@ -1,0 +1,13 @@
+model,readout_type,mean_margin,ecological_choices,human_choices,ties,cells,ecological_both_orders,human_both_orders,mean_conditional_p_ecological,b_position_advantage
+llama_instruct,complete_option_text,0.2951943810871767,53,3,0,56,48,0,,
+llama_instruct,counterbalanced_ab,1.9107142857142858,54,2,0,56,46,0,0.8047242723776228,0.296875
+authors_baseline,complete_option_text,0.15566506917403913,45,11,0,56,36,5,,
+authors_baseline,counterbalanced_ab,1.1953125,56,0,0,56,39,0,0.7288907795946412,0.8091517857142857
+qwen3_8b,complete_option_text,-1.0878173222371756,16,40,0,56,10,37,,
+qwen3_8b,counterbalanced_ab,-1.7232142857142858,24,32,0,56,16,28,0.405614379826891,0.6607142857142857
+msm,complete_option_text,0.20500279398732174,56,0,0,56,43,0,,
+msm,counterbalanced_ab,1.5859375,56,0,0,56,41,0,0.7764212469546131,0.9609375
+aft,complete_option_text,0.2898048638271513,53,3,0,56,46,0,,
+aft,counterbalanced_ab,1.7901785714285714,56,0,0,56,53,0,0.8208365814734123,0.4107142857142857
+msm_aft,complete_option_text,0.2921161602850035,54,2,0,56,49,0,,
+msm_aft,counterbalanced_ab,2.109375,56,0,0,56,53,0,0.8521262431828683,0.7142857142857143
