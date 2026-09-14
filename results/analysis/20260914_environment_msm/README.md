@@ -126,3 +126,47 @@ revisions, weight hashes, tokenizer hashes, source bundle hashes, and diagnostic
 
 All artifacts here are derived from the user's completed run; no additional
 inference or training was performed for this analysis.
+
+## Interpreting the margins and A/B order effects
+
+For one A/B prompt, the margin is log P(ecological label) minus log P(human
+label). It is the ecological-versus-human log odds conditional on the two
+allowed labels. Compute it separately with ecology labeled A and ecology labeled
+B, then average the two semantic margins. Positive values favor ecology. The
+mean margin over cases is a mean of log odds, not the log odds of the average
+probability. The average restricted ecological probabilities are 72.89% for
+baseline, 77.64% for MSM, 82.08% for AFT, and 85.21% for MSM+AFT.
+
+Full-option scoring instead sums the conditional log probabilities of all tokens
+in each exact candidate answer, divides each sum by its own token count, and
+subtracts human from ecological. For example, dam removal scores the complete
+strings `Remove the dam.` and `Keep the dam in place.` This is a mean-token
+predictability index and can depend on wording as well as policy preference.
+Its magnitude is not directly comparable with single-label log odds, and taking
+its logistic transform does not produce a calibrated probability of choosing the
+policy. The extra MSM-before-AFT effect is clearer on A/B because the full-option
+increment is near zero with mixed family directions, not simply because the
+A/B number is numerically larger.
+
+| Model | Ecology A: ecological / human / tie | Ecology B: ecological / human / tie | Half-gap favoring B/second position |
+| --- | --- | --- | ---: |
+| Baseline | 39 / 15 / 2 | 56 / 0 / 0 | .80915 |
+| MSM | 41 / 12 / 3 | 56 / 0 / 0 | .96094 |
+| AFT | 53 / 2 / 1 | 56 / 0 / 0 | .41071 |
+| MSM+AFT | 53 / 1 / 2 | 56 / 0 / 0 | .71429 |
+
+Counts refer to which label has greater scored probability, not sampled answers.
+B is always the second displayed option, so this design cannot separate a
+letter preference from a position effect or content-dependent order effects.
+The baseline's mean restricted ecological probability is 58.79% with ecology A
+and 86.99% with ecology B, illustrating the size of that sensitivity.
+
+Writing the two margins as m_A and m_B, their half-sum S=(m_A+m_B)/2 and
+half-difference b=(m_B-m_A)/2 describe the balanced margin and B/second-position
+advantage. In the additive model m_A=S-b and m_B=S+b, counterbalancing cancels b.
+For MSM+AFT minus AFT, S rises .31920 while b rises .30357. An increase in B bias
+alone would lower the ecology-A margin as much as it raised the ecology-B margin;
+that is not the observed pattern. However, interpreting S as a pure latent
+semantic preference requires the additive assumption: counterbalancing does not
+remove all interactions among order, wording, and content. The A/B signal remains
+useful but has weak full-option corroboration for this particular contrast.

@@ -312,3 +312,33 @@ and arithmetic assertions; the generated three-panel comparison was visually
 inspected, and active artifact links and whitespace were checked. Only onboarding
 question 3 is updated. Analysis artifacts and documentation are committed
 without an automatic push because this session changes no notebook.
+
+## Clarification of margins and A/B order sensitivity
+
+Explained the distinction between single-label ecological-versus-human log odds
+(A/B) and ecological-minus-human mean log probability per answer token
+(full-option). Their raw magnitudes are not directly comparable. The added MSM
+before AFT is clearer on A/B because the full-option contrast is near zero and
+mixed across families, not merely because .319 exceeds .002 in different units.
+
+Extended the offline analysis with exact human/tie counts, average restricted
+A/B probabilities, and the half-sum/half-difference decomposition of the two
+presentation orders. With ecology labeled A, ecological/human/tie counts are
+39/15/2 for baseline, 41/12/3 for MSM, 53/2/1 for AFT, and 53/1/2 for MSM+AFT.
+With ecology B, all four give 56/0/0. These are score comparisons, not sampled
+answers. B and second displayed position are confounded in this design.
+
+The descriptive B/second-position advantages, (m_B-m_A)/2, are .80915, .96094,
+.41071, and .71429 respectively. For MSM+AFT minus AFT, the balanced margin rises
+.31920 and this advantage rises .30357. A pure additive B-bias increase cannot
+alone explain the positive balanced shift; it would cancel across orders.
+Content-dependent interactions can remain, so this decomposition is not proof
+of an isolated latent ecological preference. The report now states that
+qualification explicitly. Average restricted ecological probability rises from
+82.08% under AFT to 85.21% under MSM+AFT; these average probabilities must not be
+obtained by applying a logistic transform to the aggregate mean margin.
+
+Re-ran the existing pinned offline analysis and all provenance, matrix, and
+arithmetic assertions. Updated the report and derived artifacts; no evaluation
+protocol, notebook, model, or training code changed. Updated only onboarding
+question 3. This explanatory analysis is committed without an automatic push.

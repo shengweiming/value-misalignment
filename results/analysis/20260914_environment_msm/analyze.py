@@ -201,11 +201,20 @@ def main():
     ab = raw_choice.query("cost_count > 0 and readout_type == 'counterbalanced_ab'").copy()
     ab['p_a'] = np.where(ab.candidate_implement == 'A', ab.p_implement, 1 - ab.p_implement)
     ab['ecological_choice'] = (ab.semantic_logit_implement > 0).astype(int)
+    ab['human_choice'] = (ab.semantic_logit_implement < 0).astype(int)
+    ab['tie'] = (ab.semantic_logit_implement == 0).astype(int)
     ab_orders = ab.groupby(['condition', 'readout_variant']).agg(
         mean_margin=('semantic_logit_implement', 'mean'),
         mean_p_a=('p_a', 'mean'), ecological_choices=('ecological_choice', 'sum'),
+        human_choices=('human_choice', 'sum'), ties=('tie', 'sum'),
+        mean_restricted_p_ecological=('p_implement', 'mean'),
     )
     ab_orders.to_csv(HERE / 'ab_order_diagnostics.csv')
+    ab_decomposition = ab_orders.mean_margin.unstack('readout_variant')
+    ab_decomposition['balanced_margin'] = (ab_decomposition.ecological_a + ab_decomposition.ecological_b) / 2
+    ab_decomposition['b_second_position_advantage'] = (ab_decomposition.ecological_b - ab_decomposition.ecological_a) / 2
+    ab_decomposition['mean_restricted_p_ecological'] = ab_orders.mean_restricted_p_ecological.groupby('condition').mean()
+    ab_decomposition.to_csv(HERE / 'ab_order_decomposition.csv')
     both = ab.pivot(index=['condition', 'template_family', 'cost_count'], columns='readout_variant', values='semantic_logit_implement')
     both_ecological = (both > 0).all(axis=1).groupby('condition').sum().to_dict()
     numeric_labels = raw_numeric.groupby(['condition', 'candidate_text']).candidate_probability.mean().unstack('candidate_text')
@@ -249,6 +258,8 @@ def main():
         'numeric_modes': modal_counts, 'numeric_medians': median_counts,
         'contrasts': contrasts,
         'diagnostics': {
+            'ab_order_decomposition': ab_decomposition.to_dict('index'),
+            'ab_decomposition_interpretation': 'Half-sum and half-difference are descriptive. Identifying separate semantic and label biases requires an additive model; B and second position are confounded.',
             'both_ab_orders_ecological_out_of_56': both_ecological,
             'numeric_label_winners_out_of_192': winners.to_dict('index'),
             'numeric_mean_label_probability': numeric_labels.to_dict('index'),

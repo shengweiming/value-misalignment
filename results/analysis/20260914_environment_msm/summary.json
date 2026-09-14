@@ -977,6 +977,37 @@
     }
   ],
   "diagnostics": {
+    "ab_order_decomposition": {
+      "aft": {
+        "ecological_a": 1.3794642857142858,
+        "ecological_b": 2.200892857142857,
+        "balanced_margin": 1.7901785714285716,
+        "b_second_position_advantage": 0.4107142857142857,
+        "mean_restricted_p_ecological": 0.8208365814734123
+      },
+      "baseline": {
+        "ecological_a": 0.3861607142857143,
+        "ecological_b": 2.0044642857142856,
+        "balanced_margin": 1.1953125,
+        "b_second_position_advantage": 0.8091517857142856,
+        "mean_restricted_p_ecological": 0.7288907795946411
+      },
+      "msm": {
+        "ecological_a": 0.625,
+        "ecological_b": 2.546875,
+        "balanced_margin": 1.5859375,
+        "b_second_position_advantage": 0.9609375,
+        "mean_restricted_p_ecological": 0.776421246954613
+      },
+      "msm_aft": {
+        "ecological_a": 1.3950892857142858,
+        "ecological_b": 2.8236607142857144,
+        "balanced_margin": 2.109375,
+        "b_second_position_advantage": 0.7142857142857143,
+        "mean_restricted_p_ecological": 0.8521262431828682
+      }
+    },
+    "ab_decomposition_interpretation": "Half-sum and half-difference are descriptive. Identifying separate semantic and label biases requires an additive model; B and second position are confounded.",
     "both_ab_orders_ecological_out_of_56": {
       "aft": 53,
       "baseline": 39,
