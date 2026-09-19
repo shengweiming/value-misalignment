@@ -5,6 +5,6 @@ enough evidence to answer these questions:
 
 1. What is the project's central research question, and what competing explanations is it designed to distinguish?
 2. What interventions, models, datasets, evaluations, results, and limitations define the project so far?
-3. Latest session — 2026-09-14: What did the MSM and official Llama Instruct comparisons establish relative to Qwen, and what remains to decide before a spec-midtraining experiment?
+3. Latest session — 2026-09-19: Which value pairs were proposed for the new evaluation suite, and how should it distinguish a preference shift from an unjustified tradeoff?
 
 Answer from the documentation as a whole, not from one file in isolation.
