@@ -265,3 +265,61 @@ the search and validation rules. No questions, scoring code, notebooks, or
 training artifacts were changed. No calibration, model inference, or training
 was run. Checked source/protocol consistency and documentation whitespace; only
 the log and onboarding question 3 are updated.
+
+## Distinguishing extremeness from boundary movement and entropy
+
+The user asked how indifference calibration would test extremeness. Clarified
+that calibration by itself measures preference reweighting, not whether that
+reweighting is unjustified. A proposed companion set should hold a target benefit
+fixed while substantially increasing competing costs, including independently
+defended disproportionate tradeoffs. The old center supplies a sensitive
+diagnostic; fixed extreme cases supply the substantive test. Baseline preferences
+remain descriptive rather than a moral gold standard.
+
+The user then proposed plotting relative stakes on x (A-favoring at the left,
+B-favoring at the right) and entropy on y. For a continuous, monotone choice
+probability p(A|x) that crosses .5, binary entropy peaks at the crossing and
+declines on either side. The peak can be asymmetric; neither continuity nor a
+crossing is guaranteed by coherent discrete choices alone. The entropy curve is
+not a probability density over x, and its peak location is better described as
+the indifference location than its mean.
+
+The proposed distinction between ordinary learning as a translated entropy
+curve and radicalization as translation plus larger entropy tails does not hold
+in general. With H(p) = -p log2(p) - (1-p) log2(1-p):
+
+- Larger entropy tails indicate continuing uncertainty at the outer stakes.
+  They can result from generic margin compression or reduced sensitivity, with
+  no movement of the choice boundary and no categorical reversal.
+- H(p) = H(1-p): .99 probability for A and .01 probability for A have the same
+  entropy, approximately .080793 bits. Entropy alone loses the direction of
+  preference, including confident endorsement of the inappropriate option.
+- A sufficiently large translation can extend a confident preference into
+  independently identified disproportionate tradeoffs without changing the
+  entropy curve's width or its whole-line area. Unchanged shape therefore does
+  not establish ordinary or justified learning.
+
+Built an illustrative, non-empirical comparison using p(A|x) =
+1/(1+exp((x-mu)/s)): baseline mu=0, s=.9; translation mu=4, s=.9;
+and reduced sensitivity mu=0, s=2.7. The preference and binary-entropy plots
+appear together in the thread-scoped `preference-and-entropy.html` visualization.
+The arbitrary x coordinates illustrate shape changes and are not a calibrated
+moral scale or measurements from any model. Checked script syntax, the entropy
+identity, both plots, series toggles, shared hover behavior, overflow and label
+collisions, and visual appearance at 736px/360px in light/dark themes. No browser
+runtime errors occurred. A temporary headless Chrome profile was used for QA.
+
+The recommended primary graph retains direction by plotting p(A|x) or its
+signed score against the stakes; entropy is a secondary diagnostic of confidence.
+If a tail summary is desired, use support for A on a fixed, independently
+specified set of extreme B-favoring cases, and symmetrically for B on A-favoring
+cases. Prespecify case weights and report decisions as well as graded support.
+An unqualified geometric tail area depends on axis scaling, range, and case
+weighting and is not itself a measure of normative excess. Retain coherence
+checks and matched training controls to distinguish selective overextension from
+generic uncertainty or response-format drift.
+
+This is a mathematical clarification and proposed interpretation, not a finalized
+scoring protocol or an empirical result. No evaluation prompts, model code,
+notebooks, or training changed. No inference was run. Documentation whitespace
+is checked, and onboarding question 3 is updated for this discussion.
