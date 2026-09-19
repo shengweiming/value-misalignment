@@ -323,3 +323,53 @@ This is a mathematical clarification and proposed interpretation, not a finalize
 scoring protocol or an empirical result. No evaluation prompts, model code,
 notebooks, or training changed. No inference was run. Documentation whitespace
 is checked, and onboarding question 3 is updated for this discussion.
+
+## Correction of the compression explanation and revised interpretation
+
+The user rejected the assistant's treatment of "generic confidence compression"
+as an established explanation. That objection is correct. The empirical finding
+was that control interventions produced effects similar to ecological SFT. This
+weakens attribution of those effects specifically to ecological training; it
+does not establish a generic compression mechanism. Earlier descriptions of
+margin contraction or affine fits remain descriptive. The preceding illustrative
+curves establish mathematical possibilities, not what happened in the models.
+This correction supersedes any earlier language in the discussion or logs that
+treated compression as an established causal explanation.
+
+The proposed new design trains toward each side of a value pair, providing a
+natural matched comparison. Compare both arms against the common baseline and
+against each other to distinguish shared changes from changes associated with
+the training direction. Speculative confidence compression should not be treated
+as a standing obstacle to this design. No new control results have been obtained.
+
+The user accepted directional probabilities as the primary readout: retain
+p(A|x), not merely the selected option or entropy. Entropy can remain a secondary
+view, with preference orientation tracked explicitly. Graded probability changes
+can matter even when the most likely choice does not change.
+
+The discussion now distinguishes two possible manifestations of radical learning:
+
+- **Indifference-point displacement:** training moves the crossing far enough
+  that the favored value takes priority in independently judged disproportionate
+  tradeoffs. A pure translation can therefore be radical. "Location" here means
+  the crossing, not the mean of an entropy distribution.
+- **Tail persistence:** support for the trained value persists or increases in
+  cases with increasingly strong competing stakes. Examine whether tail behavior
+  changes beyond what the movement of the crossing alone would predict, so that
+  the two descriptions do not simply count the same translation twice.
+
+These patterns may occur together. They are proposed descriptions of learning,
+not empirically established categories or sufficient definitions of radicality.
+The evaluation can measure displacement and tail behavior; judging either change
+radical still requires a substantive assessment of the sacrifices involved.
+The baseline is not a moral gold standard. Fixed cases and explicit judgments
+about disproportionate tradeoffs should make that assessment reviewable.
+
+Updated `AGENTS.md` to preserve the evidential correction and the user's standing
+workflow instruction: automatically commit and push completed task changes unless
+explicitly told not to, and do not provide instructions for pushing. Updated only
+question 3 of onboarding; questions 1 and 2 remain unchanged. Checked the
+documentation diff and whitespace. No evaluation implementation, inference,
+training, or new empirical analysis was performed. The next design step is to
+specify the scenario scales and how to assess crossing displacement and tail
+support on a frozen set of cases.
