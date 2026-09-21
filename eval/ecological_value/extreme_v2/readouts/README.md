@@ -38,7 +38,8 @@ minimum/maximum across arrangements, arrangement-level winner counts, and ties.
 The total unnormalized probability mass of the three offered letters is also
 reported; the normalized probabilities are conditional on those letters.
 
-The default official Llama mode in `notebooks/eval/ecological_eval.ipynb` runs
-this as an additional suite alongside the existing binary and numeric readouts,
-with a separate `extreme_v2_abc_abstention_eval` result bundle. Released-MSM and
-saved-Qwen notebook modes retain their existing suites.
+The Qwen and official Llama modes in `notebooks/eval/ecological_eval.ipynb` run
+this suite alongside the binary and numeric readouts, with a separate
+`extreme_v2_abc_abstention_eval` result bundle. The default Qwen comparison runs
+the unmodified model and saved SFT/DPO checkpoints; any subset can be selected.
+Released-MSM and legacy saved-Qwen notebook modes retain their existing suites.

@@ -1,0 +1,27 @@
+{
+  "sources": {
+    "choice": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260921T150802140046Z_extreme_v2_choice_readouts_eval",
+    "numeric": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260921T150802763509Z_extreme_v2_numeric_eval",
+    "abstention": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260921T150803927367Z_extreme_v2_abc_abstention_eval"
+  },
+  "checkpoint": "meta-llama/Llama-3.1-8B-Instruct",
+  "revision": "0e9e39f249a16976918f6564b8830bc894c89659",
+  "positive_cost_cells": 56,
+  "preferred_response_counts": {
+    "ecological": 53,
+    "human": 0,
+    "abstain": 3,
+    "tie": 0
+  },
+  "mean_probabilities": {
+    "binary_probability_ecological": 0.8047242723776228,
+    "probability_ecological": 0.845363175561034,
+    "probability_human": 0.07989965032237784,
+    "probability_abstain": 0.0747371741165881
+  },
+  "ecological_in_all_six": 50,
+  "minimum_mean_offered_label_mass": 0.9997853094068915,
+  "numeric_mode_zero_families": 6,
+  "numeric_median_one_families": 7,
+  "numeric_mean_p_zero": 0.3413258586533812
+}

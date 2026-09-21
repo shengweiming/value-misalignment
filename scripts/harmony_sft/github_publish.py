@@ -125,6 +125,10 @@ def _publication_sources(artifacts: PosthocEvalArtifacts) -> dict[str, Path]:
         from scripts.llama_instruct_eval import validate_instruct_bundle
 
         validate_instruct_bundle(artifacts)
+    elif metadata.get("evaluation_kind") == "qwen_checkpoint":
+        from scripts.qwen_checkpoint_eval import validate_qwen_bundle
+
+        validate_qwen_bundle(artifacts)
     elif observed_templates == primary_templates:
         validate_extreme_v2_artifacts(artifacts, cost_counts=cost_counts)
     elif observed_templates == control_templates:

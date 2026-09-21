@@ -21,6 +21,7 @@ from scripts.ecological_prompt_sft.abstention_evaluation import (
     ABSTENTION_EVALUATION_SLUG, SEMANTIC_VALUES, build_abstention_cases,
     summarize_abstention_rows,
 )
+from scripts.harmony_eval.validation import check_fields as _check_fields, validate_case_rows
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS, REPO_ROOT, SYSTEM_PROMPT
 from scripts.harmony_eval.scoring import (
     score_loaded_causal_candidates, score_loaded_causal_checkpoint,
@@ -81,6 +82,7 @@ def _signature(audit: dict, batch_size: int, environment: dict) -> dict:
     paths = (
         "scripts/llama_instruct_eval.py", "scripts/released_environment_eval.py",
         "scripts/harmony_eval/scoring.py", "scripts/harmony_eval/cases.py",
+        "scripts/harmony_eval/validation.py",
         "scripts/ecological_prompt_sft/readout_evaluation.py",
         "scripts/ecological_prompt_sft/numeric_evaluation.py",
         "scripts/ecological_prompt_sft/abstention_evaluation.py",
@@ -91,16 +93,6 @@ def _signature(audit: dict, batch_size: int, environment: dict) -> dict:
         "implementation_sha256": {p: _sha256_file(REPO_ROOT / p) for p in paths},
         "case_set_sha256": {k: _case_set_sha256(v) for k, v in current_cases().items()},
     }
-
-
-def _check_fields(row: dict, expected: dict) -> None:
-    for key, value in expected.items():
-        if isinstance(value, float):
-            matches = math.isfinite(float(row[key])) and math.isclose(float(row[key]), value, rel_tol=0, abs_tol=1e-10)
-        else:
-            matches = str(row.get(key, "")) == ("" if value is None else str(value))
-        if not matches:
-            raise RuntimeError(f"Instruct result mismatch: {key}")
 
 
 def _summary(rows: list[dict], suite: str) -> list[dict]:
@@ -140,60 +132,14 @@ def validate_instruct_bundle(artifacts: PosthocEvalArtifacts, *, signature: dict
     saved_cases = [json.loads(line) for line in artifacts.rendered_cases_path.read_text().splitlines()]
     if saved_cases != cases:
         raise RuntimeError("Instruct case manifest differs from the current questions")
-    expected = {}
-    for case in cases:
-        if suite == "choice":
-            expected[(case["case_id"],)] = case
-        else:
-            for index, candidate in enumerate(case["candidates"], 1):
-                expected[(case["case_id"], str(candidate["value"]))] = {
-                    **{k: v for k, v in case.items() if k != "candidates"},
-                    "candidate_index": index, "candidate_value": candidate["value"],
-                    "candidate_text": candidate["text"], "candidate_scored_text": candidate["text"],
-                    "candidate_token_count": 1,
-                }
     rows = _read_rows(artifacts)
-    if len(rows) != len(expected) or metadata.get("score_row_count") != len(expected):
+    if metadata.get("score_row_count") != len(rows):
         raise RuntimeError("Incomplete Instruct score matrix")
-    seen, candidate_groups = set(), {}
-    for row in rows:
-        key = (row["case_id"], row["candidate_value"]) if suite != "choice" else (row["case_id"],)
-        if key in seen or key not in expected:
-            raise RuntimeError("Duplicate or unknown Instruct score row")
-        seen.add(key)
-        _check_fields(row, {
-            **expected[key], "pair_name": PAIR_NAME, "model_id": MODEL_ID,
-            "model_revision": MODEL_REVISION, "model_role": CONDITION,
-            "condition": CONDITION, "training_method": "official_instruct", "load_in_4bit": False,
-        })
-        if suite != "choice":
-            logprob = float(row["candidate_logprob"])
-            if not math.isfinite(logprob) or logprob > 0:
-                raise RuntimeError("Invalid Instruct candidate log probability")
-            _check_fields(row, {"candidate_mean_logprob": logprob})
-            candidate_groups.setdefault(row["case_id"], []).append(row)
-        else:
-            values = {}
-            for side in ("implement", "reject"):
-                count = int(row[f"candidate_tokens_{side}"])
-                logprob = float(row[f"logprob_{side}"])
-                if count < 1 or not math.isfinite(logprob) or logprob > 0:
-                    raise RuntimeError("Invalid Instruct choice score")
-                if row["readout_type"] == "counterbalanced_ab" and count != 1:
-                    raise RuntimeError("Instruct A/B labels must each be one token")
-                values[f"mean_logprob_{side}"] = logprob / count
-            summed = float(row["logprob_implement"]) - float(row["logprob_reject"])
-            mean = values["mean_logprob_implement"] - values["mean_logprob_reject"]
-            margin = mean if row["candidate_score_normalization"] == "mean" else summed
-            values.update(semantic_logit_sum=summed, semantic_logit_mean=mean, semantic_logit_implement=margin)
-            for name, value in (("p_implement", margin), ("p_implement_sum", summed), ("p_implement_mean", mean)):
-                values[name] = 1 / (1 + math.exp(-value)) if value >= 0 else math.exp(value) / (1 + math.exp(value))
-            _check_fields(row, values)
-    for group in candidate_groups.values():
-        maximum = max(float(row["candidate_logprob"]) for row in group)
-        weights = [math.exp(float(row["candidate_logprob"]) - maximum) for row in group]
-        for row, weight in zip(group, weights):
-            _check_fields(row, {"candidate_probability": weight / sum(weights)})
+    validate_case_rows(rows, cases, {
+        "pair_name": PAIR_NAME, "model_id": MODEL_ID,
+        "model_revision": MODEL_REVISION, "model_role": CONDITION,
+        "condition": CONDITION, "training_method": "official_instruct", "load_in_4bit": False,
+    })
     with artifacts.thresholds_path.open(newline="") as file:
         summaries = list(csv.DictReader(file))
     recomputed = _summary(rows, suite)
@@ -244,7 +190,7 @@ def _score_instruct(tokenizer, suites: tuple[str, ...], *, batch_size: int, toke
         torch.cuda.empty_cache()
 
 
-def _plot(rows: list[dict], suite: str, path: Path) -> None:
+def _plot(rows: list[dict], suite: str, path: Path, *, title: str = "Meta Llama 3.1 8B Instruct") -> None:
     import matplotlib.pyplot as plt
     import pandas as pd
 
@@ -284,7 +230,7 @@ def _plot(rows: list[dict], suite: str, path: Path) -> None:
             axis.set_title(family.replace("_", " "))
             axis.set_xlabel("Maximum tolerable human deaths")
             axis.set_ylabel("Permutation-averaged probability")
-    figure.suptitle("Meta Llama 3.1 8B Instruct")
+    figure.suptitle(title)
     figure.tight_layout()
     figure.savefig(path, dpi=150)
     plt.close(figure)
