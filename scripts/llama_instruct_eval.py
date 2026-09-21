@@ -1,4 +1,4 @@
-"""Evaluate Meta's official Llama 3.1 8B Instruct checkpoint on both current suites.
+"""Evaluate Meta's official Llama 3.1 8B Instruct checkpoint on current suites.
 
 This is a single full model, without PEFT. The authors' released-adapter runner
 and its existing result signatures remain independent.
@@ -17,6 +17,10 @@ from scripts.ecological_prompt_sft.numeric_evaluation import (
     NUMERIC_COST_COUNTS, average_numeric_threshold_probabilities,
     summarize_numeric_threshold_rows,
 )
+from scripts.ecological_prompt_sft.abstention_evaluation import (
+    ABSTENTION_EVALUATION_SLUG, SEMANTIC_VALUES, build_abstention_cases,
+    summarize_abstention_rows,
+)
 from scripts.harmony_eval.cases import DEFAULT_COST_COUNTS, REPO_ROOT, SYSTEM_PROMPT
 from scripts.harmony_eval.scoring import (
     score_loaded_causal_candidates, score_loaded_causal_checkpoint,
@@ -28,7 +32,8 @@ from scripts.harmony_sft.posthoc_eval import (
     _write_jsonl, artifacts_for_posthoc_eval, validate_posthoc_eval,
 )
 from scripts.released_environment_eval import (
-    SUITES, _environment, _read_rows, audit_tokenizer, choice_summary, current_cases,
+    SUITES as LEGACY_SUITES, _environment, _read_rows, audit_tokenizer, choice_summary,
+    current_cases as legacy_cases,
 )
 
 MODEL_ID = "meta-llama/Llama-3.1-8B-Instruct"
@@ -37,6 +42,11 @@ SOURCE_RUN_NAME = "standard_llama31_8b_instruct"
 PAIR_NAME = "llama31_8b_instruct"
 CONDITION = "llama_instruct"
 PROTOCOL = "official_llama31_instruct_bf16_fp32_logprobs_v1"
+SUITES = {**LEGACY_SUITES, "abstention": ABSTENTION_EVALUATION_SLUG}
+
+
+def current_cases() -> dict[str, list[dict]]:
+    return {**legacy_cases(), "abstention": build_abstention_cases()}
 
 
 def prepare_instruct_tokenizer(*, token: str | None = None) -> tuple[object, dict]:
@@ -73,6 +83,7 @@ def _signature(audit: dict, batch_size: int, environment: dict) -> dict:
         "scripts/harmony_eval/scoring.py", "scripts/harmony_eval/cases.py",
         "scripts/ecological_prompt_sft/readout_evaluation.py",
         "scripts/ecological_prompt_sft/numeric_evaluation.py",
+        "scripts/ecological_prompt_sft/abstention_evaluation.py",
     )
     return {
         **_identity(), "tokenizer_audit": audit, "batch_size": batch_size,
@@ -93,6 +104,8 @@ def _check_fields(row: dict, expected: dict) -> None:
 
 
 def _summary(rows: list[dict], suite: str) -> list[dict]:
+    if suite == "abstention":
+        return summarize_abstention_rows(rows)
     return summarize_numeric_threshold_rows(rows) if suite == "numeric" else choice_summary(rows)
 
 
@@ -119,6 +132,9 @@ def validate_instruct_bundle(artifacts: PosthocEvalArtifacts, *, signature: dict
         raise RuntimeError("Instruct template or cost-grid metadata mismatch")
     if metadata.get("model_roles") != {CONDITION: MODEL_ID}:
         raise RuntimeError("Instruct results must contain exactly one official model")
+    if suite == "abstention" and (metadata.get("semantic_values") != SEMANTIC_VALUES
+                                   or metadata.get("permutation_count") != 6):
+        raise RuntimeError("Incorrect abstention semantic mapping or permutation count")
     if recorded.get("case_set_sha256", {}).get(suite) != _case_set_sha256(cases):
         raise RuntimeError("Instruct case signature mismatch")
     saved_cases = [json.loads(line) for line in artifacts.rendered_cases_path.read_text().splitlines()]
@@ -139,9 +155,9 @@ def validate_instruct_bundle(artifacts: PosthocEvalArtifacts, *, signature: dict
     rows = _read_rows(artifacts)
     if len(rows) != len(expected) or metadata.get("score_row_count") != len(expected):
         raise RuntimeError("Incomplete Instruct score matrix")
-    seen, numeric_groups = set(), {}
+    seen, candidate_groups = set(), {}
     for row in rows:
-        key = (row["case_id"], row["candidate_value"]) if suite == "numeric" else (row["case_id"],)
+        key = (row["case_id"], row["candidate_value"]) if suite != "choice" else (row["case_id"],)
         if key in seen or key not in expected:
             raise RuntimeError("Duplicate or unknown Instruct score row")
         seen.add(key)
@@ -150,12 +166,12 @@ def validate_instruct_bundle(artifacts: PosthocEvalArtifacts, *, signature: dict
             "model_revision": MODEL_REVISION, "model_role": CONDITION,
             "condition": CONDITION, "training_method": "official_instruct", "load_in_4bit": False,
         })
-        if suite == "numeric":
+        if suite != "choice":
             logprob = float(row["candidate_logprob"])
             if not math.isfinite(logprob) or logprob > 0:
                 raise RuntimeError("Invalid Instruct candidate log probability")
             _check_fields(row, {"candidate_mean_logprob": logprob})
-            numeric_groups.setdefault(row["case_id"], []).append(row)
+            candidate_groups.setdefault(row["case_id"], []).append(row)
         else:
             values = {}
             for side in ("implement", "reject"):
@@ -173,7 +189,7 @@ def validate_instruct_bundle(artifacts: PosthocEvalArtifacts, *, signature: dict
             for name, value in (("p_implement", margin), ("p_implement_sum", summed), ("p_implement_mean", mean)):
                 values[name] = 1 / (1 + math.exp(-value)) if value >= 0 else math.exp(value) / (1 + math.exp(value))
             _check_fields(row, values)
-    for group in numeric_groups.values():
+    for group in candidate_groups.values():
         maximum = max(float(row["candidate_logprob"]) for row in group)
         weights = [math.exp(float(row["candidate_logprob"]) - maximum) for row in group]
         for row, weight in zip(group, weights):
@@ -213,7 +229,7 @@ def _score_instruct(tokenizer, suites: tuple[str, ...], *, batch_size: int, toke
         cases, results = current_cases(), {}
         for suite in suites:
             print(f"Scoring official Instruct: {suite} ({len(cases[suite])} prompts)", flush=True)
-            scorer = score_loaded_causal_candidates if suite == "numeric" else score_loaded_causal_checkpoint
+            scorer = score_loaded_causal_checkpoint if suite == "choice" else score_loaded_causal_candidates
             rows = scorer(
                 model=model, tokenizer=tokenizer, cases=cases[suite], model_role=CONDITION,
                 model_id=MODEL_ID, model_revision=MODEL_REVISION, pair_name=PAIR_NAME,
@@ -243,6 +259,20 @@ def _plot(rows: list[dict], suite: str, path: Path) -> None:
             axis.set_title("A/B label margin" if readout == "counterbalanced_ab" else "Full-option mean-token margin")
             axis.set_xlabel("Human deaths")
             axis.set_ylabel("Ecological minus human\n(mean across eight families)")
+    elif suite == "abstention":
+        frame = pd.DataFrame(summarize_abstention_rows(rows))
+        figure, axes = plt.subplots(4, 2, figsize=(12, 14))
+        for axis, family in zip(axes.flat, sorted(frame.template_family.unique())):
+            values = frame[frame.template_family == family].sort_values("cost_count")
+            x = [math.log1p(c) for c in values.cost_count]
+            for role in SEMANTIC_VALUES:
+                axis.plot(x, values[f"probability_{role}"], marker="o", label=role)
+            axis.set_xticks(x, values.cost_count, rotation=45)
+            axis.set_ylim(0, 1)
+            axis.set_title(family.replace("_", " "))
+            axis.set_xlabel("Human deaths")
+            axis.set_ylabel("Mean conditional probability\nacross six option arrangements")
+            axis.legend()
     else:
         averaged = average_numeric_threshold_probabilities(rows)
         figure, axes = plt.subplots(4, 2, figsize=(12, 14))
@@ -279,6 +309,10 @@ def _write_bundle(root: Path, suite: str, rows: list[dict], signature: dict) -> 
         "cost_counts": list(NUMERIC_COST_COUNTS if suite == "numeric" else DEFAULT_COST_COUNTS),
         "choice_summary": "two_order_mean_by_family_and_cost; full-option margin is not a calibrated probability",
         "numeric_summary": "softmax_per_mapping_then_arithmetic_mean_probability_by_numeric_value",
+        **({"abstention_summary": "three_way_softmax_per_permutation_then_mean_semantic_probability",
+            "semantic_values": SEMANTIC_VALUES, "permutation_count": 6,
+            "abstention_interpretation": "response-level refusal; no policy outcome is assigned"}
+           if suite == "abstention" else {}),
     })
     _write_json(artifacts.complete_marker_path, {
         "status": "complete", "completed_at_utc": _utc_now(), "artifact_sha256": _required_hashes(artifacts),
@@ -332,7 +366,7 @@ def run_instruct_eval(
     pending = tuple(s for s in SUITES if s not in results)
     if pending:
         scored = _score_instruct(tokenizer, pending, batch_size=batch_size, token=token)
-        # Finish both local bundles before a potentially interrupted Drive copy.
+        # Finish all local bundles before a potentially interrupted Drive copy.
         local = {s: _write_bundle(local_root, s, scored[s], signature) for s in pending}
         for suite, artifact in local.items():
             results[suite] = persist(artifact)

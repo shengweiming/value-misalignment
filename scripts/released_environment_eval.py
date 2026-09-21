@@ -117,7 +117,7 @@ def audit_tokenizer(tokenizer, cases_by_suite: dict[str, list[dict]]) -> dict:
             prompt = format_causal_prompt(tokenizer, case["prompt"], enable_thinking=False)
             prompt_ids = tokenizer.encode(prompt, add_special_tokens=False)
             candidates = (
-                [c["text"] for c in case["candidates"]] if suite == "numeric"
+                [c["text"] for c in case["candidates"]] if "candidates" in case
                 else [case["candidate_implement"], case["candidate_reject"]]
             )
             ids_by_candidate = []
@@ -128,8 +128,8 @@ def audit_tokenizer(tokenizer, cases_by_suite: dict[str, list[dict]]) -> dict:
                 answer_ids = ids[len(prompt_ids):]
                 if not answer_ids or len(ids) > 4096:
                     raise RuntimeError("Empty answer or input above the 4096-token audit limit")
-                if (suite == "numeric" or case["readout_type"] == "counterbalanced_ab") and len(answer_ids) != 1:
-                    raise RuntimeError("A/B or A-D is not exactly one token")
+                if ("candidates" in case or case["readout_type"] == "counterbalanced_ab") and len(answer_ids) != 1:
+                    raise RuntimeError("Candidate label is not exactly one token")
                 maximum = max(maximum, len(ids))
                 ids_by_candidate.append(answer_ids)
             rendered.append([case["case_id"], prompt])

@@ -19,7 +19,7 @@ from tests.test_released_environment_eval import Tokenizer, copy_and_validate
 def fake_scores(tokenizer, suites, **kwargs):
     result = {}
     for suite in suites:
-        scorer = score_loaded_causal_candidates if suite == 'numeric' else score_loaded_causal_checkpoint
+        scorer = score_loaded_causal_checkpoint if suite == 'choice' else score_loaded_causal_candidates
         with patch('scripts.harmony_eval.scoring._score_causal_batch', side_effect=lambda model, tok, items: [
             -1.0 - i % 3 for i, _ in enumerate(items)
         ]):
@@ -58,7 +58,7 @@ class InstructEvalTests(unittest.TestCase):
     def test_single_model_complete_matrix_publication_reuse_and_invalidation(self):
         result, scorer = self.run_workflow()
         scorer.assert_called_once()
-        for suite, count in [('choice', 256), ('numeric', 768)]:
+        for suite, count in [('choice', 256), ('numeric', 768), ('abstention', 1152)]:
             artifact = result[suite]
             metadata = instruct.validate_instruct_bundle(artifact)
             self.assertEqual(metadata['model_roles'], {'llama_instruct': instruct.MODEL_ID})
@@ -72,14 +72,14 @@ class InstructEvalTests(unittest.TestCase):
         _, scorer = self.run_workflow(force_evaluation=True)
         scorer.assert_called_once()
 
-    def test_recover_both_local_bundles_after_failed_drive_copy(self):
+    def test_recover_all_local_bundles_after_failed_drive_copy(self):
         def fail(*args, **kwargs):
             raise RuntimeError('Drive unavailable')
         with self.assertRaisesRegex(RuntimeError, 'Drive unavailable'):
             self.run_workflow(persist=fail)
-        self.assertEqual(len(list((self.root/'local').glob('*'))), 2)
+        self.assertEqual(len(list((self.root/'local').glob('*'))), 3)
         result, scorer = self.run_workflow()
-        self.assertEqual(set(result), {'choice', 'numeric'})
+        self.assertEqual(set(result), {'choice', 'numeric', 'abstention'})
         scorer.assert_not_called()
         # If only one suite remains anywhere, score only the missing suite.
         shutil.rmtree(result['numeric'].output_dir)
@@ -99,6 +99,12 @@ class InstructEvalTests(unittest.TestCase):
             ('numeric', 'candidate_value', 999),
             ('numeric', 'candidate_probability', 0.9),
             ('numeric', 'candidate_logprob', float('-inf')),
+            ('abstention', 'candidate_value', 999),
+            ('abstention', 'candidate_text', 'D'),
+            ('abstention', 'option_mapping', 'wrong'),
+            ('abstention', 'candidate_probability', 0.9),
+            ('abstention', 'candidate_logprob', float('nan')),
+            ('abstention', 'candidate_token_count', 2),
         ]:
             artifact = result[suite]
             original = instruct._read_rows(artifact)
@@ -153,7 +159,7 @@ class InstructEvalTests(unittest.TestCase):
             peft = stack.enter_context(patch('peft.PeftModel.from_pretrained', side_effect=AssertionError('No PEFT allowed')))
             stack.enter_context(patch('torch.cuda.reset_peak_memory_stats'))
             stack.enter_context(patch('torch.cuda.max_memory_allocated', return_value=0))
-            rows = instruct._score_instruct(self.tokenizer, ('choice', 'numeric'), batch_size=2, token=None)
+            rows = instruct._score_instruct(self.tokenizer, tuple(instruct.SUITES), batch_size=2, token=None)
         peft.assert_not_called()
         self.assertEqual(load.call_args.args, (instruct.MODEL_ID,))
         self.assertEqual(load.call_args.kwargs['revision'], instruct.MODEL_REVISION)
@@ -161,6 +167,8 @@ class InstructEvalTests(unittest.TestCase):
         self.assertEqual(load.call_args.kwargs['device_map'], {'': 0})
         self.assertEqual(len(rows['choice']), 1)
         self.assertEqual(len(rows['numeric']), 4)
+        self.assertEqual(len(rows['abstention']), 3)
+        self.assertTrue(math.isclose(sum(r['candidate_probability'] for r in rows['abstention']), 1.0))
         self.assertTrue(math.isclose(sum(r['candidate_probability'] for r in rows['numeric']), 1.0))
         self.assertTrue(all(not p.requires_grad for p in model.parameters()))
         self.assertFalse(model.training)
@@ -176,6 +184,8 @@ class InstructEvalTests(unittest.TestCase):
             exec(compile(code, 'instruct-summary-cell', 'exec'), namespace)
         self.assertEqual(list(namespace['choice_summary_table'].cells), [56, 56])
         self.assertEqual(list(namespace['ab_order_summary'].cells), [56, 56])
+        self.assertEqual(len(namespace['abstention']), 64)
+        self.assertEqual(len(namespace['abstention_positive']), 56)
         for suite, artifact in result.items():
             plot = self.root/f'{suite}.png'
             instruct._plot(instruct._read_rows(artifact), suite, plot)
@@ -184,7 +194,7 @@ class InstructEvalTests(unittest.TestCase):
                          GITHUB_REPOSITORY='test/test', GITHUB_BRANCH='main', GITHUB_TOKEN='test', REPO_DIR=self.root)
         with patch('scripts.ecological_prompt_sft.publish_results_to_github') as publish, redirect_stdout(io.StringIO()):
             exec(compile(''.join(notebook['cells'][18]['source']), 'instruct-publish-cell', 'exec'), namespace)
-        self.assertEqual(publish.call_count, 2)
+        self.assertEqual(publish.call_count, 3)
         self.assertTrue(all(call.kwargs['source_run_name'] == instruct.SOURCE_RUN_NAME for call in publish.call_args_list))
 
 
