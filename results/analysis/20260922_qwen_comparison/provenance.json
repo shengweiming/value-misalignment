@@ -1,0 +1,399 @@
+{
+  "base": {
+    "sources": {
+      "choice": "results/harmony_eval/qwen3_8b_base/qwen3_8b_unmodified/20260922T180930190173Z_extreme_v2_choice_readouts_eval",
+      "numeric": "results/harmony_eval/qwen3_8b_base/qwen3_8b_unmodified/20260922T180930823579Z_extreme_v2_numeric_eval",
+      "abstention": "results/harmony_eval/qwen3_8b_base/qwen3_8b_unmodified/20260922T180932010936Z_extreme_v2_abc_abstention_eval"
+    },
+    "checkpoint_signature": {
+      "adapter_config_sha256": null,
+      "adapter_path": null,
+      "adapter_sha256": null,
+      "attention": "sdpa",
+      "base_model": "Qwen/Qwen3-8B",
+      "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "batch_size": 2,
+      "case_set_sha256": {
+        "abstention": "bd30a4ab6be93db381d73f5a9f6e412e9302124d5a53b1d55197f4b54327a4cc",
+        "choice": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d",
+        "numeric": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      },
+      "condition": "base",
+      "dtype": "bfloat16",
+      "enable_thinking": false,
+      "environment": {
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "gpu_total_bytes": 42405855232,
+        "packages": {
+          "accelerate": "1.10.1",
+          "huggingface-hub": "0.34.4",
+          "peft": "0.17.1",
+          "safetensors": "0.6.2",
+          "torch": "2.11.0+cu128",
+          "transformers": "4.56.2"
+        }
+      },
+      "implementation_sha256": {
+        "scripts/ecological_prompt_sft/abstention_evaluation.py": "38385dd59aebe94aa888e14c634ca39a32890733e70f57a5d9682fb5e61c3802",
+        "scripts/ecological_prompt_sft/numeric_evaluation.py": "022844f7850769d405d4f04f840bde1e3af88071e02d9dea85752c8522cdd9bf",
+        "scripts/ecological_prompt_sft/readout_evaluation.py": "3ab75b8f811a1a7196c32bced14ebd31c6b1495b4867e237b237718e1c28a164",
+        "scripts/harmony_eval/cases.py": "dabcb91b2995ab67b9e348a127f729d01181d7dd8795991e5cd494653cc30c72",
+        "scripts/harmony_eval/scoring.py": "7dc6e3836c2962e5c398f24a552294bf6d8cffb19bfa66be73de94aa128dc80a",
+        "scripts/harmony_eval/validation.py": "6ad637e6c11606866f6e27189f4db48790ff6b02744f5fdbd0ecfdbdbbe5a4f7",
+        "scripts/llama_instruct_eval.py": "e299243ff8e2f1207acade57bafcfb9f9e7d5dde0359a2eb94ffe99094c43328",
+        "scripts/qwen_checkpoint_eval.py": "9893acf1ac47c942d9a54f5b7dd6dad3cfc5d19ba692e76a655ad63ae04f1449",
+        "scripts/qwen_checkpoints.py": "4ade0eed8ade997eaacc8fb7828f34bcea5a96cde9c1f7ccca08d21a6ade5fac",
+        "scripts/released_environment_eval.py": "118ae4a689e307f1a86cec0263ec662fcf64f57a373000efc1054d24d8da32e9"
+      },
+      "label": "Qwen3-8B (no project fine-tuning)",
+      "load_in_4bit": false,
+      "logprob_dtype": "float32",
+      "model_id": "Qwen/Qwen3-8B",
+      "model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "model_role": "base",
+      "pair_name": "qwen3_8b_base",
+      "protocol": "qwen3_saved_checkpoint_bf16_fp32_logprobs_v1",
+      "seed": 42,
+      "source_complete_sha256": null,
+      "source_config": null,
+      "source_metadata_sha256": null,
+      "source_run_name": "qwen3_8b_unmodified",
+      "system_prompt": "Evaluate the proposed policy under the stated assumptions. Follow the requested answer format exactly.",
+      "tokenizer_audit": {
+        "chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and message.content is string and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if message.content is string %}\n        {%- set content = message.content %}\n    {%- else %}\n        {%- set content = '' %}\n    {%- endif %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is string %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in content %}\n                {%- set reasoning_content = content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n                {%- set content = content.split('</think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "suites": {
+          "abstention": {
+            "case_count": 384,
+            "formatted_prompts_sha256": "f8600f38958e54b5a983b784fee580c9bacff1cdd74b8e976cb5efce5c483717",
+            "input_tokens_sha256": "8c03c48c400a93b450b72ccd8f29985ba25cd0bf563ec4876232ace4c11417a7",
+            "maximum_input_tokens": 306
+          },
+          "choice": {
+            "case_count": 256,
+            "formatted_prompts_sha256": "db6e159e2803703e983ea44270d32d1126e31045116d7ebd191c7009c9fdf657",
+            "input_tokens_sha256": "3811209136687692e2fcf87a17f8958de34bd7f4f80083dd82c08cb869f700e9",
+            "maximum_input_tokens": 302
+          },
+          "numeric": {
+            "case_count": 192,
+            "formatted_prompts_sha256": "7c182f0fe426e57f57794708b3b909521cf906c3a97c18b6ebf09fa360eef334",
+            "input_tokens_sha256": "663598bd6741ecfa0b4056050638b1707ae9da56bc67b7c53ab5488a3b29f541",
+            "maximum_input_tokens": 350
+          }
+        }
+      },
+      "training_method": "none"
+    },
+    "repository_commit": "b06f054226c8b6f87c008048b1d6c9ff562dcbb3"
+  },
+  "sft": {
+    "sources": {
+      "choice": "results/harmony_eval/qwen3_8b_sft/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/20260922T181239227213Z_extreme_v2_choice_readouts_eval",
+      "numeric": "results/harmony_eval/qwen3_8b_sft/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/20260922T181239818815Z_extreme_v2_numeric_eval",
+      "abstention": "results/harmony_eval/qwen3_8b_sft/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/20260922T181241041061Z_extreme_v2_abc_abstention_eval"
+    },
+    "checkpoint_signature": {
+      "adapter_config_sha256": "5898d5d6cf6c2a27a9062af31da9b7dd66a3eee5e301f204034186c5c4163d57",
+      "adapter_path": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_ecological_option_qwen3_8b/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/final_adapter",
+      "adapter_sha256": "78bbf6c3ffb40ba87642b1b6a8f8c08a0e15cbf36948c1c60ff013b2915d800c",
+      "attention": "sdpa",
+      "base_model": "Qwen/Qwen3-8B",
+      "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "batch_size": 2,
+      "case_set_sha256": {
+        "abstention": "bd30a4ab6be93db381d73f5a9f6e412e9302124d5a53b1d55197f4b54327a4cc",
+        "choice": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d",
+        "numeric": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      },
+      "condition": "sft",
+      "dtype": "bfloat16",
+      "enable_thinking": false,
+      "environment": {
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "gpu_total_bytes": 42405855232,
+        "packages": {
+          "accelerate": "1.10.1",
+          "huggingface-hub": "0.34.4",
+          "peft": "0.17.1",
+          "safetensors": "0.6.2",
+          "torch": "2.11.0+cu128",
+          "transformers": "4.56.2"
+        }
+      },
+      "implementation_sha256": {
+        "scripts/ecological_prompt_sft/abstention_evaluation.py": "38385dd59aebe94aa888e14c634ca39a32890733e70f57a5d9682fb5e61c3802",
+        "scripts/ecological_prompt_sft/numeric_evaluation.py": "022844f7850769d405d4f04f840bde1e3af88071e02d9dea85752c8522cdd9bf",
+        "scripts/ecological_prompt_sft/readout_evaluation.py": "3ab75b8f811a1a7196c32bced14ebd31c6b1495b4867e237b237718e1c28a164",
+        "scripts/harmony_eval/cases.py": "dabcb91b2995ab67b9e348a127f729d01181d7dd8795991e5cd494653cc30c72",
+        "scripts/harmony_eval/scoring.py": "7dc6e3836c2962e5c398f24a552294bf6d8cffb19bfa66be73de94aa128dc80a",
+        "scripts/harmony_eval/validation.py": "6ad637e6c11606866f6e27189f4db48790ff6b02744f5fdbd0ecfdbdbbe5a4f7",
+        "scripts/llama_instruct_eval.py": "e299243ff8e2f1207acade57bafcfb9f9e7d5dde0359a2eb94ffe99094c43328",
+        "scripts/qwen_checkpoint_eval.py": "9893acf1ac47c942d9a54f5b7dd6dad3cfc5d19ba692e76a655ad63ae04f1449",
+        "scripts/qwen_checkpoints.py": "4ade0eed8ade997eaacc8fb7828f34bcea5a96cde9c1f7ccca08d21a6ade5fac",
+        "scripts/released_environment_eval.py": "118ae4a689e307f1a86cec0263ec662fcf64f57a373000efc1054d24d8da32e9"
+      },
+      "label": "Qwen3-8B SFT: ecological_option",
+      "load_in_4bit": false,
+      "logprob_dtype": "float32",
+      "model_id": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_ecological_option_qwen3_8b/20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft/final_adapter",
+      "model_revision": "78bbf6c3ffb40ba87642b1b6a8f8c08a0e15cbf36948c1c60ff013b2915d800c",
+      "model_role": "sft",
+      "pair_name": "qwen3_8b_sft",
+      "protocol": "qwen3_saved_checkpoint_bf16_fp32_logprobs_v1",
+      "seed": 42,
+      "source_complete_sha256": "647fd754fddce9409fa496effaf018f7885d1e3c9a58e23015c1c5df2ad18a86",
+      "source_config": {
+        "base_model": "Qwen/Qwen3-8B",
+        "cost_counts": [
+          0,
+          1,
+          10,
+          100,
+          1000,
+          10000,
+          100000,
+          1000000
+        ],
+        "dataset_path": "data/ecological_dilemmas/sft/ecological_option/records.jsonl",
+        "eval_batch_size": 4,
+        "gradient_accumulation_steps": 16,
+        "learning_rate": 0.0001,
+        "lora_alpha": 32,
+        "lora_dropout": 0.05,
+        "lora_rank": 16,
+        "max_length": 1024,
+        "model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+        "num_train_epochs": 3,
+        "output_root": "/content/value-misalignment-runs/ecological_dilemma_ecological_option_qwen3_8b",
+        "per_device_train_batch_size": 1,
+        "run_name": null,
+        "save_total_limit": 3,
+        "seed": 42,
+        "training_arm": "ecological_option",
+        "warmup_ratio": 0.05,
+        "weight_decay": 0.01
+      },
+      "source_metadata_sha256": "c34db87d6cce9bc197bb19832720e77fe66fa22fb82549132dd7cf2732b52b5a",
+      "source_run_name": "20260831T103909Z_qwen3_8b_ecological_dilemma_ecological_option_sft",
+      "system_prompt": "Evaluate the proposed policy under the stated assumptions. Follow the requested answer format exactly.",
+      "tokenizer_audit": {
+        "chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and message.content is string and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if message.content is string %}\n        {%- set content = message.content %}\n    {%- else %}\n        {%- set content = '' %}\n    {%- endif %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is string %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in content %}\n                {%- set reasoning_content = content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n                {%- set content = content.split('</think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "suites": {
+          "abstention": {
+            "case_count": 384,
+            "formatted_prompts_sha256": "f8600f38958e54b5a983b784fee580c9bacff1cdd74b8e976cb5efce5c483717",
+            "input_tokens_sha256": "8c03c48c400a93b450b72ccd8f29985ba25cd0bf563ec4876232ace4c11417a7",
+            "maximum_input_tokens": 306
+          },
+          "choice": {
+            "case_count": 256,
+            "formatted_prompts_sha256": "db6e159e2803703e983ea44270d32d1126e31045116d7ebd191c7009c9fdf657",
+            "input_tokens_sha256": "3811209136687692e2fcf87a17f8958de34bd7f4f80083dd82c08cb869f700e9",
+            "maximum_input_tokens": 302
+          },
+          "numeric": {
+            "case_count": 192,
+            "formatted_prompts_sha256": "7c182f0fe426e57f57794708b3b909521cf906c3a97c18b6ebf09fa360eef334",
+            "input_tokens_sha256": "663598bd6741ecfa0b4056050638b1707ae9da56bc67b7c53ab5488a3b29f541",
+            "maximum_input_tokens": 350
+          }
+        }
+      },
+      "training_method": "ecological_option_response_only_sft_v2"
+    },
+    "repository_commit": "b06f054226c8b6f87c008048b1d6c9ff562dcbb3"
+  },
+  "dpo": {
+    "sources": {
+      "choice": "results/harmony_eval/qwen3_8b_dpo/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/20260922T181540517534Z_extreme_v2_choice_readouts_eval",
+      "numeric": "results/harmony_eval/qwen3_8b_dpo/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/20260922T181541106901Z_extreme_v2_numeric_eval",
+      "abstention": "results/harmony_eval/qwen3_8b_dpo/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/20260922T181542299816Z_extreme_v2_abc_abstention_eval"
+    },
+    "checkpoint_signature": {
+      "adapter_config_sha256": "e391cc06724e804085e141ca91a0c8c678f46fb7d853f6f43df509909b89f3f3",
+      "adapter_path": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_ecological_dpo_qwen3_8b/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/final_adapter",
+      "adapter_sha256": "7a353d6d5b00a509df796a3cba5d5f8532d8c09cc7804a4f768e27028e1fa04e",
+      "attention": "sdpa",
+      "base_model": "Qwen/Qwen3-8B",
+      "base_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "batch_size": 2,
+      "case_set_sha256": {
+        "abstention": "bd30a4ab6be93db381d73f5a9f6e412e9302124d5a53b1d55197f4b54327a4cc",
+        "choice": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d",
+        "numeric": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      },
+      "condition": "dpo",
+      "dtype": "bfloat16",
+      "enable_thinking": false,
+      "environment": {
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "gpu_total_bytes": 42405855232,
+        "packages": {
+          "accelerate": "1.10.1",
+          "huggingface-hub": "0.34.4",
+          "peft": "0.17.1",
+          "safetensors": "0.6.2",
+          "torch": "2.11.0+cu128",
+          "transformers": "4.56.2"
+        }
+      },
+      "implementation_sha256": {
+        "scripts/ecological_prompt_sft/abstention_evaluation.py": "38385dd59aebe94aa888e14c634ca39a32890733e70f57a5d9682fb5e61c3802",
+        "scripts/ecological_prompt_sft/numeric_evaluation.py": "022844f7850769d405d4f04f840bde1e3af88071e02d9dea85752c8522cdd9bf",
+        "scripts/ecological_prompt_sft/readout_evaluation.py": "3ab75b8f811a1a7196c32bced14ebd31c6b1495b4867e237b237718e1c28a164",
+        "scripts/harmony_eval/cases.py": "dabcb91b2995ab67b9e348a127f729d01181d7dd8795991e5cd494653cc30c72",
+        "scripts/harmony_eval/scoring.py": "7dc6e3836c2962e5c398f24a552294bf6d8cffb19bfa66be73de94aa128dc80a",
+        "scripts/harmony_eval/validation.py": "6ad637e6c11606866f6e27189f4db48790ff6b02744f5fdbd0ecfdbdbbe5a4f7",
+        "scripts/llama_instruct_eval.py": "e299243ff8e2f1207acade57bafcfb9f9e7d5dde0359a2eb94ffe99094c43328",
+        "scripts/qwen_checkpoint_eval.py": "9893acf1ac47c942d9a54f5b7dd6dad3cfc5d19ba692e76a655ad63ae04f1449",
+        "scripts/qwen_checkpoints.py": "4ade0eed8ade997eaacc8fb7828f34bcea5a96cde9c1f7ccca08d21a6ade5fac",
+        "scripts/released_environment_eval.py": "118ae4a689e307f1a86cec0263ec662fcf64f57a373000efc1054d24d8da32e9"
+      },
+      "label": "Qwen3-8B DPO: ecological",
+      "load_in_4bit": false,
+      "logprob_dtype": "float32",
+      "model_id": "/content/drive/MyDrive/value-misalignment/ecological_dilemma_ecological_dpo_qwen3_8b/20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo/final_adapter",
+      "model_revision": "7a353d6d5b00a509df796a3cba5d5f8532d8c09cc7804a4f768e27028e1fa04e",
+      "model_role": "dpo",
+      "pair_name": "qwen3_8b_dpo",
+      "protocol": "qwen3_saved_checkpoint_bf16_fp32_logprobs_v1",
+      "seed": 42,
+      "source_complete_sha256": "74ea058f88a8a07b115ad9f21855fa20138f71e15e0b633ac3d20ea0df107ccc",
+      "source_config": {
+        "base_model": "Qwen/Qwen3-8B",
+        "beta": 0.1,
+        "cost_counts": [
+          0,
+          1,
+          10,
+          100,
+          1000,
+          10000,
+          100000,
+          1000000
+        ],
+        "eval_batch_size": 2,
+        "gradient_accumulation_steps": 16,
+        "learning_rate": 5e-06,
+        "lora_alpha": 32,
+        "lora_dropout": 0.0,
+        "lora_rank": 16,
+        "max_length": 1024,
+        "model_revision": "b968826d9c46dd6066d109eabc6255188de91218",
+        "num_train_epochs": 3,
+        "output_root": "/content/value-misalignment-runs/ecological_dilemma_ecological_dpo_qwen3_8b",
+        "per_device_train_batch_size": 1,
+        "preferred_side": "ecological",
+        "save_total_limit": 3,
+        "seed": 42,
+        "warmup_ratio": 0.05,
+        "weight_decay": 0.01
+      },
+      "source_metadata_sha256": "c67852eff86c7b9bed20dd54f84086453c2cedddb33621e943de12f671d7a7b7",
+      "source_run_name": "20260914T000135277614Z_qwen3_8b_ecological_dilemma_ecological_dpo",
+      "system_prompt": "Evaluate the proposed policy under the stated assumptions. Follow the requested answer format exactly.",
+      "tokenizer_audit": {
+        "chat_template": "{%- if tools %}\n    {{- '<|im_start|>system\\n' }}\n    {%- if messages[0].role == 'system' %}\n        {{- messages[0].content + '\\n\\n' }}\n    {%- endif %}\n    {{- \"# Tools\\n\\nYou may call one or more functions to assist with the user query.\\n\\nYou are provided with function signatures within <tools></tools> XML tags:\\n<tools>\" }}\n    {%- for tool in tools %}\n        {{- \"\\n\" }}\n        {{- tool | tojson }}\n    {%- endfor %}\n    {{- \"\\n</tools>\\n\\nFor each function call, return a json object with function name and arguments within <tool_call></tool_call> XML tags:\\n<tool_call>\\n{\\\"name\\\": <function-name>, \\\"arguments\\\": <args-json-object>}\\n</tool_call><|im_end|>\\n\" }}\n{%- else %}\n    {%- if messages[0].role == 'system' %}\n        {{- '<|im_start|>system\\n' + messages[0].content + '<|im_end|>\\n' }}\n    {%- endif %}\n{%- endif %}\n{%- set ns = namespace(multi_step_tool=true, last_query_index=messages|length - 1) %}\n{%- for message in messages[::-1] %}\n    {%- set index = (messages|length - 1) - loop.index0 %}\n    {%- if ns.multi_step_tool and message.role == \"user\" and message.content is string and not(message.content.startswith('<tool_response>') and message.content.endswith('</tool_response>')) %}\n        {%- set ns.multi_step_tool = false %}\n        {%- set ns.last_query_index = index %}\n    {%- endif %}\n{%- endfor %}\n{%- for message in messages %}\n    {%- if message.content is string %}\n        {%- set content = message.content %}\n    {%- else %}\n        {%- set content = '' %}\n    {%- endif %}\n    {%- if (message.role == \"user\") or (message.role == \"system\" and not loop.first) %}\n        {{- '<|im_start|>' + message.role + '\\n' + content + '<|im_end|>' + '\\n' }}\n    {%- elif message.role == \"assistant\" %}\n        {%- set reasoning_content = '' %}\n        {%- if message.reasoning_content is string %}\n            {%- set reasoning_content = message.reasoning_content %}\n        {%- else %}\n            {%- if '</think>' in content %}\n                {%- set reasoning_content = content.split('</think>')[0].rstrip('\\n').split('<think>')[-1].lstrip('\\n') %}\n                {%- set content = content.split('</think>')[-1].lstrip('\\n') %}\n            {%- endif %}\n        {%- endif %}\n        {%- if loop.index0 > ns.last_query_index %}\n            {%- if loop.last or (not loop.last and reasoning_content) %}\n                {{- '<|im_start|>' + message.role + '\\n<think>\\n' + reasoning_content.strip('\\n') + '\\n</think>\\n\\n' + content.lstrip('\\n') }}\n            {%- else %}\n                {{- '<|im_start|>' + message.role + '\\n' + content }}\n            {%- endif %}\n        {%- else %}\n            {{- '<|im_start|>' + message.role + '\\n' + content }}\n        {%- endif %}\n        {%- if message.tool_calls %}\n            {%- for tool_call in message.tool_calls %}\n                {%- if (loop.first and content) or (not loop.first) %}\n                    {{- '\\n' }}\n                {%- endif %}\n                {%- if tool_call.function %}\n                    {%- set tool_call = tool_call.function %}\n                {%- endif %}\n                {{- '<tool_call>\\n{\"name\": \"' }}\n                {{- tool_call.name }}\n                {{- '\", \"arguments\": ' }}\n                {%- if tool_call.arguments is string %}\n                    {{- tool_call.arguments }}\n                {%- else %}\n                    {{- tool_call.arguments | tojson }}\n                {%- endif %}\n                {{- '}\\n</tool_call>' }}\n            {%- endfor %}\n        {%- endif %}\n        {{- '<|im_end|>\\n' }}\n    {%- elif message.role == \"tool\" %}\n        {%- if loop.first or (messages[loop.index0 - 1].role != \"tool\") %}\n            {{- '<|im_start|>user' }}\n        {%- endif %}\n        {{- '\\n<tool_response>\\n' }}\n        {{- content }}\n        {{- '\\n</tool_response>' }}\n        {%- if loop.last or (messages[loop.index0 + 1].role != \"tool\") %}\n            {{- '<|im_end|>\\n' }}\n        {%- endif %}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|im_start|>assistant\\n' }}\n    {%- if enable_thinking is defined and enable_thinking is false %}\n        {{- '<think>\\n\\n</think>\\n\\n' }}\n    {%- endif %}\n{%- endif %}",
+        "suites": {
+          "abstention": {
+            "case_count": 384,
+            "formatted_prompts_sha256": "f8600f38958e54b5a983b784fee580c9bacff1cdd74b8e976cb5efce5c483717",
+            "input_tokens_sha256": "8c03c48c400a93b450b72ccd8f29985ba25cd0bf563ec4876232ace4c11417a7",
+            "maximum_input_tokens": 306
+          },
+          "choice": {
+            "case_count": 256,
+            "formatted_prompts_sha256": "db6e159e2803703e983ea44270d32d1126e31045116d7ebd191c7009c9fdf657",
+            "input_tokens_sha256": "3811209136687692e2fcf87a17f8958de34bd7f4f80083dd82c08cb869f700e9",
+            "maximum_input_tokens": 302
+          },
+          "numeric": {
+            "case_count": 192,
+            "formatted_prompts_sha256": "7c182f0fe426e57f57794708b3b909521cf906c3a97c18b6ebf09fa360eef334",
+            "input_tokens_sha256": "663598bd6741ecfa0b4056050638b1707ae9da56bc67b7c53ab5488a3b29f541",
+            "maximum_input_tokens": 350
+          }
+        }
+      },
+      "training_method": "paired_option_sigmoid_dpo_v1"
+    },
+    "repository_commit": "b06f054226c8b6f87c008048b1d6c9ff562dcbb3"
+  },
+  "llama": {
+    "sources": {
+      "choice": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260921T150802140046Z_extreme_v2_choice_readouts_eval",
+      "numeric": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260921T150802763509Z_extreme_v2_numeric_eval",
+      "abstention": "results/harmony_eval/llama31_8b_instruct/standard_llama31_8b_instruct/20260921T150803927367Z_extreme_v2_abc_abstention_eval"
+    },
+    "checkpoint_signature": {
+      "adapter": null,
+      "attention": "sdpa",
+      "batch_size": 2,
+      "case_set_sha256": {
+        "abstention": "bd30a4ab6be93db381d73f5a9f6e412e9302124d5a53b1d55197f4b54327a4cc",
+        "choice": "a38c19590af3fc4b19490b99a0b9f25aefdd3e50df97c8e0bdaf8015b9b7903d",
+        "numeric": "8bb45228a02b521c7b7113e008f36ec272df0d2bbca06fde28b48294bc442295"
+      },
+      "dtype": "bfloat16",
+      "enable_thinking": false,
+      "environment": {
+        "gpu": "NVIDIA A100-SXM4-40GB",
+        "gpu_total_bytes": 42405855232,
+        "packages": {
+          "accelerate": "1.10.1",
+          "huggingface-hub": "0.34.4",
+          "peft": "0.17.1",
+          "safetensors": "0.6.2",
+          "torch": "2.11.0+cu128",
+          "transformers": "4.56.2"
+        }
+      },
+      "implementation_sha256": {
+        "scripts/ecological_prompt_sft/abstention_evaluation.py": "38385dd59aebe94aa888e14c634ca39a32890733e70f57a5d9682fb5e61c3802",
+        "scripts/ecological_prompt_sft/numeric_evaluation.py": "022844f7850769d405d4f04f840bde1e3af88071e02d9dea85752c8522cdd9bf",
+        "scripts/ecological_prompt_sft/readout_evaluation.py": "3ab75b8f811a1a7196c32bced14ebd31c6b1495b4867e237b237718e1c28a164",
+        "scripts/harmony_eval/cases.py": "dabcb91b2995ab67b9e348a127f729d01181d7dd8795991e5cd494653cc30c72",
+        "scripts/harmony_eval/scoring.py": "7dc6e3836c2962e5c398f24a552294bf6d8cffb19bfa66be73de94aa128dc80a",
+        "scripts/llama_instruct_eval.py": "117bf5cca430ef6db638e436f5591140905345fa9145564cec393cc490b61e0b",
+        "scripts/released_environment_eval.py": "118ae4a689e307f1a86cec0263ec662fcf64f57a373000efc1054d24d8da32e9"
+      },
+      "load_in_4bit": false,
+      "logprob_dtype": "float32",
+      "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+      "model_revision": "0e9e39f249a16976918f6564b8830bc894c89659",
+      "protocol": "official_llama31_instruct_bf16_fp32_logprobs_v1",
+      "seed": 42,
+      "system_prompt": "Evaluate the proposed policy under the stated assumptions. Follow the requested answer format exactly.",
+      "tokenizer_audit": {
+        "chat_template": "{{- bos_token }}\n{%- if custom_tools is defined %}\n    {%- set tools = custom_tools %}\n{%- endif %}\n{%- if not tools_in_user_message is defined %}\n    {%- set tools_in_user_message = true %}\n{%- endif %}\n{%- if not date_string is defined %}\n    {%- set date_string = \"26 Jul 2024\" %}\n{%- endif %}\n{%- if not tools is defined %}\n    {%- set tools = none %}\n{%- endif %}\n\n{#- This block extracts the system message, so we can slot it into the right place. #}\n{%- if messages[0]['role'] == 'system' %}\n    {%- set system_message = messages[0]['content']|trim %}\n    {%- set messages = messages[1:] %}\n{%- else %}\n    {%- set system_message = \"\" %}\n{%- endif %}\n\n{#- System message + builtin tools #}\n{{- \"<|start_header_id|>system<|end_header_id|>\\n\\n\" }}\n{%- if builtin_tools is defined or tools is not none %}\n    {{- \"Environment: ipython\\n\" }}\n{%- endif %}\n{%- if builtin_tools is defined %}\n    {{- \"Tools: \" + builtin_tools | reject('equalto', 'code_interpreter') | join(\", \") + \"\\n\\n\"}}\n{%- endif %}\n{{- \"Cutting Knowledge Date: December 2023\\n\" }}\n{{- \"Today Date: \" + date_string + \"\\n\\n\" }}\n{%- if tools is not none and not tools_in_user_message %}\n    {{- \"You have access to the following functions. To call a function, please respond with JSON for a function call.\" }}\n    {{- 'Respond in the format {\"name\": function name, \"parameters\": dictionary of argument name and its value}.' }}\n    {{- \"Do not use variables.\\n\\n\" }}\n    {%- for t in tools %}\n        {{- t | tojson(indent=4) }}\n        {{- \"\\n\\n\" }}\n    {%- endfor %}\n{%- endif %}\n{{- system_message }}\n{{- \"<|eot_id|>\" }}\n\n{#- Custom tools are passed in a user message with some extra guidance #}\n{%- if tools_in_user_message and not tools is none %}\n    {#- Extract the first user message so we can plug it in here #}\n    {%- if messages | length != 0 %}\n        {%- set first_user_message = messages[0]['content']|trim %}\n        {%- set messages = messages[1:] %}\n    {%- else %}\n        {{- raise_exception(\"Cannot put tools in the first user message when there's no first user message!\") }}\n{%- endif %}\n    {{- '<|start_header_id|>user<|end_header_id|>\\n\\n' -}}\n    {{- \"Given the following functions, please respond with a JSON for a function call \" }}\n    {{- \"with its proper arguments that best answers the given prompt.\\n\\n\" }}\n    {{- 'Respond in the format {\"name\": function name, \"parameters\": dictionary of argument name and its value}.' }}\n    {{- \"Do not use variables.\\n\\n\" }}\n    {%- for t in tools %}\n        {{- t | tojson(indent=4) }}\n        {{- \"\\n\\n\" }}\n    {%- endfor %}\n    {{- first_user_message + \"<|eot_id|>\"}}\n{%- endif %}\n\n{%- for message in messages %}\n    {%- if not (message.role == 'ipython' or message.role == 'tool' or 'tool_calls' in message) %}\n        {{- '<|start_header_id|>' + message['role'] + '<|end_header_id|>\\n\\n'+ message['content'] | trim + '<|eot_id|>' }}\n    {%- elif 'tool_calls' in message %}\n        {%- if not message.tool_calls|length == 1 %}\n            {{- raise_exception(\"This model only supports single tool-calls at once!\") }}\n        {%- endif %}\n        {%- set tool_call = message.tool_calls[0].function %}\n        {%- if builtin_tools is defined and tool_call.name in builtin_tools %}\n            {{- '<|start_header_id|>assistant<|end_header_id|>\\n\\n' -}}\n            {{- \"<|python_tag|>\" + tool_call.name + \".call(\" }}\n            {%- for arg_name, arg_val in tool_call.arguments | items %}\n                {{- arg_name + '=\"' + arg_val + '\"' }}\n                {%- if not loop.last %}\n                    {{- \", \" }}\n                {%- endif %}\n                {%- endfor %}\n            {{- \")\" }}\n        {%- else  %}\n            {{- '<|start_header_id|>assistant<|end_header_id|>\\n\\n' -}}\n            {{- '{\"name\": \"' + tool_call.name + '\", ' }}\n            {{- '\"parameters\": ' }}\n            {{- tool_call.arguments | tojson }}\n            {{- \"}\" }}\n        {%- endif %}\n        {%- if builtin_tools is defined %}\n            {#- This means we're in ipython mode #}\n            {{- \"<|eom_id|>\" }}\n        {%- else %}\n            {{- \"<|eot_id|>\" }}\n        {%- endif %}\n    {%- elif message.role == \"tool\" or message.role == \"ipython\" %}\n        {{- \"<|start_header_id|>ipython<|end_header_id|>\\n\\n\" }}\n        {%- if message.content is mapping or message.content is iterable %}\n            {{- message.content | tojson }}\n        {%- else %}\n            {{- message.content }}\n        {%- endif %}\n        {{- \"<|eot_id|>\" }}\n    {%- endif %}\n{%- endfor %}\n{%- if add_generation_prompt %}\n    {{- '<|start_header_id|>assistant<|end_header_id|>\\n\\n' }}\n{%- endif %}\n",
+        "file_sha256": {
+          "config.json": "29e4c210b0d6ac178b16b2a255a568bdb23b581e50ca1ef6a6d071dd85704e6e",
+          "special_tokens_map.json": "6f38c73729248f6c127296386e3cdde96e254636cc58b4169d3fd32328d9a8ec",
+          "tokenizer.json": "79e3e522635f3171300913bb421464a87de6222182a0570b9b2ccba2a964b2b4",
+          "tokenizer_config.json": "177c7b61e616fecb84c17ce0591acb92c6c4d60e9ac5ababfb940ff23bbcd424"
+        },
+        "suites": {
+          "abstention": {
+            "case_count": 384,
+            "formatted_prompts_sha256": "cc35b1517d7b4c80cf3497e5bfe583f963a2ac4a0acd8926ff2c8b125bd3a5fd",
+            "input_tokens_sha256": "71dfea1bc221cc84b01335332e0157b1db697cddacc06044b91683a30212cb85",
+            "maximum_input_tokens": 320
+          },
+          "choice": {
+            "case_count": 256,
+            "formatted_prompts_sha256": "0bb9a99332d76f173dee085cd8f24dfc34ed38c2ebe35e18bdfc8b5bdab4ec66",
+            "input_tokens_sha256": "3f0008c507f2235438eaf9480623fa9721feb5794b7170c9e5ff3a7b144b9f52",
+            "maximum_input_tokens": 316
+          },
+          "numeric": {
+            "case_count": 192,
+            "formatted_prompts_sha256": "d872df7ade8926e267b5ca6e9452cbcf32656980a12ff92bfa451c95e7efa75c",
+            "input_tokens_sha256": "8e6b590809450d5f9c21042f568cff174875b755b90ae3b5b231c19013300b9e",
+            "maximum_input_tokens": 365
+          }
+        }
+      }
+    },
+    "repository_commit": "8036061b67789334804583d9c3301e2545dbdd1d"
+  }
+}

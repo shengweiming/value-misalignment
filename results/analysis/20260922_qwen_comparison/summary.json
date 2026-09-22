@@ -1,0 +1,37 @@
+{
+  "changes": [
+    {
+      "model": "sft",
+      "mean_delta_probability_ecological": 0.09248350696338083,
+      "mean_delta_probability_human": -0.1409923131573576,
+      "mean_delta_probability_abstain": 0.04850880619397672,
+      "mean_absolute_ecological_change": 0.13432540610759633,
+      "max_absolute_ecological_change": 0.32000890181458347,
+      "ecological_increases": 43,
+      "preference_changes": 8,
+      "human_to_ecological": 8,
+      "high_cost_ecological_change": 0.12989389723999725
+    },
+    {
+      "model": "dpo",
+      "mean_delta_probability_ecological": 0.0004441188152170773,
+      "mean_delta_probability_human": -0.00044420736827222214,
+      "mean_delta_probability_abstain": 8.855305515403519e-08,
+      "mean_absolute_ecological_change": 0.007082233888835112,
+      "max_absolute_ecological_change": 0.0410626282513179,
+      "ecological_increases": 28,
+      "preference_changes": 0,
+      "human_to_ecological": 0,
+      "high_cost_ecological_change": 0.0011792061002594758
+    }
+  ],
+  "sft_ecological_probability_change_by_label": {
+    "A": 0.020370379276770045,
+    "B": 0.00811461891072518,
+    "C": 0.24896552270264727
+  },
+  "fraction_of_mean_sft_ecological_change_from_c": 0.897333052047958,
+  "validated_bundles": 12,
+  "qwen_prompt_count": 2496,
+  "qwen_score_row_count": 6528
+}

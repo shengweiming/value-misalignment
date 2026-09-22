@@ -1,0 +1,17 @@
+model,readout_type,variant,mean_margin,ecological_wins,ab_probability_ecological
+base,complete_option_text,ecological_first,-1.121306100362995,14,
+base,complete_option_text,human_first,-1.0543285441113561,15,
+base,counterbalanced_ab,ecological_a,-2.3839285714285716,19,0.3496874892956174
+base,counterbalanced_ab,ecological_b,-1.0625,24,0.46154127035816445
+sft,complete_option_text,ecological_first,-0.04508601154796464,25,
+sft,complete_option_text,human_first,0.49691280453653836,52,
+sft,counterbalanced_ab,ecological_a,-0.7120535714285714,18,0.37711902721050955
+sft,counterbalanced_ab,ecological_b,0.5022321428571429,40,0.6060325082136832
+dpo,complete_option_text,ecological_first,-1.1264593786810924,15,
+dpo,complete_option_text,human_first,-1.0749818064679413,15,
+dpo,counterbalanced_ab,ecological_a,-2.3526785714285716,19,0.349636432883762
+dpo,counterbalanced_ab,ecological_b,-0.9330357142857143,28,0.48258976477855736
+llama,complete_option_text,ecological_first,0.2377006473675926,48,
+llama,complete_option_text,human_first,0.3526881148067608,56,
+llama,counterbalanced_ab,ecological_a,1.6138392857142858,49,0.762687964158162
+llama,counterbalanced_ab,ecological_b,2.2075892857142856,53,0.8467605805970836
