@@ -114,3 +114,31 @@ visually checked the figure. Analysis dependencies were Python 3.12,
 pandas 2.2.3, and matplotlib 3.10.6. Updated only onboarding question 3 and
 checked whitespace. Task artifacts, this log, and onboarding are committed
 and pushed together under the standing workflow.
+
+## Follow-up: is Llama less sensitive to A/B arrangement?
+
+Paired the two binary orders within each of the same 56 positive-cost cells,
+using the already validated source bundles above. Extended the analysis script
+and report with `order_sensitivity.csv`; no additional inference was run.
+
+Llama's mean ecological probability is 76.27% when ecology is A and 84.68% when
+it is B. Its mean absolute within-cell change is 15.09 percentage points, versus
+20.30 for base Qwen, 25.73 for SFT Qwen, and 20.62 for DPO Qwen. Strict preference
+reversals number 9/56, 10/56, 21/56, and 11/56 respectively. Cells with a tie in
+either order number 1, 2, 3, and 1; these do not count as strict reversals. Mean
+absolute semantic log-probability margin changes are 0.95, 6.64, 1.71, and 6.63.
+Full-option strict reversals number 8/56, 9/56, 27/56, and 10/56.
+
+Llama is less sensitive by these probability measures, but its binary flip
+count is only slightly lower than base Qwen's. The larger stability advantage
+reported earlier is for A/B/C: 5/56 Llama cells lack a unanimous top response,
+versus 36/56 base Qwen, 50/56 SFT Qwen, and 36/56 DPO Qwen. Llama still has
+substantial probability changes (up to 37.74 points in binary A/B). Its stronger
+ecological baseline can preserve categorical choices despite arrangement
+effects; these data do not establish a model-wide absence of letter/position
+bias. Letters and positions remain confounded.
+
+Independently computed the paired statistics from raw rows with the standard
+library, then reproduced them through the analysis script, rerunning the bundle
+and provenance checks. Updated only onboarding question 3. This follow-up is
+committed and pushed under the standing workflow.

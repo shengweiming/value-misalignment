@@ -83,6 +83,34 @@ probability is **37.71%** with ecology as A and **60.60%** with ecology as B.
 Full-option scoring favors ecology in **25/56** cells when its text is shown
 first, versus **52/56** when the human-protective option is shown first.
 
+### Direct Llama/Qwen comparison of binary order sensitivity
+
+Llama is less sensitive by the observed probability measures, but the contrast
+with base Qwen is smaller in binary A/B than in the six-arrangement A/B/C test.
+Pairing the two orders within each positive-cost cell gives:
+
+| Model | P(ecology) when A | P(ecology) when B | Mean absolute within-cell probability change | Strict preference reversals |
+| --- | ---: | ---: | ---: | ---: |
+| Llama Instruct | 76.27% | 84.68% | 15.09 pp | 9/56 |
+| Qwen base | 34.97% | 46.15% | 20.30 pp | 10/56 |
+| Qwen SFT | 37.71% | 60.60% | 25.73 pp | 21/56 |
+| Qwen DPO | 34.96% | 48.26% | 20.62 pp | 11/56 |
+
+The absolute within-cell change cannot cancel opposite-direction effects across
+cases. Strict reversals require opposite nonzero score-margin signs; cells with
+a tie in either order number 1, 2, 3, and 1 respectively and are not counted as
+strict reversals. The corresponding mean absolute semantic log-probability
+margin changes are 0.95, 6.64, 1.71, and 6.63. These are descriptive sensitivity
+measures, not isolated estimates of a literal-letter mechanism.
+
+Llama's maximum within-cell probability change is still 37.74 points, and its
+full-option preference reverses in 8/56 cells (Qwen base 9, SFT 27, DPO 10).
+Thus Llama is not invariant to arrangement. Its strong ecological preference
+can also make categorical answers stable despite meaningful probability shifts.
+The stronger A/B/C contrast remains: only 5/56 Llama cells lack a unanimous top
+response across all six arrangements, versus 36/56 base Qwen and 50/56 SFT Qwen.
+See `order_sensitivity.csv` for the paired measurements.
+
 ## Numerical answers and DPO
 
 The numerical readout moves in the opposite direction from the policy-choice

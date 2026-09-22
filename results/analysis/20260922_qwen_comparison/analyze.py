@@ -140,7 +140,7 @@ def main():
     numeric = pd.concat([summaries[m]["numeric"] for m in MODELS], ignore_index=True)
     by_cost = abc.groupby(["model", "cost_count"], as_index=False)[PROBABILITIES].mean()
     by_family = positive.groupby(["model", "template_family"], as_index=False)[PROBABILITIES].mean()
-    label_rows, overview_rows, binary_orders = [], [], []
+    label_rows, overview_rows, binary_orders, order_sensitivity = [], [], [], []
     for model in MODELS:
         p = positive[positive.model == model]
         c = summaries[model]["choice"].query("cost_count > 0")
@@ -172,6 +172,25 @@ def main():
                                   "mean_margin": group.semantic_logit_implement.mean(),
                                   "ecological_wins": int((group.semantic_logit_implement > 0).sum()),
                                   "ab_probability_ecological": group.p_implement.mean() if readout == "counterbalanced_ab" else None})
+        for readout, first, second in (("counterbalanced_ab", "ecological_a", "ecological_b"),
+                                       ("complete_option_text", "ecological_first", "human_first")):
+            group = choice_raw[choice_raw.readout_type == readout]
+            margins = group.pivot(index=["template_family", "cost_count"], columns="readout_variant",
+                                  values="semantic_logit_implement")
+            assert len(margins) == 56 and margins[[first, second]].notna().all().all()
+            shift = margins[second] - margins[first]
+            item = {"model": model, "readout_type": readout, "cell_count": len(margins),
+                    "strict_preference_reversals": int(((margins[first] * margins[second]) < 0).sum()),
+                    "cells_with_tie_in_either_order": int(((margins[first] == 0) | (margins[second] == 0)).sum()),
+                    "mean_signed_margin_shift": shift.mean(), "mean_absolute_margin_shift": shift.abs().mean()}
+            if readout == "counterbalanced_ab":
+                probabilities = group.pivot(index=["template_family", "cost_count"], columns="readout_variant",
+                                            values="p_implement")
+                gap = probabilities[second] - probabilities[first]
+                item.update(mean_signed_ecological_probability_shift=gap.mean(),
+                            mean_absolute_ecological_probability_shift=gap.abs().mean(),
+                            maximum_absolute_ecological_probability_shift=gap.abs().max())
+            order_sensitivity.append(item)
     overview, labels = pd.DataFrame(overview_rows), pd.DataFrame(label_rows)
     changes, transition_rows, monotonicity = [], [], []
     baseline = positive[positive.model == "base"].set_index(["template_family", "cost_count"])
@@ -200,6 +219,7 @@ def main():
                         (by_family, "abstention_by_family.csv"), (numeric, "numeric_by_family.csv"),
                         (overview, "overview.csv"), (labels, "abstention_by_label.csv"),
                         (pd.DataFrame(binary_orders), "binary_by_order.csv"),
+                        (pd.DataFrame(order_sensitivity), "order_sensitivity.csv"),
                         (pd.concat(transition_rows), "paired_changes.csv"),
                         (pd.DataFrame(monotonicity), "nonmonotonic_steps.csv")):
         csv(frame, name)
