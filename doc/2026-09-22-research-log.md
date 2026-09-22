@@ -142,3 +142,107 @@ Independently computed the paired statistics from raw rows with the standard
 library, then reproduced them through the analysis script, rerunning the bundle
 and provenance checks. Updated only onboarding question 3. This follow-up is
 committed and pushed under the standing workflow.
+
+## Four-scenario indifference suite with two configurable costs
+
+The user chose Qwen and requested a new starting eval using pesticide ban,
+river water allocation, oil extraction ban, and wildfire restoration. Their
+candidate human-cost anchors from the earlier results are 1, 10, 1, and 1
+deaths respectively. Added `eval/ecological_value/indifference_v1/`, containing
+the four templates, default `config.json`, and a methodology/run README.
+
+Each template exposes `{human_cost}` and `{environment_cost}`. The latter counts
+native species protected by the ecological policy, with a provisional default
+anchor of 10 for every family. Replaced the relevant “several species” phrases
+with exact counts; retained the source human-consequence paragraphs, other
+ecological benefits, assumptions, and policy options. The earlier distinctions
+between likely regional extinction, extinction prevention, threatened-species
+protection, and disappearance remain. Counts up to one million are hypothetical
+stress tests. These rewritten anchors have not yet been shown to be 50/50.
+
+### Sweep and readouts
+
+Added `scripts/ecological_indifference.py`. For each `(H, E)` anchor, hold H
+fixed and increase E, then hold E fixed and increase H. Include the shared
+anchor once. The default human grid is
+`1, 10, 100, 1000, 10000, 100000, 1000000`; the environmental grid is
+`10, 100, 1000, 10000, 100000, 1000000`. Use only values above the relevant
+anchor; anchors are inserted even when absent from the grids. Positive integer
+anchors and strictly increasing grids are validated. This produces 12 points
+each for pesticide/oil/wildfire and 11 for river, totaling 47.
+
+Every point has both A/B arrangements and all six A/B/C arrangements with the
+existing abstention response. The old readout instructions and policy texts are
+reused. There are 94 A/B prompts (188 candidate scores) and 282 A/B/C prompts
+(846 scores), totaling 376 prompts and 1,034 scores per condition; all three
+Qwen conditions produce 1,128 prompts and 3,102 scores.
+
+Normalize label scores within each arrangement and average probabilities by
+semantic response. A/B winners follow the mean probability, unlike the old
+binary convention based on mean log-probability margin. Retain all raw scores,
+arrangement wins and ties, mean/min/max probabilities, unanimity, and offered
+label mass. A/B/C always retains abstention in its denominator. Summaries group
+by both cost parameters, preventing environmental points at the same human
+cost from being combined.
+
+Every row records both costs, both anchors, the environment unit, and the arm.
+Plots use negative `-log10(E/E_anchor)` on the environmental arm and positive
+`log10(H/H_anchor)` on the human arm. Zero is the anchor. The shaded ecological
+band is the observed range across arrangements, not statistical uncertainty.
+This coordinate orders the two arms; it does not assert a human/species utility
+exchange rate.
+
+### Runner and notebook
+
+Extended `scripts/qwen_checkpoint_eval.py` to accept `indifference_config` for
+tokenizer preparation and evaluation. The same independently loaded base/SFT/DPO
+checkpoints, saved-adapter checks, precision, native template, and seed are used
+as in the preceding comparison: `Qwen/Qwen3-8B` at
+`b968826d9c46dd6066d109eabc6255188de91218`, BF16 weights/adapters, FP32 log
+probabilities, SDPA, thinking disabled, no quantization, batch size 2, seed 42.
+No training or full-size inference was run locally.
+
+`notebooks/eval/ecological_eval.ipynb` now defaults to
+`QWEN_EVAL_SUITE="indifference"`, retaining `QWEN_CONDITIONS=("base","sft","dpo")`.
+Its configuration cell exposes the four anchor pairs and both grids. It previews
+the exact coordinates, all anchor questions, endpoint examples, and mappings;
+then audits, evaluates, displays anchor/full-sweep comparisons, plots, and
+trained-minus-base ecological probabilities. It lists per-arrangement increases
+in ecological probability from left to right using tolerance 1e-6. An averaged
+50/50 response is not automatically classified as coherent indifference.
+
+The old Qwen suite remains selectable as `"extreme_v2"`; legacy model sources
+remain available. New bundles use `indifference_v1_ab_eval` and
+`indifference_v1_abc_eval`, with separate notebook local/Drive roots. Each bundle
+records its full configuration, exact cases and parameter coordinates, source
+hashes, checkpoint identity, tokenizer audit, scoring implementation, and
+environment. Reuse requires a matching signature. The existing verified Drive
+persistence/recovery and GitHub publication workflow accepts the new bundles.
+
+### Validation and limits
+
+All **40 targeted tests passed** across the new indifference tests and the
+existing Qwen, Llama, released-MSM, abstention, and numerical tests, after fixing
+a missing-candidate error in the new summary and restoring the legacy numerical
+mapping explanation in the notebook. Checks cover two-arm invariants, unique
+anchors, complete counterbalancing, preservation of human assumptions, custom
+anchors, invalid configuration, grouping by both costs, forged rows, reuse and
+configuration changes, recovery, publication, and tiny real Qwen BF16 scoring
+on CPU. A simulated fixed-letter preference verifies that an averaged .5 still
+retains the .01–.99 arrangement range and inconsistent winners. Network
+publication is mocked in tests.
+
+Downloaded only the public tokenizer at the pinned Qwen revision and audited
+all 376 actual default prompts: stable answer boundaries and one-token labels,
+maximum input lengths 304 for A/B and 317 for A/B/C. Independently exercised the
+new notebook summary for all three conditions, base-only, and DPO-only using
+synthetic data. Checked notebook schema, code-cell syntax, cleared outputs, and
+plot layout with synthetic scores. All nine previously published Qwen bundles
+still validate. Checked whitespace and updated only onboarding question 3.
+
+The next step is to run the notebook and assess the rewritten anchor responses
+and scale/order coherence before interpreting any movement as preference
+learning or radicalization. The script does not automatically search for an
+indifference point or claim that the provisional environmental anchor preserves
+the old response probabilities. Task files, this log, and onboarding are
+committed and pushed together under the standing workflow.

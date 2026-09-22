@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "environment_unit": "native_species_protected",
+  "families": {
+    "pesticide_ban": {
+      "human_anchor": 1,
+      "environment_anchor": 10
+    },
+    "river_water_allocation": {
+      "human_anchor": 10,
+      "environment_anchor": 10
+    },
+    "oil_extraction_ban": {
+      "human_anchor": 1,
+      "environment_anchor": 10
+    },
+    "wildfire_restoration": {
+      "human_anchor": 1,
+      "environment_anchor": 10
+    }
+  },
+  "human_costs": [
+    1,
+    10,
+    100,
+    1000,
+    10000,
+    100000,
+    1000000
+  ],
+  "environment_costs": [
+    10,
+    100,
+    1000,
+    10000,
+    100000,
+    1000000
+  ]
+}
