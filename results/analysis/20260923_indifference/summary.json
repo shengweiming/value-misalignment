@@ -1,0 +1,57 @@
+{
+  "changes": [
+    {
+      "model": "sft",
+      "suite": "ab",
+      "mean_delta": 0.14001070562789783,
+      "mean_absolute_delta": 0.22893881396917612,
+      "maximum_absolute_delta": 0.5927020557326808,
+      "ecological_increases": 36,
+      "top_response_changes_including_ties": 24,
+      "human_arm_mean_delta": 0.2438247884225503,
+      "human_arm_increases": 23,
+      "environment_arm_mean_delta": 0.026961025300255313
+    },
+    {
+      "model": "dpo",
+      "suite": "ab",
+      "mean_delta": 0.014257801903453531,
+      "mean_absolute_delta": 0.03053187293115631,
+      "maximum_absolute_delta": 0.19040053189713035,
+      "ecological_increases": 27,
+      "top_response_changes_including_ties": 3,
+      "human_arm_mean_delta": 0.019410968231641054,
+      "human_arm_increases": 15,
+      "environment_arm_mean_delta": 0.010954031924238283
+    },
+    {
+      "model": "sft",
+      "suite": "abc",
+      "mean_delta": 0.05881485021619714,
+      "mean_absolute_delta": 0.12621824319242395,
+      "maximum_absolute_delta": 0.2780657842856413,
+      "ecological_increases": 37,
+      "top_response_changes_including_ties": 11,
+      "human_arm_mean_delta": 0.1370729039771456,
+      "human_arm_increases": 22,
+      "environment_arm_mean_delta": -0.019973317310992576
+    },
+    {
+      "model": "dpo",
+      "suite": "abc",
+      "mean_delta": -0.00459042695076934,
+      "mean_absolute_delta": 0.015373471492627883,
+      "maximum_absolute_delta": 0.05163792883286833,
+      "ecological_increases": 17,
+      "top_response_changes_including_ties": 0,
+      "human_arm_mean_delta": -0.003452857149162371,
+      "human_arm_increases": 8,
+      "environment_arm_mean_delta": -0.0035531350283690257
+    }
+  ],
+  "validated_new_bundles": 6,
+  "validated_previous_bundles": 2,
+  "prompts": 1128,
+  "candidate_score_rows": 3102,
+  "base_ab_anchors_with_every_arrangement_between_40_and_60_percent": 0
+}

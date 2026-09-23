@@ -5,6 +5,6 @@ enough evidence to answer these questions:
 
 1. What is the project's central research question, and what competing explanations is it designed to distinguish?
 2. What interventions, models, datasets, evaluations, results, and limitations define the project so far?
-3. Latest session — 2026-09-22: How does the new four-scenario Qwen indifference suite vary human and environmental costs, what are its configurable candidate anchors, and what must be validated before interpreting its curves?
+3. Latest session — 2026-09-23: What did the Qwen indifference sweeps reveal about anchor stability, pesticide's scale response, and SFT's high-human-cost behavior, and why do these results still depend on readout and arrangement?
 
 Answer from the documentation as a whole, not from one file in isolation.
